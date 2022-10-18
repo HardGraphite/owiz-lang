@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
 
+option(OW_DEVELOPING "Set up the build system for developing." OFF)
+
+include("cmake/version.cmake")
+
 project(
 	ow-lang
+	VERSION ${OW_VERSION_NUMBER}
 	LANGUAGES C
 )
 
-option(OW_DEVELOPING "Set up the build system for developing." OFF)
 option(OW_BUILD_IPO "Enable inter-procedural optimization." ON)
 option(OW_DOC_SOURCE "Generate documentation for source code." OFF)
 option(OW_DOC_HEADER "Generate documentation for public header files." OFF)

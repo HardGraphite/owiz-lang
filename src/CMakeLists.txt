@@ -31,6 +31,23 @@ foreach(opt_name IN ITEMS
 	endif()
 endforeach()
 
+## Rules to generate machine/version.h file.
+if(OW_DEVELOPING)
+	set(version_file "${CMAKE_SOURCE_DIR}/version.txt")
+	set(version_header_file "${CMAKE_CURRENT_SOURCE_DIR}/machine/version.h")
+	add_custom_command(
+		OUTPUT "${version_header_file}"
+		COMMAND "${CMAKE_SOURCE_DIR}/tool/version.py"
+			"${version_file}" -H "${version_header_file}"
+		DEPENDS "${version_file}"
+		COMMENT "Generating ${version_header_file}"
+		VERBATIM
+	)
+	target_sources(ow PRIVATE ${version_header_file}) # As dependencies.
+	unset(version_file)
+	unset(version_header_file)
+endif()
+
 ## Rules to generate compiler/ast_node_xxx.h files.
 if(OW_DEVELOPING)
 	set(compiler_ast_node_xxx_files
