@@ -4,6 +4,7 @@ option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
 ## Collect source files.
 set(ow_src "ow.c")
 foreach(sub_dir IN ITEMS
+		"bytecode"
 		"compat"
 		"compiler"
 		"utilities"
