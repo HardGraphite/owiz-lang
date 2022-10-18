@@ -6,15 +6,89 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> // atexit()
 #include <string.h>
 
 #include "location.h"
 #include "token.h"
 #include <utilities/attributes.h>
+#include <utilities/hash.h>
+#include <utilities/hashmap.h>
+#include <utilities/malloc.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unicode.h>
+
+static struct ow_hashmap _ow_lexer_keywords_map;
+
+#define OW_LEXER_KEYWORD_MAXLEN 8
+
+static bool _ow_lexer_keywords_map_key_equal(
+		void *ctx, const void *key1, const void *key2) {
+	ow_unused_var(ctx);
+	return strcmp(key1, key2) == 0;
+}
+
+static ow_hash_t _ow_lexer_keywords_map_key_hash(void *ctx, const void *key) {
+	ow_unused_var(ctx);
+	return ow_hash_bytes(key, strlen(key));
+}
+
+static const struct ow_hashmap_funcs _ow_lexer_keywords_map_funcs = {
+	.key_equal = _ow_lexer_keywords_map_key_equal,
+	.key_hash = _ow_lexer_keywords_map_key_hash,
+	.context = NULL,
+};
+
+ow_noinline static void _ow_lexer_keywords_map_fini(void) {
+	assert(_ow_lexer_keywords_map._size != 0);
+
+	ow_hashmap_fini(&_ow_lexer_keywords_map);
+	_ow_lexer_keywords_map._size = 0;
+}
+
+ow_noinline static void _ow_lexer_keywords_map_init(void) {
+	assert(_ow_lexer_keywords_map._size == 0);
+	// TODO: Add atomic flag.
+
+	const char *const kw_names[] = {
+#define ELEM(NAME, STRING) STRING,
+		OW_TOKEN_KEYWORDS_LIST
+#undef ELEM
+	};
+	const enum ow_token_type kw_tokens[] = {
+#define ELEM(NAME, STRING) OW_TOK_##NAME,
+			OW_TOKEN_KEYWORDS_LIST
+#undef ELEM
+	};
+	const size_t kw_count = sizeof kw_names / sizeof kw_names[0];
+
+	ow_hashmap_init(&_ow_lexer_keywords_map, kw_count);
+	for (size_t i = 0; i < kw_count; i++) {
+		ow_hashmap_set(
+			&_ow_lexer_keywords_map, &_ow_lexer_keywords_map_funcs,
+			kw_names[i], (void *)(uintptr_t)kw_tokens[i]);
+	}
+	assert(ow_hashmap_size(&_ow_lexer_keywords_map) == kw_count);
+
+	atexit(_ow_lexer_keywords_map_fini);
+}
+
+/// Call this function to make sure that the map has been initialized.
+ow_forceinline static void ow_lexer_keywords_map_prepare(void) {
+	if (ow_likely(_ow_lexer_keywords_map._size))
+		return;
+	_ow_lexer_keywords_map_init();
+	assert(_ow_lexer_keywords_map._size);
+}
+
+/// Find keyword by string. If it is not a keyword, return 0.
+static enum ow_token_type ow_lexer_keywords_map_query(const char *s) {
+	assert(_ow_lexer_keywords_map._size);
+	const void *res =
+		ow_hashmap_get(&_ow_lexer_keywords_map, &_ow_lexer_keywords_map_funcs, s);
+	return (enum ow_token_type)(uintptr_t)res;
+}
 
 #define OW_LEXER_CODE_BUFFER_SIZE 128
 #define OW_LEXER_CODE_BUFFER_END(LEXER_P) \
@@ -36,11 +110,11 @@ struct ow_lexer {
 #endif // OW_DEBUG_LEXER
 };
 
-// A wrapper of `setjmp()`.
+/// A wrapper of `setjmp()`.
 #define ow_lexer_error_setjmp(lexer) \
 	(setjmp((lexer)->error_jmpbuf))
 
-// Throw error.
+/// Throw error.
 ow_noinline ow_noreturn static void ow_lexer_error_throw(
 		struct ow_lexer *lexer, const char *msg_fmt, ...) {
 	char msg_buf[128];
@@ -67,7 +141,7 @@ ow_noinline static int ow_lexer_code_refill_and_peek(struct ow_lexer *lexer) {
 	return *lexer->code_current;
 }
 
-// Peek next byte.
+/// Peek next byte.
 ow_forceinline static int ow_lexer_code_peek(struct ow_lexer *lexer) {
 	assert(lexer->code_current <= lexer->code_end);
 	if (ow_unlikely(lexer->code_current == lexer->code_end))
@@ -75,7 +149,7 @@ ow_forceinline static int ow_lexer_code_peek(struct ow_lexer *lexer) {
 	return *lexer->code_current;
 }
 
-// Move to next byte.
+/// Move to next byte.
 static void ow_lexer_code_advance(struct ow_lexer *lexer) {
 	assert(lexer->code_current < lexer->code_end);
 	const char c = *lexer->code_current;
@@ -91,22 +165,28 @@ static void ow_lexer_code_advance(struct ow_lexer *lexer) {
 	lexer->code_current++;
 }
 
-// Ignore chars until `c`. Return false if reaches EOF before `c`.
-static bool ow_lexer_code_ignore_until(struct ow_lexer *lexer, char c) {
+/// Ignore chars until `c`. Return false if reaches EOF before `c`.
+static bool ow_lexer_code_ignore_until(
+		struct ow_lexer *lexer, char c, bool ignore_c) {
+	assert(lexer->code_current <= lexer->code_end);
 	const char *const pos =
 		memchr(lexer->code_current, c, lexer->code_end - lexer->code_current);
 	if (pos) {
-		while (lexer->code_current <= pos)
+		while (lexer->code_current < pos)
+			ow_lexer_code_advance(lexer);
+		if (ignore_c)
 			ow_lexer_code_advance(lexer);
 		return true;
 	}
-	while (lexer->code_current != lexer->code_buffer)
+	while (lexer->code_current != lexer->code_end)
 		ow_lexer_code_advance(lexer); // TODO: Need optimization.
-	return ow_lexer_code_ignore_until(lexer, c);
+	if (ow_unlikely(ow_lexer_code_peek(lexer) == EOF))
+		return false;
+	return ow_lexer_code_ignore_until(lexer, c, ignore_c);
 }
 
 ow_nodiscard struct ow_lexer *ow_lexer_new(void) {
-	struct ow_lexer *const lexer = malloc(sizeof(struct ow_lexer));
+	struct ow_lexer *const lexer = ow_malloc(sizeof(struct ow_lexer));
 	lexer->stream = NULL;
 	lexer->location.line = 0;
 	lexer->location.column = 0;
@@ -118,13 +198,19 @@ ow_nodiscard struct ow_lexer *ow_lexer_new(void) {
 	lexer->error_info.message = NULL;
 	lexer->stream_end = true;
 	ow_dynamicstr_init(&lexer->string_buffer, 63);
+#if OW_DEBUG_LEXER
+	lexer->verbose = false;
+#endif // OW_DEBUG_LEXER
+
+	ow_lexer_keywords_map_prepare();
+
 	return lexer;
 }
 
 void ow_lexer_del(struct ow_lexer *lexer) {
 	ow_lexer_clear(lexer);
 	ow_dynamicstr_fini(&lexer->string_buffer);
-	free(lexer);
+	ow_free(lexer);
 }
 
 void ow_lexer_verbose(struct ow_lexer *lexer, bool status) {
@@ -137,8 +223,7 @@ void ow_lexer_verbose(struct ow_lexer *lexer, bool status) {
 
 void ow_lexer_source(struct ow_lexer *lexer,
 		struct ow_istream *stream, struct ow_sharedstr *file_name) {
-	if (lexer->file_name)
-		ow_sharedstr_unref(lexer->file_name);
+	ow_lexer_clear(lexer);
 	lexer->stream = stream;
 	lexer->location.line = 1;
 	lexer->location.column = 1;
@@ -149,14 +234,18 @@ void ow_lexer_source(struct ow_lexer *lexer,
 }
 
 void ow_lexer_clear(struct ow_lexer *lexer) {
-	if (lexer->file_name)
+	if (lexer->file_name) {
 		ow_sharedstr_unref(lexer->file_name);
-	if (lexer->error_info.message)
+		lexer->file_name = NULL;
+	}
+	if (lexer->error_info.message) {
 		ow_sharedstr_unref(lexer->error_info.message);
+		lexer->error_info.message = NULL;
+	}
 	ow_dynamicstr_clear(&lexer->string_buffer);
 }
 
-// Read a int or float literal.
+/// Read a int or float literal.
 static void ow_lexer_scan_number(
 		struct ow_lexer *lexer, struct ow_token *result) {
 	int64_t int_val;
@@ -354,7 +443,7 @@ static void ow_lexer_scan_string_u8c_to(
 	}
 }
 
-// Read a string literal.
+/// Read a string literal.
 static void ow_lexer_scan_string(
 		struct ow_lexer *lexer, struct ow_token *result) {
 	struct ow_dynamicstr *buffer = &lexer->string_buffer;
@@ -384,11 +473,12 @@ static void ow_lexer_scan_string(
 	struct ow_sharedstr *const res_str =
 			ow_sharedstr_new(ow_dynamicstr_data(buffer), ow_dynamicstr_size(buffer));
 	ow_token_assign_string(result, OW_TOK_STRING, res_str);
+	ow_sharedstr_unref(res_str);
 }
 
-// Read an identifier.
-static void ow_lexer_scan_identifier(
-		struct ow_lexer *lexer, struct ow_token *result) {
+/// Read an identifier or keyword.
+static void ow_lexer_scan_identifier_or_keyword(
+		struct ow_lexer *lexer, struct ow_token *result, bool is_symbol) {
 	struct ow_dynamicstr *buffer = &lexer->string_buffer;
 	ow_dynamicstr_clear(buffer);
 
@@ -401,10 +491,34 @@ static void ow_lexer_scan_identifier(
 		ow_lexer_scan_string_u8c_to(lexer, buffer);
 	}
 
-	assert(ow_dynamicstr_size(buffer));
+	const char *const buffer_data = ow_dynamicstr_data(buffer);
+	const size_t buffer_size = ow_dynamicstr_size(buffer);
+
+	if (ow_unlikely(is_symbol)) {
+		if (ow_unlikely(!buffer_size))
+			ow_lexer_error_throw(lexer, "empty symbol literal");
+		struct ow_sharedstr *const res_str =
+			ow_sharedstr_new(ow_dynamicstr_data(buffer), ow_dynamicstr_size(buffer));
+		ow_token_assign_string(result, OW_TOK_SYMBOL, res_str);
+		ow_sharedstr_unref(res_str);
+		return;
+	}
+
+	assert(buffer_size);
+
+	if (buffer_size <= OW_LEXER_KEYWORD_MAXLEN) {
+		assert(buffer_data[buffer_size] == '\0');
+		const enum ow_token_type tok_tp = ow_lexer_keywords_map_query(buffer_data);
+		if (ow_unlikely((int)tok_tp)) {
+			ow_token_assign_simple(result, tok_tp);
+			return;
+		}
+	}
+
 	struct ow_sharedstr *const res_str =
 		ow_sharedstr_new(ow_dynamicstr_data(buffer), ow_dynamicstr_size(buffer));
 	ow_token_assign_string(result, OW_TOK_IDENTIFIER, res_str);
+	ow_sharedstr_unref(res_str);
 }
 
 static void ow_lexer_next_impl(
@@ -487,17 +601,19 @@ static void ow_lexer_next_impl(
 		case '#':
 			ow_lexer_code_advance(lexer);
 			if (ow_likely(ow_lexer_code_peek(lexer) != '=')) {
-				ow_lexer_code_ignore_until(lexer, '\n');
+				ow_lexer_code_ignore_until(lexer, '\n', false);
+				ow_token_assign_simple(result, OW_TOK_END_LINE);
+				goto advance_and_set_loc_and_return;
 			} else {
 				ow_lexer_code_advance(lexer);
-				while (ow_lexer_code_ignore_until(lexer, '=')) {
+				while (ow_lexer_code_ignore_until(lexer, '=', true)) {
 					if (ow_lexer_code_peek(lexer) == '#') {
 						ow_lexer_code_advance(lexer);
 						break;
 					}
 				}
+				continue;
 			}
-			continue;
 
 		case '$':
 			ow_token_assign_simple(result, OW_TOK_DOLLAR);
@@ -610,7 +726,7 @@ static void ow_lexer_next_impl(
 			goto set_loc_and_return;
 
 		case ':':
-			ow_token_assign_simple(result, OW_TOK_COLON);
+			ow_token_assign_simple(result, OW_TOK_OP_COLON);
 			goto advance_and_set_loc_and_return;
 
 		case '<':
@@ -629,6 +745,9 @@ static void ow_lexer_next_impl(
 			} else if (c1 == '=') {
 				ow_token_assign_simple(result, OW_TOK_OP_LE);
 				goto advance_and_set_loc_and_return;
+			} else if (c1 == '-') {
+				ow_token_assign_simple(result, OW_TOK_L_ARROW);
+				goto advance_and_set_loc_and_return;
 			}
 			ow_token_assign_simple(result, OW_TOK_OP_LT);
 			goto set_loc_and_return;
@@ -638,6 +757,9 @@ static void ow_lexer_next_impl(
 			c1 = ow_lexer_code_peek(lexer);
 			if (c1 == '=') {
 				ow_token_assign_simple(result, OW_TOK_OP_EQ);
+				goto advance_and_set_loc_and_return;
+			} else if (c1 == '>') {
+				ow_token_assign_simple(result, OW_TOK_FATARROW);
 				goto advance_and_set_loc_and_return;
 			} else {
 				ow_token_assign_simple(result, OW_TOK_OP_EQL);
@@ -725,8 +847,7 @@ static void ow_lexer_next_impl(
 		case 'y':
 		case 'z':
 		case '_':
-		scan_identifier:
-			ow_lexer_scan_identifier(lexer, result);
+			ow_lexer_scan_identifier_or_keyword(lexer, result, false);
 			goto set_loc_and_return;
 
 		case '[':
@@ -757,8 +878,9 @@ static void ow_lexer_next_impl(
 			}
 
 		case '`':
-			ow_token_assign_simple(result, OW_TOK_BACKTICK);
-			goto advance_and_set_loc_and_return;
+			ow_lexer_code_advance(lexer);
+			ow_lexer_scan_identifier_or_keyword(lexer, result, true);
+			goto set_loc_and_return;
 
 		case '{':
 			ow_token_assign_simple(result, OW_TOK_L_BRACE);
@@ -787,7 +909,8 @@ static void ow_lexer_next_impl(
 
 		default:
 			assert((char) c & 0x80);
-			goto scan_identifier;
+			ow_lexer_scan_identifier_or_keyword(lexer, result, false);
+			goto set_loc_and_return;
 		}
 	}
 
@@ -799,6 +922,8 @@ set_loc_and_return:
 	result->location.end.column--;
 }
 
+#if OW_DEBUG_LEXER
+
 ow_noinline static void ow_lexer_dump_tok(const struct ow_token *tok) {
 	char tok_rep_buf[128];
 	const char *const tok_rep =
@@ -807,6 +932,8 @@ ow_noinline static void ow_lexer_dump_tok(const struct ow_token *tok) {
 		tok->location.begin.line, tok->location.begin.column,
 		tok->location.end.line, tok->location.end.column, tok_rep);
 }
+
+#endif // OW_DEBUG_LEXER
 
 bool ow_lexer_next(struct ow_lexer *lexer, struct ow_token *result) {
 	if (!ow_lexer_error_setjmp(lexer)) {

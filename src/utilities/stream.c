@@ -1,18 +1,13 @@
 #include "stream.h"
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <utilities/attributes.h>
-
-struct ow_istream_sv {
-	const char *begin;
-	const char *end;
-	const char *current;
-};
+#include <utilities/malloc.h>
 
 static bool ptr_is_tagged(void *p) {
 	return (uintptr_t)p & 1;
@@ -28,13 +23,19 @@ static void *ptr_rm_tag(void *p) {
 	return (void *)((uintptr_t)p - 1);
 }
 
+struct ow_istream_sv {
+	const char *begin;
+	const char *end;
+	const char *current;
+};
+
 struct ow_istream *ow_istream_open(const char *path) {
 	FILE *const fp = fopen(path, "r");
 	return (struct ow_istream *)fp;
 }
 
 struct ow_istream *ow_istream_open_mem(const char *s, size_t n) {
-	struct ow_istream_sv *const res = malloc(sizeof(struct ow_istream_sv));
+	struct ow_istream_sv *const res = ow_malloc(sizeof(struct ow_istream_sv));
 	res->begin = s;
 	res->end = s + (n == (size_t)-1 ? strlen(s) : n);
 	res->current = s;
@@ -47,7 +48,7 @@ struct ow_istream *ow_istream_stdin(void) {
 
 void ow_istream_close(struct ow_istream *s) {
 	if (ptr_is_tagged(s))
-		free(ptr_rm_tag(s));
+		ow_free(ptr_rm_tag(s));
 	else
 		fclose((FILE *)s);
 }
@@ -98,4 +99,115 @@ size_t ow_istream_read(struct ow_istream *s, void *buf, size_t buf_sz) {
 	memcpy(buf, sv->current, n);
 	sv->current += n;
 	return n;
+}
+
+struct ow_iostream_sb {
+	char *begin;
+	char *end;
+	char *current;
+};
+
+static_assert(
+	offsetof(struct ow_istream_sv, begin) == offsetof(struct ow_iostream_sb, begin) &&
+	offsetof(struct ow_istream_sv, end) == offsetof(struct ow_iostream_sb, end) &&
+	offsetof(struct ow_istream_sv, current) == offsetof(struct ow_iostream_sb, current),
+	"");
+
+struct ow_iostream *ow_iostream_open(const char *path, bool readable) {
+	FILE *const fp = fopen(path, readable ? "w+" : "w");
+	return (struct ow_iostream *)fp;
+}
+
+struct ow_iostream *ow_iostream_open_mem(size_t n) {
+	if (n < 32)
+		n = 32;
+	struct ow_iostream_sb *const res = ow_malloc(sizeof(struct ow_iostream_sb));
+	res->begin = ow_malloc(n);
+	res->end = res->begin + n;
+	res->current = res->begin;
+	return ptr_add_tag(res);
+}
+
+struct ow_iostream *ow_iostream_stdout(void) {
+	return (struct ow_iostream *)stdout;
+}
+
+struct ow_iostream *ow_iostream_stderr(void) {
+	return (struct ow_iostream *)stderr;
+}
+
+void ow_iostream_close(struct ow_iostream *s) {
+	if (!ptr_is_tagged(s)) {
+		fclose((FILE *)s);
+		return;
+	}
+
+	struct ow_iostream_sb *const sb = ptr_rm_tag(s);
+	ow_free(sb->begin);
+	ow_free(sb);
+}
+
+bool ow_iostream_eof(struct ow_iostream *s) {
+	return ow_istream_eof((struct ow_istream *)s);
+}
+
+int ow_iostream_getc(struct ow_iostream *s) {
+	return ow_istream_getc((struct ow_istream *)s);
+}
+
+bool ow_iostream_gets(struct ow_iostream *s, char *buf, size_t buf_sz) {
+	return ow_istream_gets((struct ow_istream *)s, buf, buf_sz);
+}
+
+size_t ow_iostream_read(struct ow_iostream *s, void *buf, size_t buf_sz) {
+	return ow_istream_read((struct ow_istream *)s, buf, buf_sz);
+}
+
+int ow_iostream_putc(struct ow_iostream *s, int ch) {
+	if (!ptr_is_tagged(s))
+		return fputc(ch, (FILE *)s);
+
+	const char c = (char)ch;
+	return ow_iostream_write(s, &c, 1) == 1 ? ch : EOF;
+}
+
+bool ow_iostream_puts(struct ow_iostream *s, const char *str) {
+	if (!ptr_is_tagged(s))
+		return fputs(str, (FILE *)s);
+
+	const size_t str_len = strlen(str);
+	return ow_iostream_write(s, str, str_len) == str_len;
+}
+
+size_t ow_iostream_write(struct ow_iostream *s, const void *data, size_t size) {
+	if (!ptr_is_tagged(s))
+		return fwrite(data, 1, size, (FILE *)s);
+
+	struct ow_iostream_sb *const sb = ptr_rm_tag(s);
+	char *new_current = sb->current + size;
+	if (ow_unlikely(new_current > sb->end)) {
+		const size_t min_size = new_current - sb->begin;
+		size_t new_size = (sb->end - sb->begin) * 2;
+		if (new_size < min_size)
+			new_size = min_size;
+		const size_t current_off = sb->current - sb->begin;
+		sb->begin = ow_realloc(sb->begin, new_size);
+		sb->end = sb->begin + new_size;
+		sb->current = sb->begin + current_off;
+		new_current = sb->current + size;
+	}
+	memcpy(sb->current, data, size);
+	sb->current = new_current;
+	return size;
+}
+
+bool ow_istream_data(
+		struct ow_iostream *s, const char *str_range[OW_PARAMARRAY_STATIC 2]) {
+	if (!ptr_is_tagged(s))
+		return false;
+
+	struct ow_iostream_sb *const sb = ptr_rm_tag(s);
+	str_range[0] = sb->begin;
+	str_range[1] = sb->end;
+	return true;
 }

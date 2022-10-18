@@ -33,6 +33,25 @@ static const char *const _ow_token_type_name[(size_t)_OW_TOK_COUNT] = {
 
 #pragma pack(pop)
 
+const char *ow_token_type_represent(enum ow_token_type type) {
+	const size_t type_index = (size_t)type;
+	if (ow_unlikely(type_index >= (size_t)_OW_TOK_COUNT))
+		return "";
+	const char *const name = _ow_token_type_name[type_index];
+	if (name)
+		return name;
+	else if (type == OW_TOK_INT)
+		return "Int";
+	else if (type == OW_TOK_FLOAT)
+		return "Float";
+	else if (type == OW_TOK_STRING)
+		return "String";
+	else if (type == OW_TOK_IDENTIFIER)
+		return "Identifier";
+	else
+		return "";
+}
+
 const char *ow_token_represent(const struct ow_token *tok, char *buf, size_t buf_sz) {
 	const enum ow_token_type type = ow_token_type(tok);
 	const size_t type_index = (size_t)type;
@@ -45,9 +64,9 @@ const char *ow_token_represent(const struct ow_token *tok, char *buf, size_t buf
 		snprintf(buf, buf_sz, "INT %" PRIi64, ow_token_value_int(tok));
 	else if (type == OW_TOK_FLOAT)
 		snprintf(buf, buf_sz, "FLT %f", ow_token_value_float(tok));
-	else if (type == OW_TOK_STRING || type == OW_TOK_IDENTIFIER)
+	else if (OW_TOK_SYMBOL <= type && type <= OW_TOK_IDENTIFIER)
 		snprintf(buf, buf_sz, "%s %s",
-			type == OW_TOK_STRING ? "STR" : "ID",
+			type == OW_TOK_STRING ? "STR" : type == OW_TOK_IDENTIFIER ? "ID" : "SYM",
 			ow_sharedstr_data(ow_token_value_string(tok)));
 	else
 		return "";
