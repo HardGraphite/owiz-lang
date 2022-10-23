@@ -16,8 +16,8 @@ struct ow_hashmap {
 
 /// Functions used for hash map querying and manipulating.
 struct ow_hashmap_funcs {
-	bool (*key_equal)(void *ctx, const void *key1, const void *key2);
-	ow_hash_t (*key_hash)(void *ctx, const void *key);
+	bool (*key_equal)(void *ctx, const void *key_new, const void *key_stored);
+	ow_hash_t (*key_hash)(void *ctx, const void *key_new);
 	void *context;
 };
 
@@ -30,6 +30,11 @@ void ow_hashmap_init(struct ow_hashmap *map, size_t n);
 void ow_hashmap_fini(struct ow_hashmap *map);
 /// Reserve space for more elements.
 void ow_hashmap_reserve(struct ow_hashmap *map, size_t size);
+/// Shrink to fit the number of elements.
+void ow_hashmap_shrink(struct ow_hashmap *map);
+/// Insert elements from another map.
+void ow_hashmap_extend(
+	struct ow_hashmap *map, const struct ow_hashmap_funcs *mf, struct ow_hashmap *other);
 /// Delete element.
 bool ow_hashmap_remove(
 	struct ow_hashmap *map, const struct ow_hashmap_funcs *mf, const void *key);

@@ -25,6 +25,18 @@ void ow_array_reserve(struct ow_array *arr, size_t n) {
 	}
 }
 
+void ow_array_shrink(struct ow_array *arr) {
+	assert(arr->_len <= arr->_cap);
+	if (arr->_len == arr->_cap)
+		return;
+	const size_t n_bytes = OW_ARRAY_ELEM_SZ * arr->_len;
+	void *const new_data = ow_malloc(n_bytes);
+	memcpy(new_data, arr->_arr, n_bytes);
+	ow_free(arr->_arr);
+	arr->_cap = arr->_len;
+	arr->_arr = new_data;
+}
+
 void ow_array_append(struct ow_array *arr, void *elem) {
 	const size_t new_len = arr->_len + 1;
 	if (ow_unlikely(new_len > arr->_cap)) {
@@ -36,6 +48,12 @@ void ow_array_append(struct ow_array *arr, void *elem) {
 	}
 	arr->_arr[arr->_len] = elem;
 	arr->_len = new_len;
+}
+
+void ow_array_extend(struct ow_array *arr, struct ow_array *other) {
+	ow_array_reserve(arr, arr->_len + other->_len);
+	memcpy(arr->_arr + arr->_len, other->_arr, OW_ARRAY_ELEM_SZ * other->_len);
+	arr->_len += other->_len;
 }
 
 void _ow_xarray_init(struct ow_xarray *arr, size_t sz, size_t n) {

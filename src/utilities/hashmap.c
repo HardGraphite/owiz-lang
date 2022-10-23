@@ -35,10 +35,7 @@ void ow_hashmap_fini(struct ow_hashmap *map) {
 	ow_free(map->_buckets);
 }
 
-void ow_hashmap_reserve(struct ow_hashmap *map, size_t size) {
-	if (ow_unlikely(size <= map->_bucket_count))
-		return;
-
+static void ow_hashmap_rehash(struct ow_hashmap *map, size_t size) {
 	bucket_t *const new_bucket_vec = ow_malloc(sizeof(bucket_t) * size);
 	for (size_t i = 0; i < size; i++)
 		new_bucket_vec[i].nodes = NULL;
@@ -63,6 +60,36 @@ void ow_hashmap_reserve(struct ow_hashmap *map, size_t size) {
 	map->_buckets = new_bucket_vec;
 	map->_bucket_count = size;
 	ow_free(old_bucket_vec);
+}
+
+void ow_hashmap_reserve(struct ow_hashmap *map, size_t size) {
+	if (ow_unlikely(size <= map->_bucket_count))
+		return;
+	ow_hashmap_rehash(map, size);
+}
+
+void ow_hashmap_shrink(struct ow_hashmap *map) {
+	if (ow_unlikely(map->_size > map->_bucket_count))
+		return;
+	ow_hashmap_rehash(map, map->_size);
+}
+
+struct _ow_hashmap_extend_walker_context {
+	struct ow_hashmap *map;
+	const struct ow_hashmap_funcs *mf;
+};
+
+static int _ow_hashmap_extend_walker(void *arg, const void *key, void *val) {
+	struct _ow_hashmap_extend_walker_context *const ctx = arg;
+	ow_hashmap_set(ctx->map, ctx->mf, key, val);
+	return 0;
+}
+
+void ow_hashmap_extend(
+		struct ow_hashmap *map, const struct ow_hashmap_funcs *mf,
+		struct ow_hashmap *other) {
+	struct _ow_hashmap_extend_walker_context ctx = { map, mf };
+	ow_hashmap_foreach(other, _ow_hashmap_extend_walker, &ctx);
 }
 
 bool ow_hashmap_remove(
@@ -107,7 +134,7 @@ void ow_hashmap_set(
 		struct ow_hashmap *map, const struct ow_hashmap_funcs *mf,
 		const void *key, void *val) {
 	if (ow_unlikely(map->_size > map->_bucket_count))
-		ow_hashmap_reserve(map, (map->_size - 1) * 2);
+		ow_hashmap_rehash(map, (map->_size - 1) * 2);
 
 	const ow_hash_t hash = mf->key_hash(mf->context, key);
 	bucket_t *const bucket = map->_buckets + (hash % map->_bucket_count);

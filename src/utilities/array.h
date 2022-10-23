@@ -17,8 +17,12 @@ void ow_array_init(struct ow_array *arr, size_t n);
 void ow_array_fini(struct ow_array *arr);
 /// Reserve space for elements.
 void ow_array_reserve(struct ow_array *arr, size_t n);
+/// Shrink size to fit elements.
+void ow_array_shrink(struct ow_array *arr);
 /// Append element.
 void ow_array_append(struct ow_array *arr, void *elem);
+/// Append elements from another array.
+void ow_array_extend(struct ow_array *arr, struct ow_array *other);
 /// Remove the last element. DO NOT call this function on an empty array.
 ow_static_inline void ow_array_drop(struct ow_array *arr) { arr->_len--; }
 /// Delete all elements.

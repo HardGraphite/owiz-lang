@@ -41,7 +41,7 @@ if(NOT OW_DEVELOPING)
 	message(NOTICE "Set `OW_DEVELOPING` to `ON` if you are developing!")
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") # MSVC
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC") # MSVC
 	add_compile_options(
 		/W4 /utf-8 /Zc:__cplusplus,inline,preprocessor
 		<$<COMPILE_LANGUAGE:C>:/wd4200> # warning C4200: nonstandard extension used : zero-sized array in struct/union

@@ -90,7 +90,7 @@ set_expr
 
 map_expr
   = "{" "}"
-  | "{" table_expr_elem [{ "," table_expr_elem }] [ "," ] "}"
+  | "{" map_expr_elem [{ "," map_expr_elem }] [ "," ] "}"
   ;
 map_expr_elem
   = expr "=>" expr

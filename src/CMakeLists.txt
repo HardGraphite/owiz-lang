@@ -1,12 +1,15 @@
 option(OW_DEBUG_LEXER "Compile debugging code for lexer." OFF)
 option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
+option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
 ## Collect source files.
-set(ow_src "ow.c")
+set(ow_src "api.c" "ow.c")
 foreach(sub_dir IN ITEMS
 		"bytecode"
 		"compat"
 		"compiler"
+		"machine"
+		"objects"
 		"utilities"
 	)
 	aux_source_directory(${sub_dir} ow_src)
@@ -21,10 +24,14 @@ target_include_directories(ow PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+## Export symbols
+set_target_properties(ow PROPERTIES ENABLE_EXPORTS TRUE)
+
 ## Add "OW_DEBUG_XXX" flags.
 foreach(opt_name IN ITEMS
 		OW_DEBUG_LEXER
 		OW_DEBUG_PARSER
+		OW_DEBUG_MEMORY
 	)
 	if(${opt_name})
 		target_compile_definitions(ow PRIVATE "${opt_name}=1")

@@ -1,12 +1,17 @@
 #include <stdio.h>
 
+#include <ow.h>
+
 #include <compiler/ast.h>
 #include <compiler/lexer.h>
 #include <compiler/parser.h>
+#include <machine/machine.h>
+#include <objects/memory.h>
 #include <utilities/strings.h>
 #include <utilities/stream.h>
 
-static void test(void) {
+static void test(ow_machine_t *const ow) {
+	ow_objmem_context_verbose(ow->objmem_context, true);
 	struct ow_parser *parser = ow_parser_new();
 	struct ow_sharedstr *file_name = ow_sharedstr_new("<stdin>", (size_t)-1);
 	struct ow_ast ast;
@@ -27,5 +32,7 @@ static void test(void) {
 }
 
 int main(void) {
-	test();
+	ow_machine_t *const ow = ow_create();
+	test(ow);
+	ow_destroy(ow);
 }
