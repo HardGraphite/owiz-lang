@@ -19,7 +19,7 @@
 struct ow_class_obj {
 	OW_OBJECT_HEAD
 	struct _ow_class_obj_pub_info pub_info;
-	struct ow_hashmap attrs_and_methods_map; // { name, field_index_or_method_index }
+	struct ow_hashmap attrs_and_methods_map; // { name, (field_index + 1) or (-1 - method_index) }
 	struct ow_hashmap statics_map; // { name, static_member_object }
 	struct ow_array methods;
 	void (*finalizer2)(struct ow_machine *, void *);
@@ -191,9 +191,9 @@ size_t ow_class_obj_find_attribute(
 		const struct ow_class_obj *self, const struct ow_symbol_obj *name) {
 	const intptr_t index = (intptr_t)ow_hashmap_get(
 		&self->attrs_and_methods_map, ow_symbol_obj_hashmap_funcs, name);
-	if (ow_unlikely(index < 0))
+	if (ow_unlikely(index <= 0))
 		return (size_t)-1;
-	return (size_t)index;
+	return (size_t)(index - 1);
 }
 
 size_t ow_class_obj_find_method(

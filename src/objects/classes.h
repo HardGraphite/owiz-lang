@@ -9,11 +9,19 @@ struct ow_machine;
 // ^^^ OW_BICLS_LIST0 ^^^
 
 #define OW_BICLS_LIST \
+	ELEM(array)       \
 	ELEM(bool_)       \
 	ELEM(cfunc)       \
+	ELEM(float_)      \
 	ELEM(func)        \
+	ELEM(int_)        \
+	ELEM(map)         \
+	ELEM(module)      \
 	ELEM(nil)         \
+	ELEM(set)         \
+	ELEM(string)      \
 	ELEM(symbol)      \
+	ELEM(tuple)       \
 // ^^^ OW_BICLS_LIST ^^^
 
 /// A collection of builtin classes.

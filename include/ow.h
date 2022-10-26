@@ -52,6 +52,15 @@ typedef struct ow_native_class_def {
 } ow_native_class_def_t;
 
 /**
+ * @brief Definition of a native module.
+ */
+typedef struct ow_native_module_def {
+	const char                       *name;      ///< Module name. Optional.
+	const ow_native_name_func_pair_t *functions; ///< Functions in module. A NULL-terminated array.
+	void (*finalizer)(ow_machine_t *);           ///< Module finalizer. Optional.
+} ow_native_module_def_t;
+
+/**
  * @brief Create an OW instance.
  *
  * @return Return the newly created instance.

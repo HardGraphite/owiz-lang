@@ -30,6 +30,8 @@ struct ow_object_meta {
 enum ow_object_meta_flag {
 	OW_OBJMETA_FLAG_EXTENDED  = 0, // Has extra fields. If set, field 0 shall be the number of actual fields (uintptr_t).
 	OW_OBJMETA_FLAG_MARKED    = 1, // GC mark.
+	OW_OBJMETA_FLAG_USER1     = 6,
+	OW_OBJMETA_FLAG_USER2     = 7,
 };
 
 ow_static_forceinline struct ow_object *ow_object_meta_get_next(
@@ -75,5 +77,27 @@ ow_static_forceinline void ow_object_meta_clear_flag(
 	meta->_data &= ~(UINT64_C(1) << ((uint64_t)flag + OW_OBJMETA_FLAGS_SHIFT));
 #elif OW_WORDSIZE == 32
 	meta->_flag &= ~(UINT32_C(1) << (uint32_t)flag);
+#endif
+}
+
+ow_static_forceinline uint8_t ow_object_meta_get_subtype(
+	const struct ow_object_meta *meta) {
+	assert(ow_object_meta_get_flag(meta, OW_OBJMETA_FLAG_EXTENDED));
+#if OW_WORDSIZE == 64
+	return (uint8_t)(meta->_data >> (8 + OW_OBJMETA_FLAGS_SHIFT));
+#elif OW_WORDSIZE == 32
+	return (uint8_t)(meta->_flag >> 24);
+#endif
+}
+
+ow_static_forceinline void ow_object_meta_set_subtype(
+	struct ow_object_meta *meta, uint8_t val) {
+	assert(ow_object_meta_get_flag(meta, OW_OBJMETA_FLAG_EXTENDED));
+#if OW_WORDSIZE == 64
+	meta->_data =
+		(meta->_data & ((UINT64_C(1) << (8 + OW_OBJMETA_FLAGS_SHIFT)) - 1)) |
+		((uint64_t)val << (8 + OW_OBJMETA_FLAGS_SHIFT));
+#elif OW_WORDSIZE == 32
+	meta->_flag = (meta->_flag & 0x00ffffff) | ((uint32_t)val << 24);
 #endif
 }
