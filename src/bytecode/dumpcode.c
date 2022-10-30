@@ -8,12 +8,13 @@
 #include <string.h>
 
 #include "opcode.h"
+#include "operand.h"
 #include <utilities/stream.h>
 #include <utilities/unreachable.h>
 
 static void print_dis_line(
 		size_t addr_off, bool mark, enum ow_opcode opcode, const char *op_name,
-		int operand_info, const void *operand, struct ow_iostream *out) {
+		enum ow_operand_type operand_info, const void *operand, struct ow_iostream *out) {
 	char buffer[120];
 	char *p = buffer, *const p_end = buffer + sizeof buffer;
 	int n;
@@ -24,7 +25,7 @@ static void print_dis_line(
 	assert(n > 0);
 	p += (size_t)n;
 
-	for (size_t i = 0, operand_width = (size_t)abs(operand_info); i < 2; i++) {
+	for (size_t i = 0, operand_width = ow_operand_type_width(operand_info); i < 2; i++) {
 		if (i < operand_width) {
 			const unsigned char byte = ((const unsigned char *)operand)[i];
 			n = snprintf(p, (size_t)(p_end - p), "%02x ", byte);
@@ -78,10 +79,10 @@ void ow_bytecode_dump(
 		const size_t add_off = (size_t)(p - code);
 		const enum ow_opcode opcode = (enum ow_opcode)*p;
 		const char *const op_name = ow_opcode_name(opcode);
-		const int operand_info = ow_operand_info(opcode);
+		const enum ow_operand_type operand_info = ow_operand_type(opcode);
 		print_dis_line(
 			add_off, add_off == mark_pos, opcode, op_name ? op_name : "???",
 			operand_info, p + 1, out);
-		p += 1 + (operand_info < 0 ? -operand_info : operand_info);
+		p += 1 + ow_operand_type_width(operand_info);
 	}
 }

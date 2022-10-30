@@ -109,9 +109,7 @@ size_t ow_module_obj_find_global(
 		const struct ow_module_obj *self, const struct ow_symbol_obj *name) {
 	const uintptr_t index = (uintptr_t)ow_hashmap_get(
 		&self->globals_map, ow_symbol_obj_hashmap_funcs, name);
-	if (ow_unlikely(!index))
-		return (size_t)-1;
-	return (size_t)(index - 1);
+	return (size_t)index - 1;
 }
 
 struct ow_object *ow_module_obj_get_global(
@@ -143,6 +141,37 @@ size_t ow_module_obj_set_global_y(
 		ow_array_at(&self->globals, index) = value;
 	}
 	return index;
+}
+
+size_t ow_module_obj_global_count(const struct ow_module_obj *self) {
+	const size_t n = ow_array_size(&self->globals);
+	assert(n == ow_hashmap_size(&self->globals_map));
+	return n;
+}
+
+struct _ow_module_obj_foreach_global_context {
+	const struct ow_module_obj *module;
+	int(*walker)(void *, struct ow_symbol_obj *, size_t, struct ow_object *);
+	void *arg;
+};
+
+static int _ow_module_obj_foreach_global_walker(void *_ctx, const void *key, void *val) {
+	struct _ow_module_obj_foreach_global_context *const ctx = _ctx;
+	struct ow_symbol_obj *const name = (void *)key;
+	const size_t index = (uintptr_t)val - 1;
+	struct ow_object *const value = ow_array_at(&ctx->module->globals, index);
+	return ctx->walker(ctx->arg, name, index, value);
+}
+
+int ow_module_obj_foreach_global(
+		const struct ow_module_obj *self,
+		int(*walker)(void *, struct ow_symbol_obj *, size_t, struct ow_object *),
+		void *arg) {
+	return ow_hashmap_foreach(
+		&self->globals_map,
+		_ow_module_obj_foreach_global_walker,
+		&(struct _ow_module_obj_foreach_global_context) {self, walker, arg}
+	);
 }
 
 static const struct ow_native_name_func_pair module_methods[] = {

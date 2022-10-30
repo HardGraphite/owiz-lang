@@ -48,12 +48,74 @@ ow_forceinline static void object_linked_list_add(
 	ow_object_meta_set_next(&list->_meta, obj);
 }
 
+struct gc_root_list_node {
+	struct gc_root_list_node *next;
+	void *data;
+	void (*gc_marker)(struct ow_machine *, void *);
+};
+
+struct gc_root_list {
+	struct gc_root_list_node *_nodes;
+};
+
+static void gc_root_list_init(struct gc_root_list *list) {
+	list->_nodes = NULL;
+}
+
+static void gc_root_list_fini(struct gc_root_list *list) {
+	for (struct gc_root_list_node *node = list->_nodes; node;) {
+		struct gc_root_list_node *const next_node = node->next;
+		ow_free(node);
+		node = next_node;
+	}
+}
+
+static bool gc_root_list_remove(struct gc_root_list *list, void *data) {
+	static_assert(offsetof(struct gc_root_list, _nodes)
+		== offsetof(struct gc_root_list_node, next), "");
+
+	struct gc_root_list_node *prev_node = (struct gc_root_list_node *)list;
+	while (1) {
+		struct gc_root_list_node *const node = prev_node->next;
+		if (!node)
+			return false;
+		if (node->data != data) {
+			prev_node = node;
+			continue;
+		}
+		prev_node->next = node->next;
+		ow_free(node);
+		return true;
+	}
+}
+
+static void gc_root_list_add(
+		struct gc_root_list *list, void *data,
+		void (*gc_marker)(struct ow_machine *, void *)) {
+	assert(!gc_root_list_remove(list, data));
+	struct gc_root_list_node *const node = ow_malloc(sizeof(struct gc_root_list_node));
+	node->data = data;
+	node->gc_marker = gc_marker;
+	node->next = list->_nodes;
+	list->_nodes = node;
+}
+
+static void gc_root_list_mark(struct gc_root_list *list, struct ow_machine *om) {
+	for (struct gc_root_list_node *node = list->_nodes; node; node = node->next) {
+		if (ow_likely(node->gc_marker))
+			node->gc_marker(om, node->data);
+		else
+			ow_objmem_object_gc_marker(om, (struct ow_object *)node->data);
+	}
+}
+
 struct ow_objmem_context {
 	size_t no_gc_count;
 	size_t gc_threshold;
 	size_t allocate_max;
 	size_t allocated_size;
 	struct object_linked_list allocated_objects;
+	struct gc_root_list gc_root_list;
 #if OW_DEBUG_MEMORY
 	bool verbose;
 #endif // OW_DEBUG_MEMORY
@@ -71,6 +133,7 @@ struct ow_objmem_context *ow_objmem_context_new(void) {
 	ctx->allocate_max = DEFAULT_ALLOCATE_MAX;
 	ctx->allocated_size = 0;
 	object_linked_list_init(&ctx->allocated_objects);
+	gc_root_list_init(&ctx->gc_root_list);
 #if OW_DEBUG_MEMORY
 	ctx->verbose = false;
 #endif // OW_DEBUG_MEMORY
@@ -83,7 +146,7 @@ void ow_objmem_context_del(struct ow_objmem_context *ctx) {
 		ow_free(obj); // Not safe!!!
 		obj = next_obj;
 	}
-
+	gc_root_list_fini(&ctx->gc_root_list);
 	ow_free(ctx);
 }
 
@@ -93,6 +156,18 @@ void ow_objmem_context_verbose(struct ow_objmem_context *ctx, bool status) {
 #if OW_DEBUG_PARSER
 	ctx->verbose = status;
 #endif // OW_DEBUG_PARSER
+}
+
+void ow_objmem_add_gc_root(
+		struct ow_machine *om,
+		void *root, void (*gc_marker)(struct ow_machine *, void *)) {
+	struct ow_objmem_context *const ctx = om->objmem_context;
+	gc_root_list_add(&ctx->gc_root_list, root, gc_marker);
+}
+
+bool ow_objmem_remove_gc_root(struct ow_machine *om, void *root) {
+	struct ow_objmem_context *const ctx = om->objmem_context;
+	return gc_root_list_remove(&ctx->gc_root_list, root);
 }
 
 struct ow_object *ow_objmem_allocate(
@@ -156,7 +231,8 @@ int ow_objmem_gc(struct ow_machine *om, int flags) {
 	timespec_get(&ts0, TIME_UTC);
 #endif // OW_DEBUG_MEMORY
 
-	_om_machine_gc_marker(om);
+	gc_root_list_mark(&ctx->gc_root_list, om);
+	_om_machine_gc_marker(om); // Must be called last.
 
 	size_t freed_size = 0;
 

@@ -1,11 +1,14 @@
 #include "parser.h"
 
 #include <assert.h>
-#include <stdarg.h>
 #include <setjmp.h>
-#include <stdio.h>
+
+#if OW_DEBUG_PARSER
+#	include <stdio.h>
+#endif // OW_DEBUG_PARSER
 
 #include "ast.h"
+#include "error.h"
 #include "lexer.h"
 #include "token.h"
 #include <utilities/array.h>
@@ -48,13 +51,13 @@ static struct ow_token *token_queue_peek(struct token_queue *tq) {
 }
 
 ow_noinline ow_noreturn static void ow_parser_error_throw_lex_err(
-	struct ow_parser *, const struct ow_lexer_error *);
+	struct ow_parser *, const struct ow_syntax_error *);
 
 /// Move to next token.
 static void token_queue_advance(struct token_queue *tq) {
 	const bool ok = ow_lexer_next(tq->_lexer, &tq->_tokens[0]);
 	if (ow_unlikely(!ok)) {
-		const struct ow_lexer_error *const err = ow_lexer_error(tq->_lexer);
+		const struct ow_syntax_error *const err = ow_lexer_error(tq->_lexer);
 		ow_parser_error_throw_lex_err(tq->_parser, err);
 	}
 }
@@ -242,7 +245,7 @@ struct ow_parser {
 	struct ast_node_stack temp_nodes;
 	struct expr_parser_list free_expr_parsers, inuse_expr_parsers;
 	jmp_buf error_jmpbuf;
-	struct ow_parser_error error_info;
+	struct ow_syntax_error error_info;
 #if OW_DEBUG_PARSER
 	bool verbose;
 #endif // OW_DEBUG_PARSER
@@ -256,16 +259,10 @@ struct ow_parser {
 ow_noinline ow_noreturn static void ow_parser_error_throw(
 		struct ow_parser *parser, const struct ow_source_range *location,
 		const char *msg_fmt, ...) {
-	char msg_buf[128];
 	va_list ap;
 	va_start(ap, msg_fmt);
-	const int n = vsnprintf(msg_buf, sizeof msg_buf, msg_fmt, ap);
+	ow_syntax_error_vformat(&parser->error_info, location, msg_fmt, ap);
 	va_end(ap);
-	if (parser->error_info.message)
-		ow_sharedstr_unref(parser->error_info.message);
-	assert(n > 0);
-	parser->error_info.message = ow_sharedstr_new(msg_buf, (size_t)n);
-	parser->error_info.location = *location;
 	longjmp(parser->error_jmpbuf, 1);
 }
 
@@ -298,10 +295,8 @@ static void ow_parser_check_and_ignore(
 
 /// Throw lexer error.
 ow_noinline ow_noreturn static void ow_parser_error_throw_lex_err(
-		struct ow_parser *parser, const struct ow_lexer_error *err) {
-	parser->error_info.location.begin = err->location;
-	parser->error_info.location.end = err->location;
-	parser->error_info.message = ow_sharedstr_ref(err->message);
+		struct ow_parser *parser, const struct ow_syntax_error *err) {
+	ow_syntax_error_copy(&parser->error_info, err);
 	longjmp(parser->error_jmpbuf, 1);
 }
 
@@ -341,11 +336,7 @@ ow_nodiscard struct ow_parser *ow_parser_new(void) {
 	ast_node_stack_init(&parser->temp_nodes);
 	expr_parser_list_init(&parser->free_expr_parsers);
 	expr_parser_list_init(&parser->inuse_expr_parsers);
-	parser->error_info.location.begin.line = 0;
-	parser->error_info.location.begin.column = 0;
-	parser->error_info.location.end.line = 0;
-	parser->error_info.location.end.column = 0;
-	parser->error_info.message = NULL;
+	ow_syntax_error_init(&parser->error_info);
 #if OW_DEBUG_PARSER
 	parser->verbose = false;
 #endif // OW_DEBUG_PARSER
@@ -359,6 +350,7 @@ void ow_parser_del(struct ow_parser *parser) {
 	ast_node_stack_fini(&parser->temp_nodes);
 	expr_parser_list_fini(&parser->free_expr_parsers);
 	expr_parser_list_fini(&parser->inuse_expr_parsers);
+	ow_syntax_error_fini(&parser->error_info);
 	ow_free(parser);
 }
 
@@ -380,10 +372,7 @@ void ow_parser_clear(struct ow_parser *parser) {
 	ast_node_stack_clear(&parser->temp_nodes);
 	expr_parser_list_merge(
 		&parser->free_expr_parsers, &parser->inuse_expr_parsers, true);
-	if (parser->error_info.message) {
-		ow_sharedstr_unref(parser->error_info.message);
-		parser->error_info.message = NULL;
-	}
+	ow_syntax_error_clear(&parser->error_info);
 }
 
 /*
@@ -1084,11 +1073,14 @@ static struct ow_ast_ReturnStmt *ow_parser_parse_return_stmt(
 	ow_parser_protect_node(parser, ret_stmt);
 
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_KW_RETURN);
+	ret_stmt->location = token_queue_peek(tq)->location;
 	token_queue_advance(tq);
 
 	assert(!ret_stmt->ret_val);
-	if (ow_token_type(token_queue_peek(tq)) != OW_TOK_END_LINE)
+	if (ow_token_type(token_queue_peek(tq)) != OW_TOK_END_LINE) {
 		ret_stmt->ret_val = ow_parser_parse_any_expr(parser);
+		ret_stmt->location.end = ret_stmt->ret_val->location.end;
+	}
 
 	ow_parser_check_and_ignore(parser, OW_TOK_END_LINE);
 
@@ -1438,7 +1430,7 @@ bool ow_parser_parse(struct ow_parser *parser,
 	}
 }
 
-struct ow_parser_error *ow_parser_error(struct ow_parser *parser) {
+struct ow_syntax_error *ow_parser_error(struct ow_parser *parser) {
 	if (!parser->error_info.message)
 		return NULL;
 	return &parser->error_info;

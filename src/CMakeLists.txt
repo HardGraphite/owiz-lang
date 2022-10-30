@@ -1,5 +1,6 @@
 option(OW_DEBUG_LEXER "Compile debugging code for lexer." OFF)
 option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
+option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
 ## Collect source files.
@@ -31,6 +32,7 @@ set_target_properties(ow PROPERTIES ENABLE_EXPORTS TRUE)
 foreach(opt_name IN ITEMS
 		OW_DEBUG_LEXER
 		OW_DEBUG_PARSER
+		OW_DEBUG_CODEGEN
 		OW_DEBUG_MEMORY
 	)
 	if(${opt_name})

@@ -1,14 +1,5 @@
 #pragma once
 
-#define OW_OPERAND_INFO_LIST \
-	/*   TYPE, WIDTH, SIGNED */ \
-	ELEM(0  , 0, 0) \
-	ELEM(i8 , 1, 1) \
-	ELEM(u8 , 1, 0) \
-	ELEM(i16, 2, 1) \
-	ELEM(u16, 2, 0) \
-// ^^^ OW_OPERAND_INFO_LIST ^^^
-
 #define OW_OPCODE_LIST \
 	/*   NAME       , CODE, OPERAND_INFO */ \
 	ELEM(Nop        , 0x00,   0) \
@@ -103,6 +94,3 @@ enum ow_opcode {
 
 /// Get name of an opcode. Return NULL if not valid.
 const char *ow_opcode_name(enum ow_opcode opcode);
-
-/// Get operand info from opcode. 0 = no-operand; 1 = u8; -1 = i8; 2 = u16; -2 = i16.
-int ow_operand_info(enum ow_opcode opcode);

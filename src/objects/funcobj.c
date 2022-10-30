@@ -25,6 +25,7 @@ struct ow_func_obj_symbols {
 
 struct ow_func_obj {
 	OW_EXTENDED_OBJECT_HEAD
+	struct ow_func_spec func_spec;
 	struct ow_module_obj *module;
 	const struct ow_func_obj_constants *constants;
 	const struct ow_func_obj_symbols *symbols;
@@ -38,7 +39,7 @@ static const size_t _zero_size = 0;
 
 static void ow_func_obj_finalizer(struct ow_machine *om, struct ow_object *obj) {
 	ow_unused_var(om);
-	assert(ow_class_obj_is_base(om->builtin_classes->array, ow_object_class(obj)));
+	assert(ow_class_obj_is_base(om->builtin_classes->func, ow_object_class(obj)));
 	struct ow_func_obj *const self = ow_object_cast(obj, struct ow_func_obj);
 
 	if (ow_likely(self->constants != empty_ow_func_obj_constants))
@@ -61,14 +62,16 @@ static void ow_func_obj_gc_marker(struct ow_machine *om, struct ow_object *obj) 
 
 struct ow_func_obj *ow_func_obj_new(
 		struct ow_machine *om, struct ow_module_obj *mod,
-		struct ow_object *constants, size_t constant_count,
-		struct ow_symbol_obj *symbols, size_t symbol_count,
-		unsigned char *code, size_t code_size) {
+		struct ow_object *constants[], size_t constant_count,
+		struct ow_symbol_obj *symbols[], size_t symbol_count,
+		unsigned char *code, size_t code_size,
+		struct ow_func_spec spec) {
 	struct ow_func_obj *const obj = ow_object_cast(
 		ow_objmem_allocate(
 			om, om->builtin_classes->func,
 			(ow_round_up_to(sizeof(void *), code_size) / sizeof(void *))),
 		struct ow_func_obj);
+	obj->func_spec = spec;
 	obj->module = mod;
 	if (constant_count) {
 		const size_t n_bytes = constant_count * sizeof(void *);
@@ -88,6 +91,7 @@ struct ow_func_obj *ow_func_obj_new(
 	}
 	obj->code_size = code_size;
 	memcpy(obj->code, code, code_size);
+	assert(ow_func_obj_func_spec(obj) == &obj->func_spec);
 	return obj;
 }
 
@@ -101,6 +105,13 @@ struct ow_symbol_obj *ow_func_obj_get_symbol(struct ow_func_obj *self, size_t in
 	if (ow_unlikely(index >= self->symbols->size))
 		return NULL;
 	return self->symbols->data[index];
+}
+
+const unsigned char *ow_func_obj_code(
+		const struct ow_func_obj *self, size_t *size_out) {
+	if (size_out)
+		*size_out = self->code_size;
+	return self->code;
 }
 
 static const struct ow_native_name_func_pair func_methods[] = {

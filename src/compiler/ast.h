@@ -21,11 +21,11 @@ void ow_ast_fini(struct ow_ast *ast);
 /// Set file name.
 void ow_ast_set_filename(struct ow_ast *ast, struct ow_sharedstr *name);
 /// Get file name. Return NULL if not set.
-struct ow_sharedstr *ow_ast_get_filename(struct ow_ast *ast);
+struct ow_sharedstr *ow_ast_get_filename(const struct ow_ast *ast);
 /// Set module node.
 void ow_ast_set_module(struct ow_ast *ast, struct ow_ast_Module *mod);
 /// Get module node. Return NULL if not set.
-struct ow_ast_Module *ow_ast_get_module(struct ow_ast *ast);
+struct ow_ast_Module *ow_ast_get_module(const struct ow_ast *ast);
 /// Print the AST.
 void ow_ast_dump(const struct ow_ast *ast, struct ow_iostream *out);
 

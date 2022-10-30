@@ -21,6 +21,13 @@ void ow_objmem_context_del(struct ow_objmem_context *ctx);
 /// Set verbose flag.
 void ow_objmem_context_verbose(struct ow_objmem_context *ctx, bool status);
 
+/// Add GC root, along with its GC marker function.
+/// If the root is an object, the marker function can be NULL.
+void ow_objmem_add_gc_root(
+	struct ow_machine *om, void *root, void (*gc_marker)(struct ow_machine *, void *));
+/// Remove a GC root added with `ow_objmem_add_gc_root()`.
+bool ow_objmem_remove_gc_root(struct ow_machine *om, void *root);
+
 /// Allocate memory for an object. Only the head of the object is initialized.
 /// This function may call `ow_objmem_gc()` if necessary.
 struct ow_object *ow_objmem_allocate(

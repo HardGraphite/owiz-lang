@@ -2,21 +2,15 @@
 
 #include <stdbool.h>
 
-#include "location.h"
 #include <utilities/attributes.h>
 
 struct ow_istream;
 struct ow_sharedstr;
+struct ow_syntax_error;
 struct ow_token;
 
 /// Lexical analyzer, converting string to tokens
 struct ow_lexer;
-
-/// Error info reported by lexer.
-struct ow_lexer_error {
-	struct ow_source_location location;
-	struct ow_sharedstr *message;
-};
 
 /// Create a lexer.
 ow_nodiscard struct ow_lexer *ow_lexer_new(void);
@@ -32,4 +26,4 @@ void ow_lexer_clear(struct ow_lexer *lexer);
 /// Scan for next token. On error, return false, and `result` will not be modified.
 bool ow_lexer_next(struct ow_lexer *lexer, struct ow_token *result);
 /// Get last error. If no error ever occurred, return NULL.
-struct ow_lexer_error *ow_lexer_error(struct ow_lexer *lexer);
+struct ow_syntax_error *ow_lexer_error(struct ow_lexer *lexer);

@@ -3,12 +3,12 @@
 #include <assert.h>
 #include <ctype.h>
 #include <setjmp.h>
-#include <stdarg.h>
 #include <stddef.h>
-#include <stdio.h>
+#include <stdio.h> // EOF
 #include <stdlib.h> // atexit()
 #include <string.h>
 
+#include "error.h"
 #include "location.h"
 #include "token.h"
 #include <utilities/attributes.h>
@@ -103,7 +103,7 @@ struct ow_lexer {
 	struct ow_dynamicstr string_buffer;
 	struct ow_sharedstr *file_name;
 	jmp_buf error_jmpbuf;
-	struct ow_lexer_error error_info;
+	struct ow_syntax_error error_info;
 	bool stream_end;
 #if OW_DEBUG_LEXER
 	bool verbose;
@@ -117,16 +117,13 @@ struct ow_lexer {
 /// Throw error.
 ow_noinline ow_noreturn static void ow_lexer_error_throw(
 		struct ow_lexer *lexer, const char *msg_fmt, ...) {
-	char msg_buf[128];
 	va_list ap;
 	va_start(ap, msg_fmt);
-	const int n = vsnprintf(msg_buf, sizeof msg_buf, msg_fmt, ap);
+	ow_syntax_error_vformat(
+		&lexer->error_info,
+		&(struct ow_source_range){lexer->location, lexer->location},
+		msg_fmt, ap);
 	va_end(ap);
-	if (lexer->error_info.message)
-		ow_sharedstr_unref(lexer->error_info.message);
-	assert(n > 0);
-	lexer->error_info.message = ow_sharedstr_new(msg_buf, (size_t)n);
-	lexer->error_info.location = lexer->location;
 	longjmp(lexer->error_jmpbuf, 1);
 }
 
@@ -193,9 +190,7 @@ ow_nodiscard struct ow_lexer *ow_lexer_new(void) {
 	lexer->code_current = NULL;
 	lexer->code_end = NULL;
 	lexer->file_name = NULL;
-	lexer->error_info.location.line = 0;
-	lexer->error_info.location.column = 0;
-	lexer->error_info.message = NULL;
+	ow_syntax_error_init(&lexer->error_info);
 	lexer->stream_end = true;
 	ow_dynamicstr_init(&lexer->string_buffer, 63);
 #if OW_DEBUG_LEXER
@@ -209,6 +204,7 @@ ow_nodiscard struct ow_lexer *ow_lexer_new(void) {
 
 void ow_lexer_del(struct ow_lexer *lexer) {
 	ow_lexer_clear(lexer);
+	ow_syntax_error_fini(&lexer->error_info);
 	ow_dynamicstr_fini(&lexer->string_buffer);
 	ow_free(lexer);
 }
@@ -238,10 +234,7 @@ void ow_lexer_clear(struct ow_lexer *lexer) {
 		ow_sharedstr_unref(lexer->file_name);
 		lexer->file_name = NULL;
 	}
-	if (lexer->error_info.message) {
-		ow_sharedstr_unref(lexer->error_info.message);
-		lexer->error_info.message = NULL;
-	}
+	ow_syntax_error_clear(&lexer->error_info);
 	ow_dynamicstr_clear(&lexer->string_buffer);
 }
 
@@ -949,7 +942,7 @@ bool ow_lexer_next(struct ow_lexer *lexer, struct ow_token *result) {
 	}
 }
 
-struct ow_lexer_error *ow_lexer_error(struct ow_lexer *lexer) {
+struct ow_syntax_error *ow_lexer_error(struct ow_lexer *lexer) {
 	if (!lexer->error_info.message)
 		return NULL;
 	return &lexer->error_info;

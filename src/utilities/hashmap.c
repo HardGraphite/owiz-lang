@@ -23,6 +23,8 @@ typedef struct _ow_hashmap_node node_t;
 typedef struct _ow_hashmap_bucket bucket_t;
 
 void ow_hashmap_init(struct ow_hashmap *map, size_t n) {
+	if (n < 3) // Empty bucket array may cause SIGFPE.
+		n = 3;
 	map->_size = 0;
 	map->_bucket_count = n;
 	map->_buckets = ow_malloc(sizeof(bucket_t) * n);

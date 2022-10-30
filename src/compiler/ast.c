@@ -26,7 +26,7 @@ void ow_ast_set_filename(struct ow_ast *ast, struct ow_sharedstr *name) {
 	ast->_file_name = ow_sharedstr_ref(name);
 }
 
-struct ow_sharedstr *ow_ast_get_filename(struct ow_ast *ast) {
+struct ow_sharedstr *ow_ast_get_filename(const struct ow_ast *ast) {
 	return ast->_file_name;
 }
 
@@ -36,7 +36,7 @@ void ow_ast_set_module(struct ow_ast *ast, struct ow_ast_Module *mod) {
 	ast->_module = mod;
 }
 
-struct ow_ast_Module *ow_ast_get_module(struct ow_ast *ast) {
+struct ow_ast_Module *ow_ast_get_module(const struct ow_ast *ast) {
 	return ast->_module;
 }
 

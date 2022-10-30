@@ -34,3 +34,10 @@ bool ow_module_obj_set_global(
 /// Set or add global by name. Return its index.
 size_t ow_module_obj_set_global_y(
 	struct ow_module_obj *self, const struct ow_symbol_obj *name, struct ow_object *value);
+/// Get number of global variables.
+size_t ow_module_obj_global_count(const struct ow_module_obj *self);
+/// View each global variable.
+int ow_module_obj_foreach_global(
+	const struct ow_module_obj *self,
+	int(*walker)(void *arg, struct ow_symbol_obj *name, size_t index, struct ow_object *value),
+	void *arg);

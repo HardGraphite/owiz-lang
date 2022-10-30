@@ -73,6 +73,8 @@ void _ow_builtin_classes_setup(
 	OW_BICLS_LIST0
 	OW_BICLS_LIST
 #undef ELEM
+	((struct _ow_class_obj_pub_info *)_ow_class_obj_pub_info(bic->object))
+		->super_class = NULL;
 
 	ow_objmem_pop_ngc(om);
 }
