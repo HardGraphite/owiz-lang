@@ -97,7 +97,8 @@ static void _finalizer_wrapper(struct ow_machine *om, struct ow_object *obj) {
 
 void ow_class_obj_load_native_def(
 		struct ow_machine *om, struct ow_class_obj *self,
-		struct ow_class_obj *super, const struct ow_native_class_def *def) {
+		struct ow_class_obj *super, const struct ow_native_class_def *def,
+		struct ow_module_obj *func_mod) {
 	assert(!ow_hashmap_size(&self->attrs_and_methods_map) && !ow_array_size(&self->methods));
 	assert(!self->finalizer2 || super == om->builtin_classes->object);
 
@@ -116,7 +117,7 @@ void ow_class_obj_load_native_def(
 	const size_t field_count =
 		ow_round_up_to(OW_OBJECT_FIELD_SIZE, def->data_size) / OW_OBJECT_FIELD_SIZE;
 	size_t method_count = 0;
-	for (const ow_native_name_func_pair_t *p = def->methods; p->func; p++)
+	for (const ow_native_func_def_t *p = def->methods; p->func; p++)
 		method_count++;
 
 	size_t total_field_count = field_count;
@@ -134,7 +135,7 @@ void ow_class_obj_load_native_def(
 
 	if (ow_likely(super)) {
 		ow_hashmap_extend(
-			&self->attrs_and_methods_map, ow_symbol_obj_hashmap_funcs,
+			&self->attrs_and_methods_map, &ow_symbol_obj_hashmap_funcs,
 			&super->attrs_and_methods_map);
 		ow_array_extend(&self->methods, &super->methods);
 	}
@@ -142,9 +143,10 @@ void ow_class_obj_load_native_def(
 	ow_objmem_push_ngc(om);
 
 	for (size_t i = 0; i < method_count; i++) {
-		const ow_native_name_func_pair_t method_def = def->methods[i];
-		struct ow_cfunc_obj *const func_obj =
-			ow_cfunc_obj_new(om, method_def.name, method_def.func);
+		const ow_native_func_def_t method_def = def->methods[i];
+		struct ow_cfunc_obj *const func_obj = ow_cfunc_obj_new(
+			om, func_mod, method_def.name, method_def.func,
+			(struct ow_func_spec){method_def.argc, 0});
 		struct ow_symbol_obj *const name_obj =
 			ow_symbol_obj_new(om, method_def.name, (size_t)-1);
 		ow_class_obj_set_method_y(self, name_obj, ow_object_from(func_obj));
@@ -166,8 +168,10 @@ void ow_class_obj_load_native_def(
 
 void ow_class_obj_load_native_def_ex(
 	struct ow_machine *om, struct ow_class_obj *self,
-	struct ow_class_obj *super,	const struct ow_native_class_def_ex *def) {
-	ow_class_obj_load_native_def(om, self, super, (const struct ow_native_class_def *)def);
+	struct ow_class_obj *super,	const struct ow_native_class_def_ex *def,
+	struct ow_module_obj *func_mod) {
+	ow_class_obj_load_native_def(
+		om, self, super, (const struct ow_native_class_def *)def, func_mod);
 	self->finalizer2 = NULL;
 	self->pub_info.finalizer = def->finalizer;
 	self->pub_info.gc_marker = def->gc_marker;
@@ -179,18 +183,18 @@ void ow_class_obj_clear(struct ow_machine *om, struct ow_class_obj *self) {
 	self->pub_info.native_field_count = 0;
 	self->pub_info.super_class = 0;
 	self->pub_info.class_name = 0;
-	self->pub_info.finalizer = NULL;
+//	self->pub_info.finalizer = NULL;
 	self->pub_info.gc_marker = NULL;
 	ow_hashmap_clear(&self->attrs_and_methods_map);
 	ow_hashmap_clear(&self->statics_map);
 	ow_array_clear(&self->methods);
-	self->finalizer2 = NULL;
+//	self->finalizer2 = NULL;
 }
 
 size_t ow_class_obj_find_attribute(
 		const struct ow_class_obj *self, const struct ow_symbol_obj *name) {
 	const intptr_t index = (intptr_t)ow_hashmap_get(
-		&self->attrs_and_methods_map, ow_symbol_obj_hashmap_funcs, name);
+		&self->attrs_and_methods_map, &ow_symbol_obj_hashmap_funcs, name);
 	if (ow_unlikely(index <= 0))
 		return (size_t)-1;
 	return (size_t)(index - 1);
@@ -199,7 +203,7 @@ size_t ow_class_obj_find_attribute(
 size_t ow_class_obj_find_method(
 		const struct ow_class_obj *self, const struct ow_symbol_obj *name) {
 	const intptr_t index = (intptr_t)ow_hashmap_get(
-		&self->attrs_and_methods_map, ow_symbol_obj_hashmap_funcs, name);
+		&self->attrs_and_methods_map, &ow_symbol_obj_hashmap_funcs, name);
 	if (ow_unlikely(index >= 0))
 		return (size_t)-1;
 	return (size_t)(-1 - index);
@@ -228,7 +232,7 @@ size_t ow_class_obj_set_method_y(
 		index = ow_array_size(&self->methods);
 		ow_array_append(&self->methods, method);
 		ow_hashmap_set(
-			&self->attrs_and_methods_map, ow_symbol_obj_hashmap_funcs,
+			&self->attrs_and_methods_map, &ow_symbol_obj_hashmap_funcs,
 			name, (void *)(-1 - (intptr_t)index));
 	} else {
 		ow_array_at(&self->methods, index) = method;
@@ -238,17 +242,17 @@ size_t ow_class_obj_set_method_y(
 
 struct ow_object *ow_class_obj_get_static(
 		const struct ow_class_obj *self, const struct ow_symbol_obj *name) {
-	return ow_hashmap_get(&self->statics_map, ow_symbol_obj_hashmap_funcs, name);
+	return ow_hashmap_get(&self->statics_map, &ow_symbol_obj_hashmap_funcs, name);
 }
 
 void ow_class_obj_set_static(
 		struct ow_class_obj *self,
 		const struct ow_symbol_obj *name, struct ow_object *val) {
-	ow_hashmap_set(&self->statics_map, ow_symbol_obj_hashmap_funcs, name, val);
+	ow_hashmap_set(&self->statics_map, &ow_symbol_obj_hashmap_funcs, name, val);
 }
 
-static const struct ow_native_name_func_pair class_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def class_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(class_) = {

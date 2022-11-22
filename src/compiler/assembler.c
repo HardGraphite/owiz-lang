@@ -169,7 +169,7 @@ size_t ow_assembler_constant(struct ow_assembler *as, struct ow_assembler_consta
 		obj = ow_object_from(ow_int_obj_or_smallint(om, v.i));
 		break;
 	case OW_AS_CONST_FLT:
-		obj = ow_object_from(ow_float_obj_new(om, v.i));
+		obj = ow_object_from(ow_float_obj_new(om, v.f));
 		break;
 	case OW_AS_CONST_STR:
 		obj = ow_object_from(ow_string_obj_new(om, v.s.p, v.s.n));

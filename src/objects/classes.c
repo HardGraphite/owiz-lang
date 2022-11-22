@@ -69,7 +69,7 @@ void _ow_builtin_classes_setup(
 
 #define ELEM(NAME) \
 	ow_class_obj_load_native_def_ex( \
-		om, bic-> NAME, bic->object, &OW_BICLS_CLASS_DEF_EX_NAME(NAME));
+		om, bic-> NAME, bic->object, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
 	OW_BICLS_LIST0
 	OW_BICLS_LIST
 #undef ELEM

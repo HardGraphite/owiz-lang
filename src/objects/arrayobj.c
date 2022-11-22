@@ -42,8 +42,8 @@ struct ow_array_obj *ow_array_obj_new(
 	return obj;
 }
 
-static const struct ow_native_name_func_pair array_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def array_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(array) = {

@@ -4,6 +4,8 @@
 
 #include <utilities/attributes.h>
 
+struct ow_hashmap_funcs;
+
 /// Duplicate a NUL-terminated string.
 ow_nodiscard char *ow_strdup(const char *s);
 
@@ -20,6 +22,9 @@ void ow_sharedstr_unref(struct ow_sharedstr *ss);
 const char *ow_sharedstr_data(struct ow_sharedstr *ss);
 /// Get size (aka length in byte) of the string.
 size_t ow_sharedstr_size(struct ow_sharedstr *ss);
+
+/// Hash map functions for hash maps that use shared strings as keys.
+extern const struct ow_hashmap_funcs ow_sharedstr_hashmap_funcs;
 
 /// String with dynamic length.
 struct ow_dynamicstr {

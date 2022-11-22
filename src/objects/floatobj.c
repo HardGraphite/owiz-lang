@@ -24,8 +24,8 @@ struct ow_float_obj *ow_float_obj_new(struct ow_machine *om, double val) {
 	return obj;
 }
 
-static const struct ow_native_name_func_pair float_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def float_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(float_) = {

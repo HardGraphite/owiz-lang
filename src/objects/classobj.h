@@ -7,6 +7,7 @@
 #include <utilities/attributes.h>
 
 struct ow_machine;
+struct ow_module_obj;
 struct ow_native_class_def;
 struct ow_native_class_def_ex;
 struct ow_object;
@@ -22,13 +23,15 @@ struct ow_class_obj *ow_class_obj_new(struct ow_machine *om);
 /// `super` must be object class.
 void ow_class_obj_load_native_def(
 	struct ow_machine *om, struct ow_class_obj *self,
-	struct ow_class_obj *super,	const struct ow_native_class_def *def);
+	struct ow_class_obj *super,	const struct ow_native_class_def *def,
+	struct ow_module_obj *func_mod);
 /// Initialize class object from a native definition. The class must be empty.
 /// Parameter `super` is optional. If `finalizer` or `gc_marker` in parameter
 /// `def` is provided, `super` must be object class.
 void ow_class_obj_load_native_def_ex(
 	struct ow_machine *om, struct ow_class_obj *self,
-	struct ow_class_obj *super,	const struct ow_native_class_def_ex *def);
+	struct ow_class_obj *super,	const struct ow_native_class_def_ex *def,
+	struct ow_module_obj *func_mod);
 /// Delete all data.
 void ow_class_obj_clear(struct ow_machine *om, struct ow_class_obj *self);
 /// Get class name.

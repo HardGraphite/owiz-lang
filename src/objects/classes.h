@@ -12,6 +12,7 @@ struct ow_machine;
 	ELEM(array)       \
 	ELEM(bool_)       \
 	ELEM(cfunc)       \
+	ELEM(exception)   \
 	ELEM(float_)      \
 	ELEM(func)        \
 	ELEM(int_)        \

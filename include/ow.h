@@ -36,28 +36,38 @@ typedef int (*ow_native_func_t)(ow_machine_t *);
 /**
  * @brief Pair of name string and function pointer.
  */
-typedef struct ow_native_name_func_pair {
+typedef struct ow_native_func_def {
 	const char      *name; ///< Name of the function.
 	ow_native_func_t func; ///< Pointer to the native function.
-} ow_native_name_func_pair_t;
+	int              argc; ///< Number of arguments. See `OW_NATIVE_FUNC_VARIADIC_ARGC()` for variadic.
+} ow_native_func_def_t;
+
+/**
+ * @brief Represent number of arguments accepted by a variadic function.
+ *
+ * @param ARGC number of expected arguments except variadic ones
+ *
+ * @return Return the value that can be used as field `argc` in `struct ow_native_func_def`.
+ */
+#define OW_NATIVE_FUNC_VARIADIC_ARGC(ARGC)  (-1 - (ARGC))
 
 /**
  * @brief Definition of a native class.
  */
 typedef struct ow_native_class_def {
-	const char                       *name;      ///< Class name. Optional.
-	size_t                            data_size; ///< Object data area size (number of bytes).
-	const ow_native_name_func_pair_t *methods;   ///< Object methods. A NULL-terminated array.
-	void (*finalizer)(ow_machine_t *, void *);   ///< Object finalizer. Optional.
+	const char                     *name;      ///< Class name. Optional.
+	size_t                          data_size; ///< Object data area size (number of bytes).
+	const ow_native_func_def_t     *methods;   ///< Object methods. A NULL-terminated array.
+	void (*finalizer)(ow_machine_t *, void *); ///< Object finalizer. Optional.
 } ow_native_class_def_t;
 
 /**
  * @brief Definition of a native module.
  */
 typedef struct ow_native_module_def {
-	const char                       *name;      ///< Module name. Optional.
-	const ow_native_name_func_pair_t *functions; ///< Functions in module. A NULL-terminated array.
-	void (*finalizer)(ow_machine_t *);           ///< Module finalizer. Optional.
+	const char                 *name;      ///< Module name. Optional.
+	const ow_native_func_def_t *functions; ///< Functions in module. A NULL-terminated array.
+	ow_native_func_t            finalizer; ///< Module finalizer. Optional.
 } ow_native_module_def_t;
 
 /**

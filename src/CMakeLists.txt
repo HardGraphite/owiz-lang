@@ -10,6 +10,7 @@ foreach(sub_dir IN ITEMS
 		"compat"
 		"compiler"
 		"machine"
+		"modules"
 		"objects"
 		"utilities"
 	)

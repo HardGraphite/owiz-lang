@@ -43,8 +43,8 @@ struct ow_set_obj *ow_set_obj_new(struct ow_machine *om) {
 	return obj;
 }
 
-static const struct ow_native_name_func_pair set_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def set_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(set) = {

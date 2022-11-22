@@ -292,8 +292,8 @@ struct ow_object **ow_tuple_obj_flatten(
 	}
 }
 
-static const struct ow_native_name_func_pair tuple_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def tuple_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(tuple) = {

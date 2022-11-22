@@ -29,10 +29,8 @@
 
 static void verbose_dump_func(
 		unsigned int line, const char *name, struct ow_func_obj *func) {
-	size_t code_len;
-	const uint8_t *const code = ow_func_obj_code(func, &code_len);
 	fprintf(stderr, "[CODEGEN] %s (line %u) vvv\n", name, line);
-	ow_bytecode_dump(code, 0, code_len, (size_t)-1, ow_iostream_stderr());
+	ow_bytecode_dump(func->code, 0, func->code_size, (size_t)-1, ow_iostream_stderr());
 	fputs("[CODEGEN] ^^^\n", stderr);
 }
 
@@ -143,36 +141,11 @@ static void scope_del(struct scope *scope) {
 	ow_free(scope);
 }
 
-static bool _sharedstr_key_equal(
-		void *ctx, const void *key_new, const void *key_stored) {
-	ow_unused_var(ctx);
-	if (ow_unlikely(key_new == key_stored))
-		return true;
-	struct ow_sharedstr *const str1 = (void *)key_new;
-	struct ow_sharedstr *const str2 = (void *)key_stored;
-	const size_t str1_size = ow_sharedstr_size(str1);
-	if (str1_size != ow_sharedstr_size(str2))
-		return false;
-	return !memcmp(ow_sharedstr_data(str1), ow_sharedstr_data(str2), str1_size);
-}
-
-static ow_hash_t _sharedstr_key_hash(void *ctx, const void *key_new) {
-	ow_unused_var(ctx);
-	struct ow_sharedstr *const str = (void *)key_new;
-	return ow_hash_bytes(ow_sharedstr_data(str), ow_sharedstr_size(str));
-}
-
-static const struct ow_hashmap_funcs _sharedstr_hashmap_funcs = {
-	_sharedstr_key_equal,
-	_sharedstr_key_hash,
-	NULL,
-};
-
 /// Try to find variable. If found, return the index; otherwise, return -1.
 static size_t scope_find_variable(
 		struct scope *scope, const struct ow_sharedstr *name) {
 	void *const res = ow_hashmap_get(
-		&scope->_variables_map, &_sharedstr_hashmap_funcs, name);
+		&scope->_variables_map, &ow_sharedstr_hashmap_funcs, name);
 	return (size_t)(uintptr_t)res - 1;
 }
 
@@ -182,7 +155,7 @@ static size_t scope_register_variable(
 	assert(scope_find_variable(scope, name) == (size_t)-1);
 	const size_t index = ow_hashmap_size(&scope->_variables_map);
 	ow_hashmap_set(
-		&scope->_variables_map, &_sharedstr_hashmap_funcs,
+		&scope->_variables_map, &ow_sharedstr_hashmap_funcs,
 		ow_sharedstr_ref(name), (void *)(uintptr_t)(index + 1));
 	return index;
 }
@@ -1198,8 +1171,8 @@ static void ow_codegen_generate_FuncStmt(
 		const struct ow_assembler_output_spec as_output_spec = {
 			codegen->module,
 			(struct ow_func_spec){
-				.pa_cnt = (uint8_t)ow_ast_node_array_size(&node->args->elems),
-				.lc_cnt = (unsigned int)ow_hashmap_size(&func_scope->_variables_map),
+				.arg_cnt = (int)ow_ast_node_array_size(&node->args->elems),
+				.local_cnt = (unsigned int)ow_hashmap_size(&func_scope->_variables_map),
 			},
 		};
 

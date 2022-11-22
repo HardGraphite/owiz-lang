@@ -26,4 +26,4 @@ size_t ow_symbol_obj_size(const struct ow_symbol_obj *self);
 const char *ow_symbol_obj_data(const struct ow_symbol_obj *self);
 
 /// Hash map functions for hash maps that use symbol objects as keys.
-extern const struct ow_hashmap_funcs *const ow_symbol_obj_hashmap_funcs;
+extern const struct ow_hashmap_funcs ow_symbol_obj_hashmap_funcs;

@@ -15,8 +15,8 @@ static_assert(
 
 static_assert(OW_OBJECT_SIZE == sizeof(struct ow_object), "OW_OBJECT_SIZE is incorrect");
 
-static const struct ow_native_name_func_pair object_methods[] = {
-		{NULL, NULL},
+static const struct ow_native_func_def object_methods[] = {
+		{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(object) = {

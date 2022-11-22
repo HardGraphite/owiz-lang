@@ -24,8 +24,8 @@ struct ow_int_obj *_ow_int_obj_new(struct ow_machine *om, int64_t val) {
 	return obj;
 }
 
-static const struct ow_native_name_func_pair int_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def int_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(int_) = {

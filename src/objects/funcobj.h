@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "funcspec.h"
-#include "object_util.h"
+#include "object.h"
 #include <utilities/attributes.h>
 
 struct ow_machine;
@@ -11,8 +11,19 @@ struct ow_module_obj;
 struct ow_object;
 struct ow_symbol_obj;
 
+struct ow_func_obj_constants;
+struct ow_func_obj_symbols;
+
 /// Function object.
-struct ow_func_obj;
+struct ow_func_obj {
+	OW_EXTENDED_OBJECT_HEAD
+	struct ow_func_spec func_spec;
+	struct ow_module_obj *module;
+	const struct ow_func_obj_constants *constants;
+	const struct ow_func_obj_symbols *symbols;
+	size_t code_size;
+	unsigned char code[];
+};
 
 /// Create a function.
 struct ow_func_obj *ow_func_obj_new(
@@ -25,14 +36,3 @@ struct ow_func_obj *ow_func_obj_new(
 struct ow_object *ow_func_obj_get_constant(struct ow_func_obj *self, size_t index);
 /// Get symbols by index. If the index is out of range, return NULL.
 struct ow_symbol_obj *ow_func_obj_get_symbol(struct ow_func_obj *self, size_t index);
-/// Get code sequence.
-const unsigned char *ow_func_obj_code(const struct ow_func_obj *self, size_t *size_out);
-/// Get function specification.
-ow_static_forceinline const struct ow_func_spec *ow_func_obj_func_spec(
-	const struct ow_func_obj *self);
-
-ow_static_forceinline const struct ow_func_spec *ow_func_obj_func_spec(
-		const struct ow_func_obj *self) {
-	return (const struct ow_func_spec *)
-		((const unsigned char *)self + OW_OBJECT_SIZE + sizeof(size_t));
-}

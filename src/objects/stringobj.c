@@ -329,8 +329,8 @@ const char *ow_string_obj_flatten(
 	}
 }
 
-static const struct ow_native_name_func_pair string_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def string_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(string) = {

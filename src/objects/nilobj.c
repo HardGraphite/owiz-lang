@@ -20,8 +20,8 @@ struct ow_nil_obj *_ow_nil_obj_new(struct ow_machine *om) {
 		struct ow_nil_obj);
 }
 
-static const struct ow_native_name_func_pair nil_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def nil_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(nil) = {

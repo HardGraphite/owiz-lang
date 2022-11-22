@@ -62,7 +62,7 @@ void _ow_symbol_pool_gc_handler(struct ow_machine *om, struct ow_symbol_pool *sp
 		&sp->symbols, _ow_symbol_pool_gc_handler_pool_walker, &unreachable_symbols);
 	for (size_t i = 0, n = ow_array_size(&unreachable_symbols); i < n; i++) {
 		void *const key = ow_array_at(&unreachable_symbols, i);
-		ow_hashmap_remove(&sp->symbols, ow_symbol_obj_hashmap_funcs, key);
+		ow_hashmap_remove(&sp->symbols, &ow_symbol_obj_hashmap_funcs, key);
 	}
 	ow_array_fini(&unreachable_symbols);
 }
@@ -171,17 +171,14 @@ static ow_hash_t _ow_symbol_obj_hashmap_funcs_key_hash(
 	return sym_obj->hash;
 }
 
-static const struct ow_hashmap_funcs _ow_symbol_obj_hashmap_funcs_impl = {
+const struct ow_hashmap_funcs ow_symbol_obj_hashmap_funcs = {
 	_ow_symbol_obj_hashmap_funcs_key_equal,
 	_ow_symbol_obj_hashmap_funcs_key_hash,
 	NULL,
 };
 
-const struct ow_hashmap_funcs *const ow_symbol_obj_hashmap_funcs =
-	&_ow_symbol_obj_hashmap_funcs_impl;
-
-static const struct ow_native_name_func_pair symbol_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def symbol_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(symbol) = {

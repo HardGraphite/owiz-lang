@@ -583,8 +583,14 @@ static void ow_lexer_next_impl(
 			goto advance_and_set_loc_and_return;
 
 		case '!':
-			ow_token_assign_simple(result, OW_TOK_OP_NOT);
-			goto advance_and_set_loc_and_return;
+			ow_lexer_code_advance(lexer);
+			if (ow_lexer_code_peek(lexer) == '=') {
+				ow_token_assign_simple(result, OW_TOK_OP_NE);
+				goto advance_and_set_loc_and_return;
+			} else {
+				ow_token_assign_simple(result, OW_TOK_OP_NOT);
+				goto set_loc_and_return;
+			}
 
 		case '"':
 		case '\'':

@@ -23,16 +23,6 @@ struct ow_func_obj_symbols {
 	struct ow_symbol_obj *data[];
 };
 
-struct ow_func_obj {
-	OW_EXTENDED_OBJECT_HEAD
-	struct ow_func_spec func_spec;
-	struct ow_module_obj *module;
-	const struct ow_func_obj_constants *constants;
-	const struct ow_func_obj_symbols *symbols;
-	size_t code_size;
-	unsigned char code[];
-};
-
 static const size_t _zero_size = 0;
 #define empty_ow_func_obj_constants ((const struct ow_func_obj_constants *)&_zero_size)
 #define empty_ow_func_obj_symbols ((const struct ow_func_obj_symbols *)&_zero_size)
@@ -50,7 +40,7 @@ static void ow_func_obj_finalizer(struct ow_machine *om, struct ow_object *obj) 
 
 static void ow_func_obj_gc_marker(struct ow_machine *om, struct ow_object *obj) {
 	ow_unused_var(om);
-	assert(ow_class_obj_is_base(om->builtin_classes->array, ow_object_class(obj)));
+	assert(ow_class_obj_is_base(om->builtin_classes->func, ow_object_class(obj)));
 	struct ow_func_obj *const self = ow_object_cast(obj, struct ow_func_obj);
 
 	ow_objmem_object_gc_marker(om, ow_object_from(self->module));
@@ -91,7 +81,6 @@ struct ow_func_obj *ow_func_obj_new(
 	}
 	obj->code_size = code_size;
 	memcpy(obj->code, code, code_size);
-	assert(ow_func_obj_func_spec(obj) == &obj->func_spec);
 	return obj;
 }
 
@@ -114,8 +103,8 @@ const unsigned char *ow_func_obj_code(
 	return self->code;
 }
 
-static const struct ow_native_name_func_pair func_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def func_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(func) = {

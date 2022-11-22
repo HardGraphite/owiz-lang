@@ -9,6 +9,7 @@
 #	include <stdatomic.h>
 #endif
 
+#include <utilities/hashmap.h>
 #include <utilities/malloc.h>
 
 ow_nodiscard char *ow_strdup(const char *s) {
@@ -60,6 +61,31 @@ size_t ow_sharedstr_size(struct ow_sharedstr *ss) {
 	assert(atomic_load(&ss->ref_cnt));
 	return ss->size;
 }
+
+static bool _sharedstr_key_equal(
+		void *ctx, const void *key_new, const void *key_stored) {
+	ow_unused_var(ctx);
+	if (ow_unlikely(key_new == key_stored))
+		return true;
+	struct ow_sharedstr *const str1 = (void *)key_new;
+	struct ow_sharedstr *const str2 = (void *)key_stored;
+	const size_t str1_size = ow_sharedstr_size(str1);
+	if (str1_size != ow_sharedstr_size(str2))
+		return false;
+	return !memcmp(ow_sharedstr_data(str1), ow_sharedstr_data(str2), str1_size);
+}
+
+static ow_hash_t _sharedstr_key_hash(void *ctx, const void *key_new) {
+	ow_unused_var(ctx);
+	struct ow_sharedstr *const str = (void *)key_new;
+	return ow_hash_bytes(ow_sharedstr_data(str), ow_sharedstr_size(str));
+}
+
+const struct ow_hashmap_funcs ow_sharedstr_hashmap_funcs = {
+	.key_equal = _sharedstr_key_equal,
+	.key_hash  = _sharedstr_key_hash,
+	.context   = NULL,
+};
 
 void ow_dynamicstr_init(struct ow_dynamicstr *ds, size_t n) {
 	if (n < 7)

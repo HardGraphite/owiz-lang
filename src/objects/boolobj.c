@@ -21,8 +21,8 @@ struct ow_bool_obj *_ow_bool_obj_new(struct ow_machine *om, bool x) {
 	return obj;
 }
 
-static const struct ow_native_name_func_pair bool_methods[] = {
-	{NULL, NULL},
+static const struct ow_native_func_def bool_methods[] = {
+	{NULL, NULL, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(bool_) = {
