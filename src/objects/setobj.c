@@ -24,6 +24,7 @@ static void ow_set_obj_finalizer(struct ow_machine *om, struct ow_object *obj) {
 static int _ow_set_obj_gc_marker_walker(void *arg, const void *key, void *val) {
 	struct ow_machine *const om = arg;
 	ow_objmem_object_gc_marker(om, (struct ow_object *)key);
+	ow_unused_var(val);
 	assert(val == NULL);
 	return 0;
 }

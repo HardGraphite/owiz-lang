@@ -4,7 +4,7 @@
 #include <string.h>
 
 #ifdef _MSC_VER
-#	include <compats/msvc_stdatomic.h>
+#	include <compat/msvc_stdatomic.h>
 #else
 #	include <stdatomic.h>
 #endif

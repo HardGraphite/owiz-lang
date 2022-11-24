@@ -60,7 +60,7 @@ ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_ar
 		return invoke_impl_make_error(om, NULL, "too %s arguments",
 			(unsigned int)argc < (unsigned int)expected_argc ? "few" : "many");
 	} else {
-		const unsigned int argc_min = OW_NATIVE_FUNC_VARIADIC_ARGC(argc);
+		const unsigned int argc_min = (unsigned int)OW_NATIVE_FUNC_VARIADIC_ARGC(argc);
 		if (ow_likely((unsigned int)argc >= argc_min))
 			return NULL;
 		return invoke_impl_make_error(om, NULL, "too few arguments");

@@ -1317,8 +1317,6 @@ static struct ow_ast_Stmt *ow_parser_parse_stmt(struct ow_parser *parser) {
 			ow_token_type_represent(ow_token_type(tok))
 		);
 
-		return NULL;
-
 	case OW_TOK_KW_RETURN:
 		return (struct ow_ast_Stmt *)ow_parser_parse_return_stmt(parser);
 

@@ -889,6 +889,7 @@ static void ow_codegen_generate_AttrAccessExpr(
 static void ow_codegen_generate_MethodUseExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MethodUseExpr *node) {
+	ow_unused_var(action);
 	assert(action == ACT_PUSH);
 
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
@@ -1024,6 +1025,7 @@ static void ow_codegen_generate_ExprStmt(
 static void ow_codegen_generate_BlockStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BlockStmt *node) {
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 	for (size_t i = 0, n = ow_ast_node_array_size(&node->stmts); i < n; i++) {
 		struct ow_ast_node *stmt =
@@ -1038,6 +1040,7 @@ static void ow_codegen_generate_ReturnStmt(
 	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC))
 		ow_codegen_error_throw(codegen, &node->location, "unexpected return statement");
 
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	if (node->ret_val) {
@@ -1065,6 +1068,7 @@ static void ow_codegen_generate_ReturnStmt(
 static void ow_codegen_generate_IfElseStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_IfElseStmt *node) {
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 
@@ -1103,6 +1107,7 @@ static void ow_codegen_generate_ForStmt(
 static void ow_codegen_generate_WhileStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_WhileStmt *node) {
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	bool infinite_loop;
@@ -1148,6 +1153,7 @@ static void _scope_load_func_args(
 static void ow_codegen_generate_FuncStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_FuncStmt *node) {
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 	if (ow_unlikely(ow_ast_node_array_size(&node->args->elems) >= INT8_MAX))
 		ow_codegen_error_throw(codegen, &node->args->location, "too many arguments");
@@ -1270,6 +1276,7 @@ static void _scope_update_module_globals(
 static void ow_codegen_generate_Module(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_Module *node) {
+	ow_unused_var(action);
 	assert(action == ACT_EVAL);
 
 	struct ow_assembler *const as =

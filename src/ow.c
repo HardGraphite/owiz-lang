@@ -8,11 +8,40 @@
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
 
+#ifdef _WIN32
+#	include <Windows.h>
+#endif // _WIN32
+
 #ifdef __GNUC__
 #	define static_cold_func __attribute__((cold)) __attribute__((noinline)) static
 #else
 #	define static_cold_func ow_noinline static
 #endif
+
+/**** **** ***** ***** ***** ***** Utilities ***** ****** ***** ***** **** ****/
+
+#ifdef _WIN32
+
+static char *win32_str_wide_to_utf8(const wchar_t *wide_str) {
+	const int buf_sz =
+		WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, NULL, 0, NULL, NULL);
+	assert(buf_sz > 0);
+	char *const buf = malloc((size_t)buf_sz);
+	WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, buf, buf_sz, NULL, NULL);
+	return buf;
+}
+
+static char **win32_strarr_wide_to_utf8(
+	const wchar_t **wide_str_arr, size_t arr_len) {
+	char **const new_arr = malloc(sizeof(char *) * arr_len);
+	for (size_t i = 0; i < arr_len; i++) {
+		const wchar_t *const wide_str = wide_str_arr[i];
+		new_arr[i] = wide_str ? win32_str_wide_to_utf8(wide_str) : NULL;
+	}
+	return new_arr;
+}
+
+#endif // _WIN32
 
 /***** ***** ***** ***** ******  Argument Parser ****** ***** ***** ***** *****/
 
@@ -299,6 +328,11 @@ struct ow_args {
 	char      **argv;
 };
 
+#ifdef _MSC_VER
+#	pragma warning(push)
+#	pragma warning(disable: 4646)
+#endif // _MSC_VER
+
 static_cold_func void print_program_help(void);
 
 static_cold_func ow_noreturn int opt_help(
@@ -356,6 +390,10 @@ static_cold_func int opt_file_or_arg(
 	args->file = arg;
 	return 1;
 }
+
+#ifdef _MSC_VER
+#	pragma warning(pop) // 4646
+#endif // _MSC_VER
 
 #pragma pack(push, 1)
 
@@ -435,7 +473,7 @@ static void parse_environ(struct ow_args *args) {
 	ow_unused_var(args);
 }
 
-/**** **** ***** ***** ***** ***** Utilities ***** ****** ***** ***** **** ****/
+/***** ***** ***** ***** ***** the Main Function ****** ***** ***** ***** *****/
 
 static_cold_func ow_noreturn void print_top_exception_and_exit(void) {
 	const int flags = (OW_RDEXC_MSG | OW_RDEXC_BT) | OW_RDEXC_PRINT;
@@ -445,9 +483,7 @@ static_cold_func ow_noreturn void print_top_exception_and_exit(void) {
 	cleanup_mom_and_exit(EXIT_FAILURE);
 }
 
-/***** ***** ***** ***** ***** the Main Function ****** ***** ***** ***** *****/
-
-int main(int argc, char *argv[]) {
+static int ow_main(int argc, char *argv[]) {
 	int status;
 	struct ow_args args;
 
@@ -487,4 +523,23 @@ int main(int argc, char *argv[]) {
 	}
 
 	cleanup_mom();
+	return EXIT_SUCCESS;
 }
+
+#ifdef _WIN32
+
+static char **utf8_argv;
+
+int wmain(int argc, wchar_t *argv[]) {
+	utf8_argv = win32_strarr_wide_to_utf8(
+		(const wchar_t **)argv, (size_t)argc + 1);
+	return ow_main(argc, utf8_argv);
+}
+
+#else // !_WIN32
+
+int main(int argc, char *argv[]) {
+	return ow_main(argc, argv);
+}
+
+#endif // _WIN32

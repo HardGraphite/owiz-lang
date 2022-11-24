@@ -22,9 +22,9 @@ struct ow_symbol_pool {
 
 struct ow_symbol_obj {
 	OW_EXTENDED_OBJECT_HEAD
-	size_t hash;
-	size_t size;
-	char   str[];
+	ow_hash_t hash;
+	size_t    size;
+	char      str[];
 };
 
 struct ow_symbol_pool *ow_symbol_pool_new(void) {

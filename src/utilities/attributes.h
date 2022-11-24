@@ -10,14 +10,14 @@
 #elif defined _MSC_VER
 #	define ow_likely(EXPR)    (EXPR)
 #	define ow_unlikely(EXPR)  (EXPR)
-#	define ow_inline          __forceinline
+#	define ow_forceinline     __forceinline
 #	define ow_noinline        __declspec(noinline)
 #	define ow_nodiscard       _Check_return_
 #	define ow_fallthrough
 #else
 #	define ow_likely(EXPR)    (EXPR)
 #	define ow_unlikely(EXPR)  (EXPR)
-#	define ow_inline
+#	define ow_forceinline
 #	define ow_noinline
 #	define ow_nodiscard
 #	define ow_fallthrough

@@ -22,9 +22,12 @@ ow_hash_t ow_hash_double(double val) {
 	return *(ow_hash_t *)&as_float;
 }
 
+#ifdef _MSC_VER
+extern unsigned int _rotl(unsigned int value, int shift);
+#endif // _MSC_VER
+
 ow_static_forceinline uint32_t rotl32(uint32_t x, int8_t r) {
 #if defined(_MSC_VER)
-	extern unsigned int _rotl(unsigned int value, int shift);
 	return _rotl(x, r);
 #else // !_MSC_VER
 	return (x << r) | (x >> (32 - r));

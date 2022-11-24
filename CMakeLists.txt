@@ -51,8 +51,10 @@ endif()
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC") # MSVC
 	add_compile_options(
 		/W4 /utf-8 /Zc:__cplusplus,inline,preprocessor
-		<$<COMPILE_LANGUAGE:C>:/wd4200> # warning C4200: nonstandard extension used : zero-sized array in struct/union
+		$<$<COMPILE_LANGUAGE:C>:/wd4200> # warning C4200: nonstandard extension used : zero-sized array in struct/union
 		/wd4706 # warning C4706: assignment within conditional expression
+		/FI sal.h
+		#/analyze
 	)
 	add_compile_definitions(_CRT_SECURE_NO_WARNINGS) # Use "unsafe" functions.
 else() # GCC, Clang, ...
