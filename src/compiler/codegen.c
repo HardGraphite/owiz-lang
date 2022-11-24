@@ -342,11 +342,11 @@ enum codegen_action {
 	ACT_RECV, // Pop and assign.
 };
 
-static void ow_codegen_generate_node(
+static void ow_codegen_emit_node(
 	struct ow_codegen *, enum codegen_action action, const struct ow_ast_node *);
 
 #define ELEM(NAME) \
-	static void ow_codegen_generate_##NAME( \
+	static void ow_codegen_emit_##NAME( \
 		struct ow_codegen *, enum codegen_action action, const struct ow_ast_##NAME *);
 OW_AST_NODE_LIST
 #undef ELEM
@@ -373,7 +373,7 @@ static void ow_codegen_asm_push_symbol(
 		ow_codegen_error_throw(codegen, &node->location, "too many symbols");
 }
 
-static void ow_codegen_generate_NilLiteral(
+static void ow_codegen_emit_NilLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_NilLiteral *node) {
 	ow_unused_var(node);
@@ -384,7 +384,7 @@ static void ow_codegen_generate_NilLiteral(
 	ow_assembler_append(as, OW_OPC_LdNil, (union ow_operand){.u8 = 0});
 }
 
-static void ow_codegen_generate_BoolLiteral(
+static void ow_codegen_emit_BoolLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BoolLiteral *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -394,7 +394,7 @@ static void ow_codegen_generate_BoolLiteral(
 	ow_assembler_append(as, OW_OPC_LdBool, (union ow_operand){.u8 = node->value});
 }
 
-static void ow_codegen_generate_IntLiteral(
+static void ow_codegen_emit_IntLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_IntLiteral *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -414,7 +414,7 @@ static void ow_codegen_generate_IntLiteral(
 	}
 }
 
-static void ow_codegen_generate_FloatLiteral(
+static void ow_codegen_emit_FloatLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_FloatLiteral *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -433,7 +433,7 @@ static void ow_codegen_generate_FloatLiteral(
 	}
 }
 
-static void ow_codegen_generate_SymbolLiteral(
+static void ow_codegen_emit_SymbolLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SymbolLiteral *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -446,7 +446,7 @@ static void ow_codegen_generate_SymbolLiteral(
 		codegen, (const struct ow_ast_node *)node, as, index);
 }
 
-static void ow_codegen_generate_StringLiteral(
+static void ow_codegen_emit_StringLiteral(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_StringLiteral *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -466,7 +466,7 @@ static void ow_codegen_generate_StringLiteral(
 		codegen, (const struct ow_ast_node *)node, as, index);
 }
 
-static void ow_codegen_generate_Identifier(
+static void ow_codegen_emit_Identifier(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_Identifier *node) {
 	if (ow_unlikely(action == ACT_EVAL))
@@ -597,89 +597,89 @@ write_instruction:
 	ow_assembler_append(as, opcode, operand);
 }
 
-ow_noinline static void ow_codegen_generate_BinOpExpr(
+ow_noinline static void ow_codegen_emit_BinOpExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
-	ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->lhs);
-	ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
+	ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->lhs);
+	ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
 	ow_assembler_append(as, opcode, (union ow_operand){.u8 = 0});
 	if (ow_unlikely(action == ACT_EVAL))
 		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
-static void ow_codegen_generate_AddExpr(
+static void ow_codegen_emit_AddExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_AddExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Add);
 }
 
-static void ow_codegen_generate_SubExpr(
+static void ow_codegen_emit_SubExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SubExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Sub);
 }
 
-static void ow_codegen_generate_MulExpr(
+static void ow_codegen_emit_MulExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MulExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Mul);
 }
 
-static void ow_codegen_generate_DivExpr(
+static void ow_codegen_emit_DivExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_DivExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Div);
 }
 
-static void ow_codegen_generate_RemExpr(
+static void ow_codegen_emit_RemExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_RemExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Rem);
 }
 
-static void ow_codegen_generate_ShlExpr(
+static void ow_codegen_emit_ShlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ShlExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Shl);
 }
 
-static void ow_codegen_generate_ShrExpr(
+static void ow_codegen_emit_ShrExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ShrExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Shr);
 }
 
-static void ow_codegen_generate_BitAndExpr(
+static void ow_codegen_emit_BitAndExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitAndExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_And);
 }
 
-static void ow_codegen_generate_BitOrExpr(
+static void ow_codegen_emit_BitOrExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitOrExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Or);
 }
 
-static void ow_codegen_generate_BitXorExpr(
+static void ow_codegen_emit_BitXorExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitXorExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Xor);
 }
 
-ow_noinline static void ow_codegen_generate_EqlOpExpr(
+ow_noinline static void ow_codegen_emit_EqlOpExpr(
 	struct ow_codegen *codegen, enum codegen_action action,
 	const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
@@ -689,170 +689,170 @@ ow_noinline static void ow_codegen_generate_EqlOpExpr(
 					&& lhs_type != OW_AST_NODE_AttrAccessExpr))
 		ow_codegen_error_throw(codegen, &node->location, "illegal assignment");
 	if (opcode == (enum ow_opcode)0)
-		ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
+		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
 	else
-		ow_codegen_generate_BinOpExpr(codegen, ACT_PUSH, node, opcode);
+		ow_codegen_emit_BinOpExpr(codegen, ACT_PUSH, node, opcode);
 	if (ow_unlikely(action == ACT_PUSH))
 		ow_assembler_append(as, OW_OPC_Dup, (union ow_operand){.u8 = 0});
-	ow_codegen_generate_node(codegen, ACT_RECV, (struct ow_ast_node *)node->lhs);
+	ow_codegen_emit_node(codegen, ACT_RECV, (struct ow_ast_node *)node->lhs);
 }
 
-static void ow_codegen_generate_EqlExpr(
+static void ow_codegen_emit_EqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_EqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, (enum ow_opcode)0);
 }
 
-static void ow_codegen_generate_AddEqlExpr(
+static void ow_codegen_emit_AddEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_AddEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Add);
 }
 
-static void ow_codegen_generate_SubEqlExpr(
+static void ow_codegen_emit_SubEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SubEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Sub);
 }
 
-static void ow_codegen_generate_MulEqlExpr(
+static void ow_codegen_emit_MulEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MulEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Mul);
 }
 
-static void ow_codegen_generate_DivEqlExpr(
+static void ow_codegen_emit_DivEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_DivEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Div);
 }
 
-static void ow_codegen_generate_RemEqlExpr(
+static void ow_codegen_emit_RemEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_RemEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Rem);
 }
 
-static void ow_codegen_generate_ShlEqlExpr(
+static void ow_codegen_emit_ShlEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ShlEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Shl);
 }
 
-static void ow_codegen_generate_ShrEqlExpr(
+static void ow_codegen_emit_ShrEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ShrEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Shr);
 }
 
-static void ow_codegen_generate_BitAndEqlExpr(
+static void ow_codegen_emit_BitAndEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitAndEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_And);
 }
 
-static void ow_codegen_generate_BitOrEqlExpr(
+static void ow_codegen_emit_BitOrEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitOrEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Or);
 }
 
-static void ow_codegen_generate_BitXorEqlExpr(
+static void ow_codegen_emit_BitXorEqlExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitXorEqlExpr *node) {
-	ow_codegen_generate_EqlOpExpr(
+	ow_codegen_emit_EqlOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_Xor);
 }
 
-static void ow_codegen_generate_EqExpr(
+static void ow_codegen_emit_EqExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_EqExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpEq);
 }
 
-static void ow_codegen_generate_NeExpr(
+static void ow_codegen_emit_NeExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_NeExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpNe);
 }
 
-static void ow_codegen_generate_LtExpr(
+static void ow_codegen_emit_LtExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_LtExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpLt);
 }
 
-static void ow_codegen_generate_LeExpr(
+static void ow_codegen_emit_LeExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_LeExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpLe);
 }
 
-static void ow_codegen_generate_GtExpr(
+static void ow_codegen_emit_GtExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_GtExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpGt);
 }
 
-static void ow_codegen_generate_GeExpr(
+static void ow_codegen_emit_GeExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_GeExpr *node) {
-	ow_codegen_generate_BinOpExpr(
+	ow_codegen_emit_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, OW_OPC_CmpGe);
 }
 
-ow_noinline static void ow_codegen_generate_logical_BinOpExpr(
+ow_noinline static void ow_codegen_emit_logical_BinOpExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BinOpExpr *node, bool which /* true=Or, false = And */) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const int lbl_end = ow_assembler_prepare_label(as);
-	ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->lhs);
+	ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->lhs);
 	ow_assembler_append(as, OW_OPC_Dup, (union ow_operand){.u8 = 0});
 	// TODO: Add new instructions to simplify this.
 	ow_assembler_append_jump(as, which ? OW_OPC_JmpWhen : OW_OPC_JmpUnls, lbl_end);
 	ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
-	ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
+	ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
 	ow_assembler_place_label(as, lbl_end);
 	if (ow_unlikely(action == ACT_EVAL))
 		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
-static void ow_codegen_generate_AndExpr(
+static void ow_codegen_emit_AndExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_AndExpr *node) {
-	ow_codegen_generate_logical_BinOpExpr(
+	ow_codegen_emit_logical_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, false);
 }
 
-static void ow_codegen_generate_OrExpr(
+static void ow_codegen_emit_OrExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_OrExpr *node) {
-	ow_codegen_generate_logical_BinOpExpr(
+	ow_codegen_emit_logical_BinOpExpr(
 		codegen, action, (const struct ow_ast_BinOpExpr *)node, true);
 }
 
-static void ow_codegen_generate_AttrAccessExpr(
+static void ow_codegen_emit_AttrAccessExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_AttrAccessExpr *node) {
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 
-	ow_codegen_generate_node(
+	ow_codegen_emit_node(
 		codegen, ACT_PUSH, (const struct ow_ast_node *)node->lhs);
 
 	if (ow_unlikely(node->rhs->type != OW_AST_NODE_Identifier))
@@ -886,7 +886,7 @@ static void ow_codegen_generate_AttrAccessExpr(
 	ow_assembler_append(as, opcode, operand);
 }
 
-static void ow_codegen_generate_MethodUseExpr(
+static void ow_codegen_emit_MethodUseExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MethodUseExpr *node) {
 	ow_unused_var(action);
@@ -894,7 +894,7 @@ static void ow_codegen_generate_MethodUseExpr(
 
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 
-	ow_codegen_generate_node(
+	ow_codegen_emit_node(
 		codegen, ACT_PUSH, (const struct ow_ast_node *)node->lhs);
 
 	if (ow_unlikely(node->rhs->type != OW_AST_NODE_Identifier))
@@ -915,89 +915,89 @@ static void ow_codegen_generate_MethodUseExpr(
 	ow_assembler_append(as, opcode, operand);
 }
 
-ow_noinline static void ow_codegen_generate_UnOpExpr(
+ow_noinline static void ow_codegen_emit_UnOpExpr(
 	struct ow_codegen *codegen, enum codegen_action action,
 	const struct ow_ast_UnOpExpr *node, enum ow_opcode opcode) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
-	ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->val);
+	ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->val);
 	ow_assembler_append(as, opcode, (union ow_operand){.u8 = 0});
 	if (ow_unlikely(action == ACT_EVAL))
 		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
-static void ow_codegen_generate_PosExpr(
+static void ow_codegen_emit_PosExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_PosExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_NegExpr(
+static void ow_codegen_emit_NegExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_NegExpr *node) {
-	ow_codegen_generate_UnOpExpr(
+	ow_codegen_emit_UnOpExpr(
 		codegen, action, (const struct ow_ast_UnOpExpr *)node, OW_OPC_Neg);
 }
 
-static void ow_codegen_generate_BitNotExpr(
+static void ow_codegen_emit_BitNotExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BitNotExpr *node) {
-	ow_codegen_generate_UnOpExpr(
+	ow_codegen_emit_UnOpExpr(
 		codegen, action, (const struct ow_ast_UnOpExpr *)node, OW_OPC_Inv);
 }
 
-static void ow_codegen_generate_NotExpr(
+static void ow_codegen_emit_NotExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_NotExpr *node) {
-	ow_codegen_generate_UnOpExpr(
+	ow_codegen_emit_UnOpExpr(
 		codegen, action, (const struct ow_ast_UnOpExpr *)node, OW_OPC_Not);
 }
 
-static void ow_codegen_generate_TupleExpr(
+static void ow_codegen_emit_TupleExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_TupleExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_ArrayExpr(
+static void ow_codegen_emit_ArrayExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ArrayExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_SetExpr(
+static void ow_codegen_emit_SetExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SetExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_MapExpr(
+static void ow_codegen_emit_MapExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MapExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_CallExpr(
+static void ow_codegen_emit_CallExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_CallExpr *node) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	size_t arg_cnt = ow_ast_node_array_size(&node->args);
 	if (node->obj->type == OW_AST_NODE_MethodUseExpr) {
-		ow_codegen_generate_MethodUseExpr(
+		ow_codegen_emit_MethodUseExpr(
 			codegen, ACT_PUSH, (const struct ow_ast_MethodUseExpr *)node->obj);
 		arg_cnt++;
 	} else {
-		ow_codegen_generate_node(
+		ow_codegen_emit_node(
 			codegen, ACT_PUSH, (const struct ow_ast_node *)node->obj);
 	}
 	for (size_t i = 0, n = ow_ast_node_array_size(&node->args); i < n; i++) {
-		ow_codegen_generate_node(
+		ow_codegen_emit_node(
 			codegen, ACT_PUSH, ow_ast_node_array_at(
 				(struct ow_ast_node_array *)&node->args, i));
 	}
@@ -1007,22 +1007,22 @@ static void ow_codegen_generate_CallExpr(
 	ow_assembler_append(as, OW_OPC_Call, (union ow_operand){.u8 = operand});
 }
 
-static void ow_codegen_generate_SubscriptExpr(
+static void ow_codegen_emit_SubscriptExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SubscriptExpr *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_ExprStmt(
+static void ow_codegen_emit_ExprStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ExprStmt *node) {
 	assert(action == ACT_EVAL);
-	ow_codegen_generate_node(
+	ow_codegen_emit_node(
 		codegen, action, (const struct ow_ast_node *)node->expr);
 }
 
-static void ow_codegen_generate_BlockStmt(
+static void ow_codegen_emit_BlockStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_BlockStmt *node) {
 	ow_unused_var(action);
@@ -1030,11 +1030,11 @@ static void ow_codegen_generate_BlockStmt(
 	for (size_t i = 0, n = ow_ast_node_array_size(&node->stmts); i < n; i++) {
 		struct ow_ast_node *stmt =
 			ow_ast_node_array_at((struct ow_ast_node_array *)&node->stmts, i);
-		ow_codegen_generate_node(codegen, ACT_EVAL, stmt);
+		ow_codegen_emit_node(codegen, ACT_EVAL, stmt);
 	}
 }
 
-static void ow_codegen_generate_ReturnStmt(
+static void ow_codegen_emit_ReturnStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ReturnStmt *node) {
 	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC))
@@ -1058,14 +1058,14 @@ static void ow_codegen_generate_ReturnStmt(
 			ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = (uint8_t)index});
 			return;
 		} while (0);
-		ow_codegen_generate_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->ret_val);
+		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->ret_val);
 		ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = UINT8_MAX});
 	} else {
 		ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
 	}
 }
 
-static void ow_codegen_generate_IfElseStmt(
+static void ow_codegen_emit_IfElseStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_IfElseStmt *node) {
 	ow_unused_var(action);
@@ -1081,10 +1081,10 @@ static void ow_codegen_generate_IfElseStmt(
 		lbl_next_branch = ow_assembler_prepare_label(as);
 		const struct ow_ast_nodepair_array_elem branch =
 			ow_ast_nodepair_array_at((struct ow_ast_nodepair_array *)&node->branches, i);
-		ow_codegen_generate_node(codegen, ACT_PUSH, branch.first);
+		ow_codegen_emit_node(codegen, ACT_PUSH, branch.first);
 		ow_assembler_append_jump(as, OW_OPC_JmpUnls, lbl_next_branch);
 		assert(branch.second->type == OW_AST_NODE_BlockStmt);
-		ow_codegen_generate_BlockStmt(
+		ow_codegen_emit_BlockStmt(
 			codegen, ACT_EVAL, (struct ow_ast_BlockStmt *)branch.second);
 		if (i < i_max || node->else_branch) // Exclude the last branch.
 			ow_assembler_append_jump(as, OW_OPC_Jmp, lbl_end);
@@ -1092,19 +1092,19 @@ static void ow_codegen_generate_IfElseStmt(
 	assert(ow_ast_nodepair_array_size(&node->branches));
 	ow_assembler_place_label(as, lbl_next_branch);
 	if (node->else_branch) {
-		ow_codegen_generate_BlockStmt(codegen, ACT_EVAL, node->else_branch);
+		ow_codegen_emit_BlockStmt(codegen, ACT_EVAL, node->else_branch);
 	}
 	ow_assembler_place_label(as, lbl_end);
 }
 
-static void ow_codegen_generate_ForStmt(
+static void ow_codegen_emit_ForStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ForStmt *node) {
 	ow_unused_var(action);
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
 }
 
-static void ow_codegen_generate_WhileStmt(
+static void ow_codegen_emit_WhileStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_WhileStmt *node) {
 	ow_unused_var(action);
@@ -1124,11 +1124,11 @@ static void ow_codegen_generate_WhileStmt(
 	const int lbl_begin = ow_assembler_place_label(as, -1);
 	const int lbl_end = ow_assembler_prepare_label(as);
 	if (!infinite_loop) {
-		ow_codegen_generate_node(
+		ow_codegen_emit_node(
 			codegen, ACT_PUSH, (const struct ow_ast_node *)node->cond);
 		ow_assembler_append_jump(as, OW_OPC_JmpUnls, lbl_end);
 	}
-	ow_codegen_generate_BlockStmt(
+	ow_codegen_emit_BlockStmt(
 		codegen, ACT_EVAL, (const struct ow_ast_BlockStmt *)node);
 	ow_assembler_append_jump(as, OW_OPC_Jmp, lbl_begin);
 	if (!infinite_loop)
@@ -1150,7 +1150,7 @@ static void _scope_load_func_args(
 	}
 }
 
-static void ow_codegen_generate_FuncStmt(
+static void ow_codegen_emit_FuncStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_FuncStmt *node) {
 	ow_unused_var(action);
@@ -1168,7 +1168,7 @@ static void ow_codegen_generate_FuncStmt(
 		_scope_load_func_args(args_scope, codegen, &node->args->elems);
 		ow_unused_var(func_scope);
 
-		ow_codegen_generate_BlockStmt(
+		ow_codegen_emit_BlockStmt(
 			codegen, ACT_EVAL, (const struct ow_ast_BlockStmt *)node);
 		const enum ow_opcode last_opcode = ow_assembler_last(as);
 		if (!(last_opcode == OW_OPC_Ret || last_opcode == OW_OPC_RetLoc))
@@ -1197,7 +1197,7 @@ static void ow_codegen_generate_FuncStmt(
 				.type = OW_AS_CONST_OBJ, .o = ow_object_from(func)});
 		ow_codegen_asm_push_constant(
 			codegen, (const struct ow_ast_node *)node, as, const_index);
-		ow_codegen_generate_Identifier(codegen, ACT_RECV, node->name);
+		ow_codegen_emit_Identifier(codegen, ACT_RECV, node->name);
 	}
 
 #if OW_DEBUG_CODEGEN
@@ -1273,7 +1273,7 @@ static void _scope_update_module_globals(
 	ow_free(ctx);
 }
 
-static void ow_codegen_generate_Module(
+static void ow_codegen_emit_Module(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_Module *node) {
 	ow_unused_var(action);
@@ -1285,7 +1285,7 @@ static void ow_codegen_generate_Module(
 		scope_stack_push(&codegen->scope_stack, SCOPE_MODULE);
 	_scope_load_module_globals(scope, codegen->module);
 
-	ow_codegen_generate_BlockStmt(codegen, ACT_EVAL, node->code);
+	ow_codegen_emit_BlockStmt(codegen, ACT_EVAL, node->code);
 	ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
 
 	ow_unused_var(scope);
@@ -1310,12 +1310,12 @@ static void ow_codegen_generate_Module(
 #endif // OW_DEBUG_CODEGEN
 }
 
-static void ow_codegen_generate_node(
+static void ow_codegen_emit_node(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_node *node) {
 	switch (node->type) {
 #define ELEM(NAME) case OW_AST_NODE_##NAME : \
-		ow_codegen_generate_##NAME( \
+		ow_codegen_emit_##NAME( \
 			codegen, action, (struct ow_ast_##NAME *)node); \
 		break;
 	OW_AST_NODE_LIST
@@ -1335,7 +1335,7 @@ bool ow_codegen_generate(
 	codegen->module = module;
 
 	if (!ow_codegen_error_setjmp(codegen)) {
-		ow_codegen_generate_Module(codegen, ACT_EVAL, ow_ast_get_module(ast));
+		ow_codegen_emit_Module(codegen, ACT_EVAL, ow_ast_get_module(ast));
 		codegen->module = NULL;
 		return true;
 	} else {
