@@ -58,11 +58,11 @@ def main():
         help='print current version (major.minor.patch)')
     arg_parser.add_argument('-H', '--make-header', help='generate C header file')
     arg_parser.add_argument('VERSION_FILE', nargs='?',
-        help='path to the version.txt file')
+        help='path to the VERSION.txt file')
     args = arg_parser.parse_args()
     del arg_parser
 
-    version = load_version(args.VERSION_FILE if args.VERSION_FILE else 'version.txt')
+    version = load_version(args.VERSION_FILE if args.VERSION_FILE else 'VERSION.txt')
 
     if args.print:
         print(version)

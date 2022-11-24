@@ -95,7 +95,7 @@ endforeach()
 
 ## Rules to generate machine/version.h file.
 if(OW_DEVELOPING)
-	set(version_file "${CMAKE_SOURCE_DIR}/version.txt")
+	set(version_file "${CMAKE_SOURCE_DIR}/VERSION.txt")
 	set(version_header_file "${CMAKE_CURRENT_SOURCE_DIR}/machine/version.h")
 	add_custom_command(
 		OUTPUT "${version_header_file}"
