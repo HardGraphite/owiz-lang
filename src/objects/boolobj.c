@@ -18,6 +18,7 @@ struct ow_bool_obj *_ow_bool_obj_new(struct ow_machine *om, bool x) {
 		ow_objmem_allocate(om, om->builtin_classes->bool_, 0),
 		struct ow_bool_obj);
 	obj->value = x;
+	assert(ow_bool_obj_value(obj) == x);
 	return obj;
 }
 

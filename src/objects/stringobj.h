@@ -25,3 +25,7 @@ size_t ow_string_obj_copy(
 /// Param `s_size` can be NULL, if do not need the string size.
 const char *ow_string_obj_flatten(
 	struct ow_machine *om, struct ow_string_obj *self, size_t *s_size);
+/// Get number of bytes in the string.
+size_t ow_string_obj_size(const struct ow_string_obj *self);
+/// Get number of characters in the string.
+size_t ow_string_obj_length(const struct ow_string_obj *self);

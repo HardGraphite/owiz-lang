@@ -23,7 +23,7 @@ size_t ow_module_obj_find_global(
 /// Get global by index. If not exists, return NULL.
 struct ow_object *ow_module_obj_get_global(
 	const struct ow_module_obj *self, size_t index);
-/// Set global by name. If not exists, return NULL.
+/// Get global by name. If not exists, return NULL.
 struct ow_object *ow_module_obj_get_global_y(
 	const struct ow_module_obj *self, const struct ow_symbol_obj *name);
 /// Set global by index. If not exists, return false.

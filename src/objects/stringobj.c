@@ -329,6 +329,14 @@ const char *ow_string_obj_flatten(
 	}
 }
 
+size_t ow_string_obj_size(const struct ow_string_obj *self) {
+	return self->size;
+}
+
+size_t ow_string_obj_length(const struct ow_string_obj *self) {
+	return self->length;
+}
+
 static const struct ow_native_func_def string_methods[] = {
 	{NULL, NULL, 0},
 };

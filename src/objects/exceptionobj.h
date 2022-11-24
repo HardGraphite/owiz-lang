@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 struct ow_class_obj;
+struct ow_iostream;
 struct ow_machine;
 struct ow_object;
 
@@ -27,3 +28,7 @@ void ow_exception_obj_backtrace_append(
 /// Get a vector of frame info.
 const struct ow_exception_obj_frame_info *ow_exception_obj_backtrace(
 	struct ow_exception_obj *self, size_t *count);
+/// Print exception. `flags & 1`: print data; `flag & 2`: print backtrace.
+void ow_exception_obj_print(
+	struct ow_machine *om, struct ow_exception_obj *self,
+	struct ow_iostream *stream, int flags);

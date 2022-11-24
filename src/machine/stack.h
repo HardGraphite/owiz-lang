@@ -39,8 +39,8 @@ struct ow_callstack {
 	struct ow_object **data_end;
 	struct ow_object **_data;
 };
-
 /// Create a call stack.
+
 void ow_callstack_init(struct ow_callstack *stack, size_t n);
 /// Destroy a call stack.
 void ow_callstack_fini(struct ow_callstack *stack);

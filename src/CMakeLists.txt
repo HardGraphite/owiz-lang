@@ -4,7 +4,8 @@ option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
 ## Collect source files.
-set(ow_src "api.c" "ow.c")
+set(ow_main_src "ow.c")
+set(ow_src "api.c")
 foreach(sub_dir IN ITEMS
 		"bytecode"
 		"compat"
@@ -18,16 +19,64 @@ foreach(sub_dir IN ITEMS
 endforeach()
 
 ## Define target.
-add_executable(ow ${ow_src})
+set(ow_out_shared_dir "${CMAKE_CURRENT_BINARY_DIR}/shared")
+set(ow_out_static_dir "${CMAKE_CURRENT_BINARY_DIR}/static")
+set(ow_exe_targets)
+set(ow_lib_targets)
+if(OW_BUILD_SHARED)
+	add_library(ow_lib_shared SHARED ${ow_src})
+	add_executable(ow_exe_shared ${ow_main_src})
+	target_link_libraries(ow_exe_shared PRIVATE ow_lib_shared)
+	set_target_properties(
+		ow_exe_shared ow_lib_shared PROPERTIES
+		OUTPUT_NAME "ow"
+		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_shared_dir}
+		LIBRARY_OUTPUT_DIRECTORY ${ow_out_shared_dir}
+		RUNTIME_OUTPUT_DIRECTORY ${ow_out_shared_dir}
+	)
+	if(WIN32)
+		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+	endif()
+	list(APPEND ow_exe_targets ow_exe_shared)
+	list(APPEND ow_lib_targets ow_lib_shared)
+	message(STATUS "Output directory for `OW_BUILD_SHARED` is ${ow_out_shared_dir}.")
+endif()
+if(OW_BUILD_STATIC)
+	add_library(ow_lib_static STATIC ${ow_src})
+	add_executable(ow_exe_static ${ow_main_src})
+	target_link_libraries(ow_exe_static PRIVATE ow_lib_static)
+	set_target_properties(
+		ow_exe_static ow_lib_static PROPERTIES
+		OUTPUT_NAME "ow"
+		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_static_dir}
+		LIBRARY_OUTPUT_DIRECTORY ${ow_out_static_dir}
+		RUNTIME_OUTPUT_DIRECTORY ${ow_out_static_dir}
+	)
+	set_target_properties(ow_exe_static PROPERTIES ENABLE_EXPORTS TRUE)
+	if(WIN32)
+		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+	endif()
+	list(APPEND ow_exe_targets ow_exe_static)
+	list(APPEND ow_lib_targets ow_lib_static)
+	message(STATUS "Output directory for `OW_BUILD_STATIC` is ${ow_out_static_dir}.")
+endif()
 
 ## Add include directories.
-target_include_directories(ow PRIVATE
-	"${CMAKE_SOURCE_DIR}/include"
-	"${CMAKE_CURRENT_SOURCE_DIR}"
-)
+foreach(tgt IN LISTS ow_exe_targets ow_lib_targets)
+	target_include_directories(
+		${tgt} PRIVATE
+		"${CMAKE_SOURCE_DIR}/include"
+		"${CMAKE_CURRENT_SOURCE_DIR}"
+	)
+endforeach()
 
-## Export symbols
-set_target_properties(ow PROPERTIES ENABLE_EXPORTS TRUE)
+# Add definitions for library targets.
+foreach(tgt IN LISTS ow_lib_targets)
+	target_compile_definitions(
+		${tgt} PRIVATE
+		"OW_EXPORT_API=1"
+	)
+endforeach()
 
 ## Add "OW_DEBUG_XXX" flags.
 foreach(opt_name IN ITEMS
@@ -37,7 +86,9 @@ foreach(opt_name IN ITEMS
 		OW_DEBUG_MEMORY
 	)
 	if(${opt_name})
-		target_compile_definitions(ow PRIVATE "${opt_name}=1")
+		foreach(tgt IN LISTS ow_lib_targets)
+			target_compile_definitions(${tgt} PRIVATE "${opt_name}=1")
+		endforeach()
 		message(STATUS "`${opt_name}` is enabled")
 	endif()
 endforeach()
@@ -54,7 +105,9 @@ if(OW_DEVELOPING)
 		COMMENT "Generating ${version_header_file}"
 		VERBATIM
 	)
-	target_sources(ow PRIVATE ${version_header_file}) # As dependencies.
+	foreach(tgt IN LISTS ow_lib_targets)
+		target_sources(${tgt} PRIVATE ${version_header_file}) # As dependencies.
+	endforeach()
 	unset(version_file)
 	unset(version_header_file)
 endif()
@@ -74,7 +127,9 @@ if(OW_DEVELOPING)
 		COMMENT "Generating compiler/ast_node_*.h files"
 		VERBATIM
 	)
-	target_sources(ow PRIVATE ${compiler_ast_node_xxx_files}) # As dependencies.
+	foreach(tgt IN LISTS ow_lib_targets)
+		target_sources(${tgt} PRIVATE ${compiler_ast_node_xxx_files}) # As dependencies.
+	endforeach()
 	unset(compiler_ast_node_xxx_files)
 endif()
 
@@ -95,6 +150,7 @@ if(OW_DOC_SOURCE OR OW_DOC_HEADER)
 	set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
 	set(DOXYGEN_GENERATE_TREEVIEW YES)
 	set(DOXYGEN_SHOW_NAMESPACES NO)
+	set(DOXYGEN_SORT_MEMBER_DOCS NO)
 	set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
 	set(DOXYGEN_WARN_NO_PARAMDOC NO)
 

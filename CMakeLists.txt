@@ -10,10 +10,13 @@ project(
 	LANGUAGES C
 )
 
-option(OW_BUILD_IPO "Enable inter-procedural optimization." ON)
-option(OW_DOC_SOURCE "Generate documentation for source code." OFF)
-option(OW_DOC_HEADER "Generate documentation for public header files." OFF)
-option(OW_DOC_LANGUAGE "Generate documentation from doc/*.md." OFF)
+option(OW_BUILD_IPO     "Enable inter-procedural optimization."              ON)
+option(OW_BUILD_SHARED  "Build shared library (dynamic library)"             ON)
+option(OW_BUILD_STATIC  "Build static library (archive)"                    OFF)
+option(OW_DOC_SOURCE    "Generate documentation for source code."           OFF)
+option(OW_DOC_HEADER    "Generate documentation for public header files."   OFF)
+option(OW_DOC_LANGUAGE  "Generate documentation from doc/*.md."             OFF)
+option(OW_TEST          "Build test files and enable testing"                ON)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -35,6 +38,10 @@ if(OW_BUILD_IPO)
 	endif()
 	unset(_res)
 	unset(_out)
+endif()
+
+if(NOT OW_BUILD_SHARED AND NOT OW_BUILD_STATIC)
+	message(WARNING "Neither `OW_BUILD_SHARED` nor `OW_BUILD_STATIC` is ON.")
 endif()
 
 if(NOT OW_DEVELOPING)
@@ -60,4 +67,9 @@ add_subdirectory("src")
 
 if(OW_DOC_LANGUAGE)
 	add_subdirectory("doc")
+endif()
+
+if(OW_TEST)
+	enable_testing()
+	add_subdirectory("test")
 endif()

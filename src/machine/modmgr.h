@@ -1,5 +1,6 @@
 #pragma once
 
+struct ow_istream;
 struct ow_machine;
 struct ow_module_obj;
 
