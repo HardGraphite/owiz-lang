@@ -7,6 +7,7 @@ include("cmake/version.cmake")
 project(
 	ow-lang
 	VERSION ${OW_VERSION_NUMBER}
+	DESCRIPTION "The OW programming language"
 	LANGUAGES C
 )
 
@@ -16,7 +17,10 @@ option(OW_BUILD_STATIC  "Build static library (archive)"                    OFF)
 option(OW_DOC_SOURCE    "Generate documentation for source code."           OFF)
 option(OW_DOC_HEADER    "Generate documentation for public header files."   OFF)
 option(OW_DOC_LANGUAGE  "Generate documentation from doc/*.md."             OFF)
-option(OW_TEST          "Build test files and enable testing"                ON)
+option(OW_TEST          "Build test files and prepare for ctest command."    ON)
+option(OW_PACK          "Configure for cpack command."                      OFF)
+option(OW_PACK_HEADER   "Include header files when installing."              ON)
+option(OW_PACK_RELA_RPATH  "Use relative RPATH when installing."             ON)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -74,4 +78,12 @@ endif()
 if(OW_TEST)
 	enable_testing()
 	add_subdirectory("test")
+	message(STATUS "`OW_TEST` is ON. Use `ctest` to run tests.")
+endif()
+
+if(OW_PACK)
+	set(CPACK_PACKAGE_CHECKSUM   "MD5")
+	set(CPACK_STRIP_FILES         TRUE)
+	include(CPack)
+	message(STATUS "`OW_PACK` is ON. Use `cpack` to generate packages.")
 endif()
