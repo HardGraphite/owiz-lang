@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <setjmp.h>
-#include <string.h>
 
 #include "assembler.h"
 #include "ast.h"
@@ -19,7 +18,9 @@
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
-#ifndef NDEBUG
+#include <config/options.h>
+
+#if OW_DEBUG_CODEGEN
 
 #include <stdio.h>
 
@@ -34,7 +35,7 @@ static void verbose_dump_func(
 	fputs("[CODEGEN] ^^^\n", stderr);
 }
 
-#endif // NDEBUG
+#endif // OW_DEBUG_CODEGEN
 
 /// A stack of assemblers.
 struct code_stack {

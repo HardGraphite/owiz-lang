@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -33,6 +34,9 @@
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
+#include <config/options.h>
+#include <config/version.h>
+
 #ifdef __GNUC__
 __attribute__((cold))
 #endif // __GNUC__
@@ -52,6 +56,43 @@ ow_noinline ow_nodiscard static struct ow_exception_obj *_make_error(
 	ow_objmem_pop_ngc(om);
 
 	return exc_o;
+}
+
+OW_API union ow_sysconf_result ow_sysconf(int name) {
+	union ow_sysconf_result result;
+
+	switch (name) {
+	case OW_SC_DEBUG:
+		result.i =
+#ifdef NDEBUG
+			0
+#else
+			1
+#endif
+			;
+		break;
+
+	case OW_SC_VERSION:
+		result.u = (
+			(OW_VERSION_MAJOR << 24) |
+			(OW_VERSION_MINOR << 16) |
+			(OW_VERSION_PATCH <<  8) );
+		static_assert(OW_VERSION_MAJOR <= UINT16_MAX, "");
+		static_assert(OW_VERSION_MINOR <= UINT16_MAX, "");
+		static_assert(OW_VERSION_PATCH <= UINT16_MAX, "");
+		break;
+
+	case OW_SC_VERSION_STR:
+		result.s = OW_VERSION_STRING;
+		static_assert(sizeof(size_t) >= sizeof(void *), "");
+		break;
+
+	default:
+		memset(&result, 0xff, sizeof result);
+		break;
+	}
+
+	return result;
 }
 
 OW_API OW_NODISCARD ow_machine_t *ow_create(void) {

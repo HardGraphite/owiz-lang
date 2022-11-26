@@ -19,6 +19,8 @@
 #include <utilities/strings.h>
 #include <utilities/unicode.h>
 
+#include <config/options.h>
+
 static struct ow_hashmap _ow_lexer_keywords_map;
 
 #define OW_LEXER_KEYWORD_MAXLEN 8

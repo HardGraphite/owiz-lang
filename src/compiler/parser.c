@@ -3,10 +3,6 @@
 #include <assert.h>
 #include <setjmp.h>
 
-#if OW_DEBUG_PARSER
-#	include <stdio.h>
-#endif // OW_DEBUG_PARSER
-
 #include "ast.h"
 #include "error.h"
 #include "lexer.h"
@@ -17,6 +13,12 @@
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
+
+#include <config/options.h>
+
+#if OW_DEBUG_PARSER
+#	include <stdio.h>
+#endif // OW_DEBUG_PARSER
 
 /// Token queue.
 struct token_queue {

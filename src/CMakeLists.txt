@@ -3,6 +3,8 @@ option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
 option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
+set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
+
 ## Collect source files.
 set(ow_main_src "ow.c")
 set(ow_src "api.c")
@@ -67,6 +69,7 @@ foreach(tgt IN LISTS ow_exe_targets ow_lib_targets)
 		${tgt} PRIVATE
 		"${CMAKE_SOURCE_DIR}/include"
 		"${CMAKE_CURRENT_SOURCE_DIR}"
+		"${CMAKE_CURRENT_BINARY_DIR}"
 	)
 endforeach()
 
@@ -78,39 +81,32 @@ foreach(tgt IN LISTS ow_lib_targets)
 	)
 endforeach()
 
-## Add "OW_DEBUG_XXX" flags.
-foreach(opt_name IN ITEMS
-		OW_DEBUG_LEXER
-		OW_DEBUG_PARSER
-		OW_DEBUG_CODEGEN
-		OW_DEBUG_MEMORY
-	)
-	if(${opt_name})
-		foreach(tgt IN LISTS ow_lib_targets)
-			target_compile_definitions(${tgt} PRIVATE "${opt_name}=1")
-		endforeach()
-		message(STATUS "`${opt_name}` is enabled")
-	endif()
-endforeach()
+## Generate config header: "options.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
+#pragma once
+#cmakedefine01  OW_DEBUG_MEMORY
+#cmakedefine01  OW_DEBUG_LEXER
+#cmakedefine01  OW_DEBUG_PARSER
+#cmakedefine01  OW_DEBUG_CODEGEN
+]==])
 
-## Rules to generate machine/version.h file.
-if(OW_DEVELOPING)
-	set(version_file "${CMAKE_SOURCE_DIR}/VERSION.txt")
-	set(version_header_file "${CMAKE_CURRENT_SOURCE_DIR}/machine/version.h")
-	add_custom_command(
-		OUTPUT "${version_header_file}"
-		COMMAND "${CMAKE_SOURCE_DIR}/tool/version.py"
-			"${version_file}" -H "${version_header_file}"
-		DEPENDS "${version_file}"
-		COMMENT "Generating ${version_header_file}"
-		VERBATIM
-	)
-	foreach(tgt IN LISTS ow_lib_targets)
-		target_sources(${tgt} PRIVATE ${version_header_file}) # As dependencies.
-	endforeach()
-	unset(version_file)
-	unset(version_header_file)
-endif()
+## Generate config header: "version.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/version.h" @ONLY CONTENT [==[
+#pragma once
+#cmakedefine  OW_VERSION_MAJOR   @OW_VERSION_MAJOR@
+#cmakedefine  OW_VERSION_MINOR   @OW_VERSION_MINOR@
+#cmakedefine  OW_VERSION_PATCH   @OW_VERSION_PATCH@
+#cmakedefine  OW_VERSION_STRING  "@OW_VERSION_STRING@"
+#ifndef OW_VERSION_MAJOR
+#	define OW_VERSION_MAJOR 0
+#endif
+#ifndef OW_VERSION_MINOR
+#	define OW_VERSION_MINOR 0
+#endif
+#ifndef OW_VERSION_PATCH
+#	define OW_VERSION_PATCH 0
+#endif
+]==])
 
 ## Rules to generate compiler/ast_node_xxx.h files.
 if(OW_DEVELOPING)

@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include <ow.h>
-#include <machine/version.h>
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
 
@@ -358,7 +357,7 @@ static_cold_func ow_noreturn int opt_help(
 static_cold_func ow_noreturn int opt_version(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(ctx), ow_unused_var(opt), ow_unused_var(arg);
-	puts(OW_VERSION_STRING);
+	puts(ow_sysconf(OW_SC_VERSION_STR).s);
 	cleanup_mom_and_exit(EXIT_SUCCESS);
 }
 
@@ -408,6 +407,7 @@ static_cold_func int opt_file_or_arg(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
 	struct ow_args *const args = ctx;
+	ow_unused_var(arg);
 	assert(!args->argc && !args->argv);
 	return 1;
 }

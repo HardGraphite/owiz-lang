@@ -97,6 +97,27 @@ typedef struct ow_native_module_def {
 } ow_native_module_def_t;
 
 /**
+ * @brief Return type of `ow_sysconf()` function.
+ */
+typedef union ow_sysconf_result {
+	signed int   i;
+	unsigned int u;
+	const char  *s;
+} ow_sysconf_result_t;
+
+#define OW_SC_DEBUG           0 ///< Whether compiled with debug code.
+#define OW_SC_VERSION         1 ///< Get version number (`(MAJOR<<24)|(MINOR<<16)|(PATCH<<8)`).
+#define OW_SC_VERSION_STR     2 ///< Get version string.
+
+/**
+ * @brief Get configuration information at run time.
+ *
+ * @param name a `OW_SC_XXX` macro
+ * @return The result or `-1` if param `name` is not found.
+ */
+OW_API union ow_sysconf_result ow_sysconf(int name) OW_NOEXCEPT;
+
+/**
  * @brief Create an OW instance.
  *
  * @return Return the newly created instance.

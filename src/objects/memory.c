@@ -4,11 +4,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#if OW_DEBUG_MEMORY
-#	include <stdio.h>
-#	include <time.h>
-#endif // OW_DEBUG_MEMORY
-
 #include "classobj.h"
 #include "natives.h"
 #include "object.h"
@@ -16,6 +11,13 @@
 #include "smallint.h"
 #include <machine/machine.h>
 #include <utilities/malloc.h>
+
+#include <config/options.h>
+
+#if OW_DEBUG_MEMORY
+#	include <stdio.h>
+#	include <time.h>
+#endif // OW_DEBUG_MEMORY
 
 #define DEFAULT_GC_THRESHOLD (sizeof(void *) * 1024 * 1024 / 4)
 #define DEFAULT_ALLOCATE_MAX (sizeof(void *) * 8 * 1024 * 1024)
