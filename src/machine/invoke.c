@@ -1017,17 +1017,36 @@ int ow_machine_call_native(
 }
 
 int ow_machine_run(
-		struct ow_machine *om,
-		struct ow_module_obj *module, struct ow_object **res_out) {
-	struct ow_object *const init_func =
-		ow_module_obj_get_global_y(module, om->common_symbols->anon);
-
+		struct ow_machine *om, struct ow_module_obj *module,
+		bool call_main, struct ow_object **res_out) {
 	struct ow_object *const nil = om->globals->value_nil;
-	if (!init_func || init_func == nil) {
+	struct ow_symbol_obj *const sym_anon = om->common_symbols->anon;
+	struct ow_symbol_obj *const sym_main = om->common_symbols->main;
+
+	struct ow_object *const init_func =
+		ow_module_obj_get_global_y(module, sym_anon);
+	if (init_func && init_func != nil) {
+		ow_callstack_push(om->callstack, init_func);
+		const int status = ow_machine_invoke(om, 0, res_out);
+		if (ow_unlikely(status))
+			return status;
+		ow_module_obj_set_global_y(module, sym_anon, nil);
+		if (!call_main)
+			return 0;
+	} else {
+		if (!call_main) {
+			*res_out = nil;
+			return 0;
+		}
+	}
+
+	struct ow_object *const main_func =
+		ow_module_obj_get_global_y(module, sym_main);
+	if (main_func && main_func != nil) {
+		ow_callstack_push(om->callstack, main_func);
+		return ow_machine_invoke(om, 0, res_out);
+	} else {
 		*res_out = nil;
 		return 0;
 	}
-
-	ow_callstack_push(om->callstack, init_func);
-	return ow_machine_invoke(om, 0, res_out);
 }

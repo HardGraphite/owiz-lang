@@ -325,3 +325,7 @@ which must be a legal identifier.
 Specially, a module file can be a shared library (or dynamic-link library)
 with specified exported functions and variables.
 This kind of module file is written in native code.
+
+A module can contain a function called `main`,
+and the function will be called automatically if the module is the entry of a program
+(aka the top-level environment).

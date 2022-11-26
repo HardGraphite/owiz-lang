@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 struct ow_machine;
 struct ow_module_obj;
 struct ow_object;
@@ -23,6 +25,6 @@ int ow_machine_call_native(
 	struct ow_module_obj *mod, int (*func)(struct ow_machine *),
 	int argc, struct ow_object *argv[], struct ow_object **res_out);
 
-/// Run a module.
+/// Run a module. Call the initializer and main function (optional).
 int ow_machine_run(struct ow_machine *om,
-	struct ow_module_obj *module, struct ow_object **res_out);
+	struct ow_module_obj *module, bool call_main, struct ow_object **res_out);

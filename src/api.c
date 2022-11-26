@@ -493,8 +493,9 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 			status = OW_ERR_FAIL;
 			goto end_invoke;
 		}
+		const bool call_main = flags & OW_IVK_MODMAIN;
 		status = ow_machine_run(
-			om, ow_object_cast(mod_o, struct ow_module_obj), &result);
+			om, ow_object_cast(mod_o, struct ow_module_obj), call_main, &result);
 	} else {
 		ow_unreachable();
 	}

@@ -33,7 +33,8 @@ struct ow_machine *ow_machine_new(void) {
 	ow_callstack_init(&om->callstack, 500); // TODO: Configurable stack size.
 
 	int status;
-	status = ow_machine_run(om, om->globals->module_base, &(struct ow_object *){NULL});
+	status = ow_machine_run(
+		om, om->globals->module_base, false, &(struct ow_object *){NULL});
 	ow_unused_var(status);
 	assert(!status);
 

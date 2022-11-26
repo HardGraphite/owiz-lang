@@ -360,6 +360,7 @@ OW_API int ow_drop(ow_machine_t *om, int count) OW_NOEXCEPT;
 #define OW_IVK_METHOD         0x01 ///< The object at the function position is a method name.
 #define OW_IVK_MODULE         0x02 ///< Run a module instead of invoking it.
 #define OW_IVK_NORETVAL   (1 << 4) ///< Discard return value.
+#define OW_IVK_MODMAIN    (1 << 5) ///< Use with `OW_IVK_MODULE` to call main function.
 
 /**
  * @brief Invoke a function or method, or run a module.
