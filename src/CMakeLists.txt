@@ -4,6 +4,8 @@ option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
 set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
+set(OW_FILENAME_EXTENSION_SRC ".ow" )
+set(OW_FILENAME_EXTENSION_OBJ ".owo")
 
 ## Collect source files.
 set(ow_main_src "ow.c")
@@ -13,7 +15,6 @@ foreach(sub_dir IN ITEMS
 		"compat"
 		"compiler"
 		"machine"
-		"modules"
 		"objects"
 		"utilities"
 	)
@@ -81,6 +82,56 @@ foreach(tgt IN LISTS ow_lib_targets)
 	)
 endforeach()
 
+## Handle module list.
+include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_conf.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_util.cmake")
+if(NOT DEFINED OW_EMBEDDED_MODULES)
+	set(OW_EMBEDDED_MODULES "*")
+endif()
+if(NOT DEFINED OW_DYNAMIC_MODULES)
+	set(OW_DYNAMIC_MODULES "")
+endif()
+set(OW_EMBEDDED_MODULES ${OW_EMBEDDED_MODULES} CACHE
+	STRING "List of embedded modules. ${ow_mod_util_conf_list_doc}")
+set(OW_DYNAMIC_MODULES ${OW_DYNAMIC_MODULES} CACHE
+	STRING "List of dynamic modules. ${ow_mod_util_conf_list_doc}")
+ow_mod_util_collect_embedded_modules("${OW_EMBEDDED_MODULES}" ow_embedded_mods)
+ow_mod_util_collect_dynamic_modules("${OW_DYNAMIC_MODULES}" ow_dynamic_mods)
+foreach(tgt IN LISTS ow_lib_targets)
+	get_target_property(tgt_type ${tgt} TYPE)
+	if(tgt_type STREQUAL "STATIC_LIBRARY")
+		set(scope "PUBLIC")
+	else()
+		set(scope "PRIVATE")
+	endif()
+	foreach(mod_name IN LISTS ow_embedded_mods)
+		ow_mod_util_add_sources(${tgt} PRIVATE ${mod_name})
+		ow_mod_util_link_libraries(${tgt} ${scope} ${mod_name})
+		message(STATUS "Add embedded module `${mod_name}'.")
+	endforeach()
+endforeach()
+foreach(mod_name IN LISTS ow_dynamic_mods)
+	set(tgt "ow_mod_${mod_name}")
+	add_library(${tgt} MODULE)
+	set_target_properties(${tgt} PROPERTIES
+		PREFIX "" OUTPUT_NAME ${mod_name} SUFFIX ${OW_FILENAME_EXTENSION_OBJ})
+	ow_mod_util_add_sources(${tgt} PRIVATE ${mod_name})
+	ow_mod_util_link_libraries(${tgt} PRIVATE ${mod_name})
+	message(STATUS "Add dynamic module `${mod_name}'.")
+endforeach()
+include(mkcode)
+ow_make_c_macro_list("OW_EMBEDDED_MODULE_LIST" "${ow_embedded_mods}" tmp_str)
+string(CONCAT tmp_str "// \"@OW_EMBEDDED_MODULES@\"\n\n" "${tmp_str}")
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/module_list.h" @ONLY CONTENT "${tmp_str}")
+unset(tmp_str)
+
+## Generate config header: "definitions.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
+#pragma once
+#define  OW_FILENAME_EXTENSION_SRC  "@OW_FILENAME_EXTENSION_SRC@"
+#define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
+]==])
+
 ## Generate config header: "options.h".
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
 #pragma once
@@ -93,19 +144,10 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
 ## Generate config header: "version.h".
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/version.h" @ONLY CONTENT [==[
 #pragma once
-#cmakedefine  OW_VERSION_MAJOR   @OW_VERSION_MAJOR@
-#cmakedefine  OW_VERSION_MINOR   @OW_VERSION_MINOR@
-#cmakedefine  OW_VERSION_PATCH   @OW_VERSION_PATCH@
-#cmakedefine  OW_VERSION_STRING  "@OW_VERSION_STRING@"
-#ifndef OW_VERSION_MAJOR
-#	define OW_VERSION_MAJOR 0
-#endif
-#ifndef OW_VERSION_MINOR
-#	define OW_VERSION_MINOR 0
-#endif
-#ifndef OW_VERSION_PATCH
-#	define OW_VERSION_PATCH 0
-#endif
+#define  OW_VERSION_MAJOR   @OW_VERSION_MAJOR@
+#define  OW_VERSION_MINOR   @OW_VERSION_MINOR@
+#define  OW_VERSION_PATCH   @OW_VERSION_PATCH@
+#define  OW_VERSION_STRING  "@OW_VERSION_STRING@"
 ]==])
 
 ## Rules to generate compiler/ast_node_xxx.h files.

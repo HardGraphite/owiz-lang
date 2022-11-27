@@ -2,13 +2,15 @@
 
 #include <string.h>
 
-#include <modules/module_list.h>
 #include <modules/modules_util.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
 #include <utilities/hashmap.h>
 #include <utilities/malloc.h>
 #include <utilities/strings.h>
+
+#include <config/definitions.h>
+#include <config/module_list.h>
 
 struct ow_module_manager {
 	struct ow_hashmap modules; // {name, module}
@@ -38,12 +40,12 @@ void ow_module_manager_del(struct ow_module_manager *mm) {
 }
 
 #define ELEM(NAME) extern OW_BIMOD_MODULE_DEF(NAME) ;
-OW_BIMOD_LIST
+OW_EMBEDDED_MODULE_LIST
 #undef ELEM
 
-static const struct ow_native_module_def *const _builtin_modules[] = {
+static const struct ow_native_module_def *const _embedded_modules[] = {
 #define ELEM(NAME) & OW_BIMOD_MODULE_DEF_NAME(NAME) ,
-	OW_BIMOD_LIST
+	OW_EMBEDDED_MODULE_LIST
 #undef ELEM
 };
 
@@ -60,8 +62,8 @@ struct ow_module_obj *ow_module_manager_load(
 		}
 	}
 
-	for (size_t i = 0; i < sizeof _builtin_modules / sizeof _builtin_modules[0]; i++) {
-		const struct ow_native_module_def *const def = _builtin_modules[i];
+	for (size_t i = 0; i < sizeof _embedded_modules / sizeof _embedded_modules[0]; i++) {
+		const struct ow_native_module_def *const def = _embedded_modules[i];
 		if (strcmp(def->name, name) == 0) {
 			assert(!mm->temp_module);
 			mm->temp_module = ow_module_obj_new(mm->machine);

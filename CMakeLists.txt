@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.18)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 option(OW_DEVELOPING "Set up the build system for developing." OFF)
 
-include("cmake/version.cmake")
+include(version)
 
 project(
 	ow-lang
