@@ -5,10 +5,12 @@
 
 #include <machine/machine.h>
 #include <objects/classes.h>
+#include <objects/classobj.h>
 #include <objects/floatobj.h>
 #include <objects/intobj.h>
 #include <objects/object.h>
 #include <objects/stringobj.h>
+#include <objects/symbolobj.h>
 
 static int func_print(struct ow_machine *om) {
 	FILE *const fp = stdout;
@@ -30,7 +32,9 @@ static int func_print(struct ow_machine *om) {
 				ow_object_cast(obj, struct ow_string_obj);
 			fputs(ow_string_obj_flatten(om, str_o, NULL), fp);
 		} else {
-			fputs("...", fp);
+			const char *cls_name =
+				ow_symbol_obj_data(_ow_class_obj_pub_info(obj_cls)->class_name);
+			fprintf(fp, "<%s>", cls_name);
 		}
 	}
 	return 0;

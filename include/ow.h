@@ -57,6 +57,8 @@ typedef struct ow_machine ow_machine_t;
 
 /**
  * @brief Native function that can be called by OW.
+ * @details To return object, push the object and return `1`; to return `nil`,
+ * return `0`; to raise exception, push the exception object and return `-1`.
  */
 typedef int (*ow_native_func_t)(ow_machine_t *) OW_NOEXCEPT;
 
@@ -116,6 +118,20 @@ typedef union ow_sysconf_result {
  * @return The result or `-1` if param `name` is not found.
  */
 OW_API union ow_sysconf_result ow_sysconf(int name) OW_NOEXCEPT;
+
+#define OW_CTL_VERBOSE        0 ///< Enable verbose output. Value: `"[!]NAME"`.
+#define OW_CTL_STACKSIZE      1 ///< Set stack size (number of objects). Value: pointer to integer.
+
+/**
+ * @breif Write runtime parameters.
+ *
+ * @param name a `OW_CTL_XXX` macro
+ * @param val pointer to the value to set
+ * @param val_sz size of the value in bytes
+ * @return Returns `0` (success), `OW_ERR_INDEX` (wrong `name`),
+ * or `OW_ERR_FAIL` (illegal value or not configurable).
+ */
+OW_API int ow_sysctl(int name, const void *val, size_t val_sz) OW_NOEXCEPT;
 
 /**
  * @brief Create an OW instance.
@@ -188,6 +204,8 @@ OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) OW_NOE
 #define OW_MKMOD_STRING   0x03 ///< Compile a module from string.
 #define OW_MKMOD_STDIN    0x04 ///< Compile a module from stdin.
 #define OW_MKMOD_LOAD     0x05 ///< Load a module like import statement.
+#define OW_MKMOD_INCR     (1 << 4) ///< Incremental, add new code to an existing module on stack top.
+#define OW_MKMOD_RETLAST  (1 << 5) ///< Try to return value of last expression.
 
 /**
  * @brief Compile or load a module and push it.
@@ -198,12 +216,15 @@ OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) OW_NOE
  * path to source file (`OW_MKMOD_FILE`); source string (`OW_MKMOD_STRING`);
  * pointer to a `struct ow_native_module_def` object (`OW_MKMOD_NATIVE`).
  * @param flags `0` or `OW_MKMOD_XXX` macros
- * @return On success, return `0`. On failure, push an exception object instead
- * of the generated module object, and return `OW_ERR_FAIL`.
+ * @return On success, push the module and return `0`.
+ * On failure, push an exception object instead of the generated module object,
+ * and return `OW_ERR_FAIL`.
  *
  * @note In `OW_MKMOD_LOAD` mode, param `name` specifies the name of the module
  * to load; while in other modes, param `name` tells what the name of the newly
  * created module should be. Be aware of the difference between these two cases.
+ * @note If `OW_MKMOD_INCR` is specified, there shall be a module object pushed,
+ * and the module will not be pushed again in this function.
  */
 OW_API int ow_make_module(
 	ow_machine_t *om, const char *name, const void *src, int flags) OW_NOEXCEPT;
@@ -234,6 +255,13 @@ OW_API int ow_load_global(ow_machine_t *om, const char *name) OW_NOEXCEPT;
  * @param count number of duplications
  */
 OW_API void ow_dup(ow_machine_t *om, size_t count) OW_NOEXCEPT;
+
+/**
+ * @brief Swap top two objects.
+ *
+ * @param om the instance
+ */
+OW_API void ow_swap(ow_machine_t *om) OW_NOEXCEPT;
 
 /**
  * @brief Check whether an object is of Nil type.

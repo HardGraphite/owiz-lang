@@ -2,6 +2,7 @@
 
 set(OW_AVAILABLE_MODULES
 	base
+	repl
 )
 
 set(OW_REQUIRED_MODULES

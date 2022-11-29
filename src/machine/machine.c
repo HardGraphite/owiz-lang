@@ -10,10 +10,17 @@
 #include "invoke.h"
 #include "modmgr.h"
 #include "symbols.h"
+#include "sysparam.h"
 #include <objects/classes.h>
 #include <objects/memory.h>
 #include <objects/symbolobj.h>
 #include <utilities/malloc.h>
+
+static size_t stack_size(void) {
+	const size_t n_min = 64;
+	const size_t n = ow_sysparam.stack_size;
+	return n > n_min ? n : n_min;
+}
 
 struct ow_machine *ow_machine_new(void) {
 	struct ow_machine *const om = ow_malloc(sizeof(struct ow_machine));
@@ -30,7 +37,10 @@ struct ow_machine *ow_machine_new(void) {
 	om->module_manager = ow_module_manager_new(om);
 	om->common_symbols = ow_common_symbols_new(om);
 	om->globals = ow_machine_globals_new(om);
-	ow_callstack_init(&om->callstack, 500); // TODO: Configurable stack size.
+	ow_callstack_init(&om->callstack, stack_size());
+
+	if (ow_unlikely(ow_sysparam.verbose_memory))
+		ow_objmem_context_verbose(om->objmem_context, true);
 
 	int status;
 	status = ow_machine_run(

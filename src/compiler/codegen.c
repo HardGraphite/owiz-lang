@@ -8,6 +8,7 @@
 #include "error.h"
 #include <machine/globals.h>
 #include <machine/machine.h>
+#include <machine/symbols.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
 #include <objects/symbolobj.h>
@@ -1038,7 +1039,8 @@ static void ow_codegen_emit_BlockStmt(
 static void ow_codegen_emit_ReturnStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ReturnStmt *node) {
-	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC))
+	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC
+			&& node->type != OW_AST_NODE_MagicReturnStmt))
 		ow_codegen_error_throw(codegen, &node->location, "unexpected return statement");
 
 	ow_unused_var(action);
@@ -1064,6 +1066,13 @@ static void ow_codegen_emit_ReturnStmt(
 	} else {
 		ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
 	}
+}
+
+static void ow_codegen_emit_MagicReturnStmt(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_MagicReturnStmt *node) {
+	ow_codegen_emit_ReturnStmt(
+		codegen, action, (const struct ow_ast_ReturnStmt *)node);
 }
 
 static void ow_codegen_emit_IfElseStmt(
@@ -1300,8 +1309,7 @@ static void ow_codegen_emit_Module(
 	scope_stack_pop(&codegen->scope_stack);
 
 	ow_objmem_push_ngc(codegen->machine);
-	struct ow_symbol_obj *const func_name =
-		ow_symbol_obj_new(codegen->machine, NULL, 0);
+	struct ow_symbol_obj *const func_name = codegen->machine->common_symbols->anon;
 	ow_module_obj_set_global_y(codegen->module, func_name, ow_object_from(func));
 	ow_objmem_pop_ngc(codegen->machine);
 

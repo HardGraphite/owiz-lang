@@ -451,6 +451,14 @@ static void ow_ast_ReturnStmt_fini(struct ow_ast_ReturnStmt *node) {
 	if (ow_likely(node->ret_val)) ow_ast_node_del((struct ow_ast_node *)node->ret_val);
 }
 
+static void ow_ast_MagicReturnStmt_init(struct ow_ast_MagicReturnStmt *node) {
+	ow_ast_ReturnStmt_init((struct ow_ast_ReturnStmt *)node);
+}
+
+static void ow_ast_MagicReturnStmt_fini(struct ow_ast_MagicReturnStmt *node) {
+	ow_ast_ReturnStmt_fini((struct ow_ast_ReturnStmt *)node);
+}
+
 static void ow_ast_IfElseStmt_init(struct ow_ast_IfElseStmt *node) {
 	ow_ast_nodepair_array_init(&node->branches);
 	node->else_branch = NULL;

@@ -455,6 +455,11 @@ static void ow_ast_ReturnStmt_dump(
 	print_node_end_tag(name, level, out);
 }
 
+static void ow_ast_MagicReturnStmt_dump(
+		const struct ow_ast_MagicReturnStmt *node, size_t level, struct ow_iostream *out) {
+	ow_ast_ReturnStmt_dump((const struct ow_ast_ReturnStmt *)node, level, out);
+}
+
 static void ow_ast_IfElseStmt_dump(
 		const struct ow_ast_IfElseStmt *node, size_t level, struct ow_iostream *out) {
 	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);

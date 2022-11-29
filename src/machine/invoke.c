@@ -783,7 +783,7 @@ static int invoke_impl(
 		OP_BEGIN(RetLoc)
 			OPERAND(u8, operand.index)
 			if (operand.index == UINT8_MAX)
-				operand.pointer = machine_globals->value_nil;
+				operand.pointer = *stack.sp;
 			else if (ow_likely(stack.fp + operand.index < stack.sp))
 				operand.pointer = stack.fp[operand.index];
 			else
@@ -835,11 +835,11 @@ static int invoke_impl(
 					*++stack.sp = operand.pointer;
 					goto raise_exc;
 				}
-				stack.sp++; // Return value.
 				STACK_COMMIT();
 				const int status = cfunc_obj->code(machine);
 				STACK_UPDATE();
-				struct ow_object *const ret_val = *stack.fp;
+				struct ow_object *const ret_val =
+					status ? *stack.sp : machine_globals->value_nil;
 				assert(current_frame->prev_ip == ip);
 				stack.fp = current_frame->prev_fp;
 				if (current_frame->not_ret_val || ow_unlikely(!ip)) {
@@ -852,10 +852,10 @@ static int invoke_impl(
 				if (ow_unlikely(!ip)) {
 					STACK_COMMIT();
 					*_res_out = ret_val;
-					return status;
+					return status >= 0 ? 0 : -1;
 				}
 				current_frame = frame_info_list->current;
-				if (ow_unlikely(status)) {
+				if (ow_unlikely(status < 0)) {
 					*++stack.sp = ret_val; // Exception.
 					goto raise_exc;
 				}

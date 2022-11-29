@@ -314,6 +314,11 @@ struct ow_ast_ReturnStmt {
 	struct ow_ast_Expr *ret_val /*optional*/;
 };
 
+struct ow_ast_MagicReturnStmt {
+	OW_AST_NODE_HEAD
+	struct ow_ast_Expr *ret_val /*optional*/;
+};
+
 struct ow_ast_IfElseStmt {
 	OW_AST_NODE_HEAD
 	struct ow_ast_nodepair_array branches /* {(Expr)cond;

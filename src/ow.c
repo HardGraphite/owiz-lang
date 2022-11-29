@@ -11,6 +11,7 @@
 #if defined(_WIN32)
 #	include <Windows.h>
 #elif defined(__unix__) || defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+#	include <sys/ioctl.h>
 #	include <unistd.h>
 #endif
 
@@ -52,6 +53,23 @@ static bool stdin_is_tty(void) {
 	return _isatty(_fileno(stdin));
 #else
 	return true;
+#endif
+}
+
+static size_t stdout_win_width(void) {
+	const unsigned int default_value = 80;
+#if defined(_POSIX_VERSION)
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1)
+		return default_value;
+	return w.ws_col;
+#elif defined(_WIN32)
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+		return default_value;
+	return (size_t)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+#else
+	return default_value;
 #endif
 }
 
@@ -227,7 +245,7 @@ static_cold_func void argparse_help(const argparse_program_t *prog) {
 	}
 
 	puts("Options:");
-	const size_t left_width = 24, right_width = 80 - left_width;
+	const size_t left_width = 24, right_width = stdout_win_width() - 1 - left_width;
 	for (const argparse_option_t *opt = prog->opts; ; opt++) {
 		if (!opt->short_name && !opt->long_name) {
 			if (opt->argument)
@@ -403,6 +421,30 @@ static_cold_func int opt_run(
 	return 0;
 }
 
+static_cold_func int opt_verbose(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(opt);
+	if (ow_sysctl(OW_CTL_VERBOSE, arg, (size_t)-1) == OW_ERR_FAIL) {
+		struct ow_args *const args = ctx;
+		fprintf(stderr, "%s: invalid verbose target: `%s'\n", args->prog, arg);
+		cleanup_mom_and_exit(EXIT_FAILURE);
+	}
+	return 0;
+}
+
+static_cold_func int opt_stack_size(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(opt);
+	const long long n = atoll(arg);
+	if (n <= 0) {
+		struct ow_args *const args = ctx;
+		fprintf(stderr, "%s: invalid stack size: `%s'\n", args->prog, arg);
+		cleanup_mom_and_exit(EXIT_FAILURE);
+	}
+	ow_sysctl(OW_CTL_STACKSIZE, &n, sizeof n);
+	return 0;
+}
+
 static_cold_func int opt_file_or_arg(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
@@ -428,6 +470,8 @@ static const char opt_run_help[] =
 	"`-' represents stdin. "
 	"This option will be automatically used if neither `-i' nor `-e' is specified "
 	"and there are reset command-line arguments.";
+static const char opt_verbose_help[] =
+	"Enable or disable verbose output for memory, lexer, parser, code generator.";
 
 static const argparse_option_t options[] = {
 	{'h', "help"   , NULL   , "Print help message and exit.", opt_help        },
@@ -435,6 +479,8 @@ static const argparse_option_t options[] = {
 	{'i', "repl"   , NULL   , opt_repl_help                 , opt_repl        },
 	{'e', "eval"   , "CODE" , "Evaluate the given CODE."    , opt_eval        },
 	{'r', "run"    , ":MODULE|FILE|-", opt_run_help         , opt_run         },
+	{'v', "verbose", "[!]M|L|P|C", opt_verbose_help         , opt_verbose     },
+	{0  , "stack-size", "N" , "Set stack size (object count).", opt_stack_size},
 	{0  , NULL     , "..."  , NULL                          , opt_file_or_arg },
 	{0  , NULL     , NULL   , NULL                          , NULL            },
 };

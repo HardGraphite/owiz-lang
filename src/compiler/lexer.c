@@ -266,6 +266,10 @@ static void ow_lexer_scan_number(
 			ow_lexer_code_advance(lexer);
 		} else if (isdigit(c)) {
 			int_base = 8;
+		} else if (c == '.') {
+			int_val = 0;
+			int_base = 10;
+			goto fractional_part;
 		} else {
 		only_0:
 			ow_token_assign_int(result, OW_TOK_INT, 0);
@@ -302,6 +306,7 @@ static void ow_lexer_scan_number(
 
 	c = ow_lexer_code_peek(lexer);
 	if (c == '.' && int_base == 10) {
+	fractional_part:
 		ow_lexer_code_advance(lexer);
 		float_val = (double)int_val;
 		for (unsigned int ratio = 10; ; ratio *= 10) {

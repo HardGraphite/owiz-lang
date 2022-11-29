@@ -5,6 +5,7 @@
 #include <ow.h>
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@
 #include <machine/invoke.h>
 #include <machine/machine.h>
 #include <machine/modmgr.h>
+#include <machine/sysparam.h>
 #include <objects/boolobj.h>
 #include <objects/cfuncobj.h>
 #include <objects/classes.h>
@@ -95,6 +97,62 @@ OW_API union ow_sysconf_result ow_sysconf(int name) {
 	return result;
 }
 
+ow_noinline static int64_t _ow_sysctl_read_int(const void *val, size_t val_sz) {
+	if (val_sz == 8)
+		return *(const int64_t *)val;
+	if (val_sz == 4)
+		return *(const int32_t *)val;
+	if (val_sz == 2)
+		return *(const int16_t *)val;
+	if (val_sz == 1)
+		return *(const int8_t *)val;
+	return INT64_MIN;
+}
+
+OW_API int ow_sysctl(int name, const void *val, size_t val_sz) {
+	switch (name) {
+	case OW_CTL_VERBOSE: {
+		if (val_sz == (size_t)-1)
+			val_sz = strlen(val);
+		bool x;
+		char w;
+		if (*(const char *)val == '!') {
+			if (val_sz != 2)
+				return OW_ERR_FAIL;
+			x = false;
+			w = ((const char *)val)[1];
+		} else {
+			if (val_sz != 1)
+				return OW_ERR_FAIL;
+			x = true;
+			w = *(const char *)val;
+		}
+		w = (char)toupper(w);
+		if (w == 'M')
+			ow_sysparam.verbose_memory = x;
+		else if (w == 'L')
+			ow_sysparam.verbose_lexer = x;
+		else if (w == 'P')
+			ow_sysparam.verbose_parser = x;
+		else if (w == 'C')
+			ow_sysparam.verbose_codegen = x;
+		else
+			return OW_ERR_FAIL;
+		return 0;
+	}
+
+	case OW_CTL_STACKSIZE: {
+		const int64_t v = _ow_sysctl_read_int(val, val_sz);
+		if (v == INT64_MIN)
+			return OW_ERR_FAIL;
+		return 0;
+	}
+
+	default:
+		return OW_ERR_INDEX;
+	}
+}
+
 OW_API OW_NODISCARD ow_machine_t *ow_create(void) {
 	return ow_machine_new();
 }
@@ -131,13 +189,19 @@ OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) {
 	*++om->callstack.regs.sp = ow_object_from(ow_string_obj_new(om, str, len));
 }
 
-ow_noinline static int _make_module_from_stream(
-		ow_machine_t *om, const char *file_name, struct ow_istream *source) {
+/// Compile code from stream and store to the module object on stack top.
+/// If error occurs, replace the module object with an exception.
+ow_noinline static int _compile_module_from_stream(
+		ow_machine_t *om, const char *file_name, struct ow_istream *source, int flags) {
 	struct ow_compiler *const compiler = ow_compiler_new(om);
-	struct ow_module_obj *const module = ow_module_obj_new(om);
-	*++om->callstack.regs.sp = ow_object_from(module);
+	assert(ow_object_class(*om->callstack.regs.sp) == om->builtin_classes->module);
+	struct ow_module_obj *const module =
+		ow_object_cast(*om->callstack.regs.sp, struct ow_module_obj);
 	struct ow_sharedstr *const file_name_ss = ow_sharedstr_new(file_name, (size_t)-1);
-	const bool ok = ow_compiler_compile(compiler, source, file_name_ss, 0, module);
+	const int compile_flags =
+		ow_unlikely(flags & OW_MKMOD_RETLAST) ? OW_COMPILE_RETLASTEXPR : 0;
+	const bool ok = ow_compiler_compile(
+		compiler, source, file_name_ss, compile_flags, module);
 	if (ow_unlikely(!ok)) {
 		struct ow_syntax_error *const err = ow_compiler_error(compiler);
 		*om->callstack.regs.sp = ow_object_from(_make_error(
@@ -154,39 +218,61 @@ ow_noinline static int _make_module_from_stream(
 OW_API int ow_make_module(
 		ow_machine_t *om, const char *name, const void *src, int flags) {
 	const int mode = flags & 0xf;
-	if (mode == OW_MKMOD_NATIVE) {
+
+	if (ow_unlikely(flags & OW_MKMOD_INCR)) {
+		assert(om->callstack.regs.fp >= om->callstack._data);
+		struct ow_object *const v = *om->callstack.regs.sp;
+		if (ow_smallint_check(v) ||
+				ow_object_class(v) != om->builtin_classes->module)
+			*om->callstack.regs.sp = ow_object_from(ow_module_obj_new(om));
+	} else {
+		struct ow_object *const v = ow_likely(mode != OW_MKMOD_LOAD) ?
+			ow_object_from(ow_module_obj_new(om)) : om->globals->value_nil;
+		*++om->callstack.regs.sp = v;
+	}
+
+	switch (mode) {
+	case OW_MKMOD_NATIVE: {
 		const struct ow_native_module_def *const mod_def = src;
 		ow_unused_var(mod_def);
 		return OW_ERR_NIMPL; // TODO: Load module from native def.
-	} else if (mode == OW_MKMOD_FILE) {
+	}
+
+	case OW_MKMOD_FILE: {
 		struct ow_istream *const stream = ow_istream_open(src);
 		if (ow_unlikely(!stream)) {
-			*++om->callstack.regs.sp = ow_object_from(
+			*om->callstack.regs.sp = ow_object_from(
 				_make_error(om, NULL, "cannot open file `%s'", src));
 			return OW_ERR_FAIL;
 		}
-		const int status = _make_module_from_stream(om, src, stream);
+		const int status = _compile_module_from_stream(om, src, stream, flags);
 		ow_istream_close(stream);
 		return status;
-	} else if (mode == OW_MKMOD_STRING) {
+	}
+
+	case OW_MKMOD_STRING: {
 		struct ow_istream *const stream = ow_istream_open_mem(src, (size_t)-1);
-		const int status = _make_module_from_stream(om, "<string>", stream);
+		const int status = _compile_module_from_stream(om, "<string>", stream, flags);
 		ow_istream_close(stream);
 		return status;
-	} else if (mode == OW_MKMOD_STDIN) {
-		return _make_module_from_stream(om, "<stdin>", ow_istream_stdin());
-	} else if (mode == OW_MKMOD_LOAD) {
+	}
+
+	case OW_MKMOD_STDIN:
+		return _compile_module_from_stream(om, "<stdin>", ow_istream_stdin(), flags);
+
+	case OW_MKMOD_LOAD: {
 		struct ow_module_obj *const mod =
 			ow_module_manager_load(om->module_manager, name, 0);
 		if (ow_unlikely(!mod)) {
-			*++om->callstack.regs.sp = ow_object_from(
+			*om->callstack.regs.sp = ow_object_from(
 				_make_error(om, NULL, "cannot find module `%s'", name));
 			return OW_ERR_FAIL;
 		}
-		*++om->callstack.regs.sp = ow_object_from(mod);
+		*om->callstack.regs.sp = ow_object_from(mod);
 		return 0;
-	} else {
-		*++om->callstack.regs.sp = ow_object_from(ow_module_obj_new(om));
+	}
+
+	default:
 		return 0;
 	}
 }
@@ -195,7 +281,7 @@ OW_API int ow_load_local(ow_machine_t *om, int index) {
 	if (ow_likely(index < 0)) {
 		assert(om->callstack.frame_info_list.current);
 		struct ow_object **const vp =
-			om->callstack.frame_info_list.current->arg_list + (size_t)(-index);
+			om->callstack.frame_info_list.current->arg_list + (size_t)(-index - 1);
 		if (ow_unlikely(vp >= om->callstack.regs.fp))
 			return OW_ERR_INDEX;
 		*++om->callstack.regs.sp = *vp;
@@ -228,9 +314,13 @@ OW_API int ow_load_global(ow_machine_t *om, const char *name) {
 	else
 		return OW_ERR_INDEX;
 	struct ow_symbol_obj *const name_o = ow_symbol_obj_new(om, name, (size_t)-1);
-	struct ow_object *const v = ow_module_obj_get_global_y(module, name_o);
-	if (ow_unlikely(!v))
-		return OW_ERR_INDEX;
+	struct ow_object *v = ow_module_obj_get_global_y(module, name_o);
+	if (ow_unlikely(!v)) {
+		module = om->globals->module_base;
+		v = ow_module_obj_get_global_y(module, name_o);
+		if (ow_unlikely(!v))
+			return OW_ERR_INDEX;
+	}
 	*++om->callstack.regs.sp = v;
 	return 0;
 }
@@ -242,13 +332,20 @@ OW_API void ow_dup(ow_machine_t *om, size_t count) {
 		*++om->callstack.regs.sp = v;
 }
 
+OW_API void ow_swap(ow_machine_t *om) {
+	assert(om->callstack.regs.sp > om->callstack.regs.fp);
+	struct ow_object *const tmp = om->callstack.regs.sp[0];
+	om->callstack.regs.sp[0] = om->callstack.regs.sp[-1];
+	om->callstack.regs.sp[-1] = tmp;
+}
+
 /// Get local variable or argument like `ow_load_local()`. Return top value if index is 0.
 /// Return `NULL` if not exists.
 static struct ow_object *_get_local(ow_machine_t *om, int index) {
 	if (ow_likely(index < 0)) {
 		assert(om->callstack.frame_info_list.current);
 		struct ow_object **const vp =
-			om->callstack.frame_info_list.current->arg_list + (size_t)(-index);
+			om->callstack.frame_info_list.current->arg_list + (size_t)(-index - 1);
 		if (ow_unlikely(vp >= om->callstack.regs.fp))
 			return NULL;
 		return *vp;
