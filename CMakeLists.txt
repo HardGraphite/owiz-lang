@@ -25,7 +25,7 @@ option(OW_PACK_HEADER   "Include header files when installing."              ON)
 option(OW_PACK_RELA_RPATH  "Use relative RPATH when installing."             ON)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 
@@ -65,9 +65,12 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC") # MSVC
 	add_compile_definitions(_CRT_SECURE_NO_WARNINGS) # Use "unsafe" functions.
 else() # GCC, Clang, ...
 	add_compile_options(
-		-Wall -Wextra -Wpedantic -pipe
+		-Wall -Wextra -Wpedantic -pipe -pthread
 		$<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>
 		$<$<COMPILE_LANGUAGE:C>:-Werror=return-type>
+	)
+	add_link_options(
+		-pthread
 	)
 endif()
 
