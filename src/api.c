@@ -534,6 +534,92 @@ OW_API int ow_read_exception(ow_machine_t *om, int index, int flags, ...) {
 	return 0;
 }
 
+OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) {
+	va_list ap;
+	int status;
+
+	if (ow_unlikely(!fmt)) {
+		const unsigned int argc =
+			om->callstack.regs.fp - 1
+				- om->callstack.frame_info_list.current->arg_list;
+		va_start(ap, fmt);
+		*va_arg(ap, unsigned int *) = argc;
+		va_end(ap);
+		return 0;
+	}
+
+	va_start(ap, fmt);
+	status = 0;
+	for (int index = -1; ; index--) {
+		const char specifier = *fmt++;
+		if (ow_unlikely(!specifier))
+			break;
+
+		switch (specifier) {
+		case 'x':
+			status = ow_read_bool(om, index, va_arg(ap, bool *));
+			break;
+		case 'i':
+			status = ow_read_int(om, index, va_arg(ap, intmax_t *));
+			break;
+		case 'f':
+			status = ow_read_float(om, index, va_arg(ap, double *));
+			break;
+		case 'y': {
+			const char **const s = va_arg(ap, const char **);
+			size_t *const n = va_arg(ap, size_t *);
+			status = ow_read_symbol(om, index, s, n);
+		}
+			break;
+		case 's':
+			if (*fmt == '*') {
+				fmt++;
+				char *const s = va_arg(ap, char *);
+				const size_t n = va_arg(ap, size_t);
+				status = ow_read_string_to(om, index, s, n);
+			} else {
+				const char **const s = va_arg(ap, const char **);
+				size_t *const n = va_arg(ap, size_t *);
+				status = ow_read_string(om, index, s, n);
+			}
+			break;
+		default:
+			status = OW_ERR_ARG;
+			break;
+		}
+
+		if (ow_unlikely(status != 0)) {
+			if (status == OW_ERR_TYPE) {
+				if (flags & OW_RDARG_IGNIL && ow_read_nil(om, index) == 0) {
+					status = 0;
+					continue;
+				}
+				if (flags & OW_RDARG_MKEXC) {
+					const char *const type_name =
+						ow_symbol_obj_data(_ow_class_obj_pub_info(
+							ow_object_class(_get_local(om, index)))->class_name);
+					*++om->callstack.regs.sp = ow_object_from(_make_error(om, NULL,
+						"unexpected %s object for argument %i", type_name, -index));
+					status = OW_ERR_FAIL;
+				}
+				break;
+			} else if (status == OW_ERR_FAIL) {
+				if (flags & OW_RDARG_MKEXC) {
+					*++om->callstack.regs.sp = ow_object_from(
+						_make_error(om, NULL, "illegal usage of API"));
+					status = OW_ERR_FAIL;
+				}
+				break;
+			} else {
+				break;
+			}
+		}
+	}
+	va_end(ap);
+
+	return status;
+}
+
 OW_API int ow_store_local(ow_machine_t *om, int index) {
 	if (ow_likely(index < 0)) {
 		assert(om->callstack.frame_info_list.current);

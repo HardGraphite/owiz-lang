@@ -378,6 +378,34 @@ OW_API int ow_read_string_to(
  */
 OW_API int ow_read_exception(ow_machine_t *om, int index, int flags, ...) OW_NOEXCEPT;
 
+#define OW_RDARG_IGNIL (1 << 1) ///< Ignore type error when the actual object is nil.
+#define OW_RDARG_MKEXC (1 << 2) ///< Create and push an exception when type error occurs.
+
+/**
+ * @brief Parse function arguments.
+ *
+ * @param om the instance
+ * @param flags `OW_RDARG_XXX` macros or `0`
+ * @param fmt a string specifying the expected argument types or `NULL`
+ * @param ... arguments depending on param `fmt`, or `int *argc` if `param` is `NULL`
+ * @return On success, return 0. If an exception is raised, return `OW_ERR_FAIL`;
+ * if the `fmt` string is too long, return `OW_ERR_INDEX`; if one object class
+ * does not match the specified type, return `OW_ERR_TYPE`; if unexpected character
+ * is found in para `fmt`, return `OW_ERR_ARG`.
+ *
+ * @details The `fmt` string consists of specifiers listed below, and the arguments
+ * for the specifiers is similar to the corresponding ow_read_xxx functions:
+ * | Specifier | Corresponding function |
+ * |:---------:|:----------------------:|
+ * | `x`       | `ow_read_bool()`       |
+ * | `i`       | `ow_read_int()`        |
+ * | `f`       | `ow_read_float()`      |
+ * | `y`       | `ow_read_symbol()`     |
+ * | `s`       | `ow_read_string()`     |
+ * | `s*`      | `ow_read_string_to()`  |
+ */
+OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) OW_NOEXCEPT;
+
 /**
  * @brief Pop object and copy to a local variable or argument.
  *
