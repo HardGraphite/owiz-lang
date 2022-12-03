@@ -6,11 +6,13 @@
 
 #include <ow.h>
 #include <utilities/attributes.h>
+#include <utilities/platform.h>
 #include <utilities/unreachable.h>
 
-#if defined(_WIN32)
+#if _IS_WINDOWS_
+#	include <io.h>
 #	include <Windows.h>
-#elif defined(__unix__) || defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+#elif _IS_POSIX_
 #	include <sys/ioctl.h>
 #	include <unistd.h>
 #endif

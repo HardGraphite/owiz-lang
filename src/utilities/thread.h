@@ -1,13 +1,15 @@
 #pragma once
 
+#include <utilities/platform.h>
+
 struct timespec;
 
-#if defined(_WIN32)
-#	include <synchapi.h>
+#if _IS_WINDOWS_
+#	include <Windows.h> // !!
 #	define OW_THRD_WINNT 1
 typedef void *ow_thrd_t;
 typedef CRITICAL_SECTION ow_mtx_t;
-#elif defined(__unix__) || defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+#elif _IS_POSIX_
 #	include <pthread.h>
 #	define OW_THRD_POSIX 1
 typedef pthread_t ow_thrd_t;
