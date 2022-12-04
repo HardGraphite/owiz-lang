@@ -39,16 +39,11 @@
 #include <config/options.h>
 #include <config/version.h>
 
-#ifdef __GNUC__
-__attribute__((cold))
-#endif // __GNUC__
-ow_noinline ow_nodiscard static struct ow_exception_obj *_make_error(
-		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
-	va_list ap;
-	char buf[64];
-	va_start(ap, fmt);
-	const int n = vsnprintf(buf, sizeof buf, fmt, ap);
-	va_end(ap);
+ow_noinline ow_nodiscard static struct ow_exception_obj *_vmake_error(
+		struct ow_machine *om, struct ow_class_obj *exc_type,
+		const char *fmt, va_list data) {
+	char buf[256];
+	const int n = vsnprintf(buf, sizeof buf, fmt, data);
 	assert(n >= 0);
 
 	ow_objmem_push_ngc(om);
@@ -57,6 +52,18 @@ ow_noinline ow_nodiscard static struct ow_exception_obj *_make_error(
 	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
 	ow_objmem_pop_ngc(om);
 
+	return exc_o;
+}
+
+#ifdef __GNUC__
+__attribute__((cold))
+#endif // __GNUC__
+ow_noinline ow_nodiscard static struct ow_exception_obj *_make_error(
+		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	struct ow_exception_obj *const exc_o = _vmake_error(om, exc_type, fmt, ap);
+	va_end(ap);
 	return exc_o;
 }
 
@@ -161,6 +168,19 @@ OW_API void ow_destroy(ow_machine_t *om) {
 	ow_machine_del(om);
 }
 
+static_assert(sizeof(struct ow_machine_jmpbuf) <= sizeof(struct ow_jmpbuf), "");
+
+OW_API void ow_setjmp(ow_machine_t *om, ow_jmpbuf_t env) {
+	struct ow_machine_jmpbuf *const jb = (struct ow_machine_jmpbuf *)env;
+	ow_machine_setjmp(om, jb);
+}
+
+OW_API int ow_longjmp(ow_machine_t *om, ow_jmpbuf_t env) {
+	struct ow_machine_jmpbuf *const jb = (struct ow_machine_jmpbuf *)env;
+	const bool ok = ow_machine_longjmp(om, jb);
+	return ok ? 0 : OW_ERR_FAIL;
+}
+
 OW_API void ow_push_nil(ow_machine_t *om) {
 	*++om->callstack.regs.sp = om->globals->value_nil;
 }
@@ -187,6 +207,16 @@ OW_API void ow_push_symbol(ow_machine_t *om, const char *str, size_t len) {
 OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) {
 	assert(str || !len);
 	*++om->callstack.regs.sp = ow_object_from(ow_string_obj_new(om, str, len));
+}
+
+OW_API int ow_make_exception(ow_machine_t *om, int type, const char *fmt, ...) {
+	ow_unused_var(type); // TODO: Make exception of different type.
+	va_list ap;
+	va_start(ap, fmt);
+	struct ow_exception_obj *const exc_o = _vmake_error(om, NULL, fmt, ap);
+	va_end(ap);
+	*++om->callstack.regs.sp = ow_object_from(exc_o);
+	return 0;
 }
 
 /// Compile code from stream and store to the module object on stack top.
@@ -298,6 +328,28 @@ OW_API int ow_load_local(ow_machine_t *om, int index) {
 	}
 }
 
+/// Get local variable or argument like `ow_load_local()`. Return top value if index is 0.
+/// Return `NULL` if not exists.
+static struct ow_object *_get_local(ow_machine_t *om, int index) {
+	if (ow_likely(index < 0)) {
+		assert(om->callstack.frame_info_list.current);
+		struct ow_object **const vp =
+			om->callstack.frame_info_list.current->arg_list + (size_t)(-index - 1);
+		if (ow_unlikely(vp >= om->callstack.regs.fp))
+			return NULL;
+		return *vp;
+	} else if (ow_likely(index == 0)) {
+		assert(om->callstack.regs.sp >= om->callstack._data);
+		return *om->callstack.regs.sp;
+	} else {
+		assert(om->callstack.regs.sp >= om->callstack.regs.fp);
+		struct ow_object **const vp = om->callstack.regs.fp + (size_t)(index - 1);
+		if (ow_unlikely(vp > om->callstack.regs.sp))
+			return NULL;
+		return *vp;
+	}
+}
+
 OW_API int ow_load_global(ow_machine_t *om, const char *name) {
 	assert(name);
 	assert(om->callstack.frame_info_list.current);
@@ -325,6 +377,36 @@ OW_API int ow_load_global(ow_machine_t *om, const char *name) {
 	return 0;
 }
 
+OW_API int ow_load_attribute(ow_machine_t *om, int index, const char *name) {
+	assert(name);
+	struct ow_object *const obj = _get_local(om, index);
+	if (ow_unlikely(!obj))
+		return OW_ERR_INDEX;
+	struct ow_class_obj *obj_class;
+	if (ow_unlikely(ow_smallint_check(obj)))
+		obj_class = om->builtin_classes->int_;
+	else
+		obj_class = ow_object_class(obj);
+	struct ow_symbol_obj *const name_o = ow_symbol_obj_new(om, name, (size_t)-1);
+	struct ow_object *attr;
+	if (obj_class == om->builtin_classes->module) {
+		attr = ow_module_obj_get_global_y(
+			ow_object_cast(obj, struct ow_module_obj), name_o);
+		if (ow_unlikely(!attr))
+			return OW_ERR_INDEX;
+	} else {
+		const size_t attr_index = ow_class_obj_find_attribute(obj_class, name_o);
+		if (ow_likely(attr_index != (size_t)-1)) {
+			attr = ow_object_get_field(obj, attr_index);
+		} else {
+			// TODO: Call __find_attr__() to find attribute.
+			return OW_ERR_INDEX;
+		}
+	}
+	*++om->callstack.regs.sp = attr;
+	return 0;
+}
+
 OW_API void ow_dup(ow_machine_t *om, size_t count) {
 	assert(om->callstack.frame_info_list.current);
 	struct ow_object *const v = *om->callstack.regs.sp;
@@ -337,28 +419,6 @@ OW_API void ow_swap(ow_machine_t *om) {
 	struct ow_object *const tmp = om->callstack.regs.sp[0];
 	om->callstack.regs.sp[0] = om->callstack.regs.sp[-1];
 	om->callstack.regs.sp[-1] = tmp;
-}
-
-/// Get local variable or argument like `ow_load_local()`. Return top value if index is 0.
-/// Return `NULL` if not exists.
-static struct ow_object *_get_local(ow_machine_t *om, int index) {
-	if (ow_likely(index < 0)) {
-		assert(om->callstack.frame_info_list.current);
-		struct ow_object **const vp =
-			om->callstack.frame_info_list.current->arg_list + (size_t)(-index - 1);
-		if (ow_unlikely(vp >= om->callstack.regs.fp))
-			return NULL;
-		return *vp;
-	} else if (ow_likely(index == 0)) {
-		assert(om->callstack.regs.sp >= om->callstack._data);
-		return *om->callstack.regs.sp;
-	} else {
-		assert(om->callstack.regs.sp >= om->callstack.regs.fp);
-		struct ow_object **const vp = om->callstack.regs.fp + (size_t)(index - 1);
-		if (ow_unlikely(vp > om->callstack.regs.sp))
-			return NULL;
-		return *vp;
-	}
 }
 
 OW_API int ow_read_nil(ow_machine_t *om, int index) {

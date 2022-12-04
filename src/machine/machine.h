@@ -19,9 +19,19 @@ struct ow_machine {
 	struct ow_callstack callstack;
 };
 
+/// Jump buffer.
+struct ow_machine_jmpbuf {
+	void *sp, *fp, *fi;
+};
+
 /// Create a context.
 struct ow_machine *ow_machine_new(void);
 /// Destroy a context.
 void ow_machine_del(struct ow_machine *om);
+
+/// Store context.
+void ow_machine_setjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb);
+/// Jump back to stored context.
+_Bool ow_machine_longjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb);
 
 void _om_machine_gc_marker(struct ow_machine *om);

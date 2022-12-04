@@ -79,6 +79,39 @@ void ow_machine_del(struct ow_machine *om) {
 	ow_free(om);
 }
 
+void ow_machine_setjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb) {
+	jb->sp = om->callstack.regs.sp;
+	jb->fp = om->callstack.regs.fp;
+	jb->fi = om->callstack.frame_info_list.current;
+}
+
+bool ow_machine_longjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb) {
+	if (!(
+		jb->sp && jb->fp && jb->fi &&
+		(struct ow_object **)jb->sp <= om->callstack.regs.sp &&
+		(struct ow_object **)jb->fp <= om->callstack.regs.fp &&
+		(struct ow_object **)jb->sp >= (struct ow_object **)jb->fp - 1
+	)) {
+		return false;
+	}
+	for (struct ow_callstack_frame_info *fi =
+			om->callstack.frame_info_list.current; ; fi = fi->_next) {
+		if (!fi)
+			return false;
+		if (fi == jb->fi)
+			break;
+	}
+
+	om->callstack.regs.sp = jb->sp;
+	om->callstack.regs.fp = jb->fp;
+	while (om->callstack.frame_info_list.current != jb->fi) {
+		assert(om->callstack.frame_info_list.current);
+		ow_callstack_frame_info_list_leave(&om->callstack.frame_info_list);
+	}
+
+	return true;
+}
+
 void _om_machine_gc_marker(struct ow_machine *om) {
 	_ow_builtin_classes_gc_marker(om, om->builtin_classes);
 	if (ow_likely(om->module_manager))

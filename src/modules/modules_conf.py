@@ -16,6 +16,7 @@ from typing import Generator, Iterable
 class ModuleConfig:
     required: bool = False
     must_embed: bool = False
+    prefer_dyn: bool = False
     depend_mods: None | list[str] = None
     sources: None | str = None
     link_libs: None | str = None
@@ -30,6 +31,7 @@ def load_config(file) -> dict[str, ModuleConfig]:
         mod_conf = ModuleConfig()
         mod_conf.required = sect.getboolean('required')
         mod_conf.must_embed = sect.getboolean('must-embed')
+        mod_conf.prefer_dyn = sect.getboolean('prefer-dyn')
         depend_mods = sect['depend-mods']
         if depend_mods:
             mod_conf.depend_mods = depend_mods.split(',')
@@ -96,6 +98,13 @@ def write_cmake_conf(
         puts('set(OW_REQUIRED_MODULES')
         for mod_name, mod_conf in conf.items():
             if mod_conf.required:
+                puts('\t' + mod_name)
+        puts(')')
+        puts()
+
+        puts('set(OW_PRFDYN_MODULES')
+        for mod_name, mod_conf in conf.items():
+            if mod_conf.prefer_dyn:
                 puts('\t' + mod_name)
         puts(')')
         puts()

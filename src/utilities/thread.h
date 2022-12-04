@@ -24,6 +24,13 @@ typedef long ow_thrd_t;
 typedef long ow_mtx_t;
 #endif
 
+#ifdef _MSC_VER
+#	include <compat/kw_thread_local.h>
+#endif // _MSC_VER
+#ifndef thread_local
+#	define thread_local _Thread_local
+#endif // thread_local
+
 /// Identifiers for thread states and errors.
 enum {
 #if !OW_THRD_STDC

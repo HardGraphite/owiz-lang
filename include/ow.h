@@ -56,6 +56,11 @@ extern "C" {
 typedef struct ow_machine ow_machine_t;
 
 /**
+ * @brief A type used in `ow_setjmp()` to store execution context.
+ */
+typedef struct ow_jmpbuf { void *_data[4]; } ow_jmpbuf_t [1];
+
+/**
  * @brief Native function that can be called by OW.
  * @details To return object, push the object and return `1`; to return `nil`,
  * return `0`; to raise exception, push the exception object and return `-1`.
@@ -150,6 +155,28 @@ OW_API OW_NODISCARD ow_machine_t *ow_create(void) OW_NOEXCEPT;
 OW_API void ow_destroy(ow_machine_t *om) OW_NOEXCEPT;
 
 /**
+ * @brief Saves the current execution context.
+ *
+ * @param om the instance
+ * @param env jmpbuf to save context to
+ */
+OW_API void ow_setjmp(ow_machine_t *om, ow_jmpbuf_t env) OW_NOEXCEPT;
+
+/**
+ * @brief Restore execution context.
+ *
+ * @param om the instance
+ * @param env jmpbuf in which execution context is saved by `ow_setjmp()`
+ * @return On success, return 0. If the `env` is invalid, return `OW_ERR_FAIL`.
+ *
+ * @note Unlike `longjmp()` function from C standard library, this function
+ * does not handle jumps in native environment.
+ *
+ * @warning DO NOT jump to another OW instance or jump to a function call that has exited.
+ */
+OW_API int ow_longjmp(ow_machine_t *om, ow_jmpbuf_t env) OW_NOEXCEPT;
+
+/**
  * @brief Push a Nil object.
  *
  * @param om the instance
@@ -197,6 +224,17 @@ OW_API void ow_push_symbol(ow_machine_t *om, const char *str, size_t len) OW_NOE
  * @param len length of the string, or `-1` to use length of NUL-terminated string
  */
 OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) OW_NOEXCEPT;
+
+/**
+ * @brief Create and push an exception.
+ *
+ * @param om the instance
+ * @param type `0`
+ * @param fmt format string like `printf()`
+ * @param ... data to be formatted
+ * @return On success, returns `0`.
+ */
+OW_API int ow_make_exception(ow_machine_t *om, int type, const char *fmt, ...) OW_NOEXCEPT;
 
 #define OW_MKMOD_EMPTY    0x00 ///< Create an empty module.
 #define OW_MKMOD_NATIVE   0x01 ///< Create a module from native definition.
@@ -247,6 +285,18 @@ OW_API int ow_load_local(ow_machine_t *om, int index) OW_NOEXCEPT;
  * @return On success, returns `0`. If variable is not found, return `OW_ERR_INDEX`.
  */
 OW_API int ow_load_global(ow_machine_t *om, const char *name) OW_NOEXCEPT;
+
+/**
+ * @brief Push object attribute or module content.
+ *
+ * @param om the instance
+ * @param index index of local variable like param `index` in `ow_load_local()`,
+ * or `0` to represent the top object on stack
+ * @param name name of the attribute to get
+ * @return On success, returns `0`. If `index` is out of range, return `OW_ERR_INDEX`;
+ * if attribute is not found, return `OW_ERR_INDEX`.
+ */
+OW_API int ow_load_attribute(ow_machine_t *om, int index, const char *name) OW_NOEXCEPT;
 
 /**
  * @brief Duplicate top object.

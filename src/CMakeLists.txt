@@ -3,6 +3,9 @@ option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
 option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
 
+include(FindReadline)
+set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
+
 set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
 set(OW_FILENAME_EXTENSION_SRC ".ow" )
 set(OW_FILENAME_EXTENSION_OBJ ".owo")
@@ -64,16 +67,6 @@ if(OW_BUILD_STATIC)
 	message(STATUS "Output directory for `OW_BUILD_STATIC` is ${ow_out_static_dir}.")
 endif()
 
-## Add include directories.
-foreach(tgt IN LISTS ow_exe_targets ow_lib_targets)
-	target_include_directories(
-		${tgt} PRIVATE
-		"${CMAKE_SOURCE_DIR}/include"
-		"${CMAKE_CURRENT_SOURCE_DIR}"
-		"${CMAKE_CURRENT_BINARY_DIR}"
-	)
-endforeach()
-
 # Add definitions for library targets.
 foreach(tgt IN LISTS ow_lib_targets)
 	target_compile_definitions(
@@ -86,11 +79,18 @@ endforeach()
 include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_conf.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_util.cmake")
 if(NOT DEFINED OW_EMBEDDED_MODULES)
-	set(OW_EMBEDDED_MODULES "*")
+	set(OW_EMBEDDED_MODULES "*;-%")
 endif()
 if(NOT DEFINED OW_DYNAMIC_MODULES)
-	set(OW_DYNAMIC_MODULES "")
+	set(OW_DYNAMIC_MODULES "%")
 endif()
+set(mod_list_common_suffix)
+if(NOT LibReadline_FOUND)
+	list(APPEND mod_list_common_suffix "-readline")
+endif()
+foreach(mod_list IN ITEMS OW_EMBEDDED_MODULES OW_DYNAMIC_MODULES)
+	list(APPEND ${mod_list} ${mod_list_common_suffix})
+endforeach()
 set(OW_EMBEDDED_MODULES ${OW_EMBEDDED_MODULES} CACHE
 	STRING "List of embedded modules. ${ow_mod_util_conf_list_doc}")
 set(OW_DYNAMIC_MODULES ${OW_DYNAMIC_MODULES} CACHE
@@ -110,13 +110,21 @@ foreach(tgt IN LISTS ow_lib_targets)
 		message(STATUS "Add embedded module `${mod_name}'.")
 	endforeach()
 endforeach()
+set(ow_mod_targets)
 foreach(mod_name IN LISTS ow_dynamic_mods)
 	set(tgt "ow_mod_${mod_name}")
 	add_library(${tgt} MODULE)
-	set_target_properties(${tgt} PROPERTIES
-		PREFIX "" OUTPUT_NAME ${mod_name} SUFFIX ${OW_FILENAME_EXTENSION_OBJ})
+	target_compile_definitions(${tgt} PRIVATE "OW_EXPORT_MOD=1")
+	set_target_properties(
+		${tgt} PROPERTIES
+		PREFIX ""
+		OUTPUT_NAME ${mod_name}
+		SUFFIX ${OW_FILENAME_EXTENSION_OBJ}
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/modules"
+	)
 	ow_mod_util_add_sources(${tgt} PRIVATE ${mod_name})
 	ow_mod_util_link_libraries(${tgt} PRIVATE ${mod_name})
+	list(APPEND ow_mod_targets ${tgt})
 	message(STATUS "Add dynamic module `${mod_name}'.")
 endforeach()
 include(mkcode)
@@ -124,6 +132,16 @@ ow_make_c_macro_list("OW_EMBEDDED_MODULE_LIST" "${ow_embedded_mods}" tmp_str)
 string(CONCAT tmp_str "// \"@OW_EMBEDDED_MODULES@\"\n\n" "${tmp_str}")
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/module_list.h" @ONLY CONTENT "${tmp_str}")
 unset(tmp_str)
+
+## Add include directories.
+foreach(tgt IN LISTS ow_exe_targets ow_lib_targets ow_mod_targets)
+	target_include_directories(
+		${tgt} PRIVATE
+		"${CMAKE_SOURCE_DIR}/include"
+		"${CMAKE_CURRENT_SOURCE_DIR}"
+		"${CMAKE_CURRENT_BINARY_DIR}"
+	)
+endforeach()
 
 ## Generate config header: "definitions.h".
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
@@ -139,6 +157,7 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
 #cmakedefine01  OW_DEBUG_LEXER
 #cmakedefine01  OW_DEBUG_PARSER
 #cmakedefine01  OW_DEBUG_CODEGEN
+#cmakedefine01  OW_LIB_READLINE_USE_LIBEDIT
 ]==])
 
 ## Generate config header: "version.h".

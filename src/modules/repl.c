@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _MSC_VER
-#	include <compat/msvc_stdatomic.h>
-#else
-#	include <stdatomic.h>
-#endif
+#include <utilities/thread.h> // thread_local
 
-#include <ow.h>
+#ifndef sigsetjmp
+#	define sigjmp_buf                jmp_buf
+#	define sigsetjmp(env, savemask)  setjmp(env)
+#	define siglongjmp(env, status)   longjmp(env)
+#endif
 
 #define DEFAULT_PS1 ">> "
 #define DEFAULT_PS2 " > "
@@ -82,29 +82,48 @@ static void code_buffer_append(struct code_buffer *cb, const char *s, size_t n) 
 	cb->length = new_length;
 }
 
-static jmp_buf sig_jmp_buf;
+enum readline_status {
+	RL_OK, // Succeeded.
+	RL_EOF, // Reached end of file.
+	RL_ABORT, // Abort, SIGINT.
+	RL_NA, // Not available.
+};
 
-_Noreturn static void sig_handler(int sig) {
+thread_local static sigjmp_buf simple_readline_sig_jmp_buf;
+
+_Noreturn static void simple_readline_sig_handler(int sig) {
 	assert(sig);
-	longjmp(sig_jmp_buf, sig);
+	assert(sig == SIGINT);
+	siglongjmp(simple_readline_sig_jmp_buf, sig);
 }
 
-static atomic_int read_line_calling;
+/// Pop top value as prompt string and read line.
+static enum readline_status simple_readline(
+		struct ow_machine *om, struct code_buffer *code) {
+	enum readline_status status = RL_OK;
 
-static bool do_read_line(struct code_buffer *code) {
-	while (true) {
-		if (atomic_fetch_add(&read_line_calling, 1) == 0)
-			break;
-		atomic_fetch_sub(&read_line_calling, 1);
+	const char *prompt_string;
+	if (ow_read_string(om, 0, &prompt_string, NULL) < 0)
+		prompt_string = NULL;
+	ow_drop(om, 1);
+	if (prompt_string) {
+		fputs(prompt_string, stdout);
+		fflush(stdout);
 	}
 
-	signal(SIGINT, sig_handler);
-	setjmp(sig_jmp_buf);
+	void (*const orig_sig_handler)(int) =
+		signal(SIGINT, simple_readline_sig_handler);
+	if (sigsetjmp(simple_readline_sig_jmp_buf, 1)) {
+		status = RL_ABORT;
+		goto cleanup;
+	}
 
 	while (true) {
 		char buffer[80];
-		if (!fgets(buffer, sizeof buffer, stdin))
-			return false;
+		if (!fgets(buffer, sizeof buffer, stdin)) {
+			status = RL_EOF;
+			goto cleanup;
+		}
 		const size_t len = strlen(buffer);
 		assert(len > 0);
 		code_buffer_append(code, buffer, len);
@@ -112,9 +131,45 @@ static bool do_read_line(struct code_buffer *code) {
 			break;
 	}
 
-	signal(SIGINT, SIG_DFL);
-	atomic_fetch_sub(&read_line_calling, 1);
-	return true;
+cleanup:
+	signal(SIGINT, orig_sig_handler != SIG_ERR ? orig_sig_handler : SIG_DFL);
+	return status;
+}
+
+/// Pop top value as prompt string and read line with readline module.
+static enum readline_status librl_readline(
+		struct ow_machine *om, struct code_buffer *code) {
+	const int prompt_index = ow_drop(om, 0);
+	if (ow_load_global(om, "readline") != 0)
+		return RL_NA;
+	if (ow_load_attribute(om, 0, "readline") != 0) {
+		ow_drop(om, 1);
+		return RL_NA;
+	}
+	ow_load_local(om, prompt_index);
+	const int status = ow_invoke(om, 1, 0);
+	if (status != 0) {
+		if (status == OW_ERR_FAIL) {
+			const char *msg;
+			ow_read_exception(om, 0, OW_RDEXC_MSG | OW_RDEXC_TOBUF, &msg, NULL);
+			if (strstr(msg, "SIGINT"))
+				return RL_ABORT;
+		}
+		ow_drop(om, 1);
+		return RL_NA;
+	}
+
+	const char *line;
+	if (ow_read_string(om, 0, &line, NULL) != 0)
+		line = NULL;
+	if (!line)
+		return RL_EOF;
+	if (ow_load_attribute(om, prompt_index + 1, "add_history") == 0) {
+		ow_swap(om);
+		ow_invoke(om, 1, OW_IVK_NORETVAL);
+	}
+	code_buffer_append(code, line, strlen(line));
+	return RL_OK;
 }
 
 //# read() :: String | Nil
@@ -124,24 +179,30 @@ static int func_read(struct ow_machine *om) {
 	code_buffer_init(&code);
 
 	for (int line_num = 1; ; line_num++) {
-		char prompt_string[96];
 		do {
 			if (ow_load_global(om, "prompt") == 0) {
-				ow_push_int(om, line_num);
+				ow_push_int(om, line_num > 1 ? 2 : 1);
 				if (ow_invoke(om, 1, 0) == 0)
 					break;
 				ow_drop(om, 1);
 			}
 			ow_push_nil(om);
 		} while (false);
-		if (ow_read_string_to(om, 0, prompt_string, sizeof prompt_string) < 0)
-			strcpy(prompt_string, DEFAULT_PS1);
-		ow_drop(om, 1);
 
-		fputs(prompt_string, stdout);
-		fflush(stdout);
+		enum readline_status rl_status;
+		rl_status = librl_readline(om, &code);
+		if (rl_status == RL_NA)
+			rl_status = simple_readline(om, &code);
+		assert(rl_status != RL_NA);
 
-		if (!do_read_line(&code)) {
+		if (rl_status != RL_OK) {
+			if (rl_status == RL_ABORT) {
+				fputc('\n', stdout);
+				line_num = 0;
+				code.length = 0;
+				continue;
+			}
+			assert(rl_status == RL_EOF);
 			if (!code.length) {
 				fputs("(EOF)\n", stdout);
 				code_buffer_fini(&code);
@@ -253,6 +314,9 @@ static int func_main(struct ow_machine *om) {
 static int initializer(struct ow_machine *om) {
 	ow_push_int(om, 0);
 	ow_store_global(om, "count");
+	if (ow_make_module(om, "readline", NULL, OW_MKMOD_LOAD) == 0)
+		ow_store_global(om, "readline");
+	// TODO: Set completion entry function.
 	return 0;
 }
 
