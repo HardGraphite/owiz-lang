@@ -423,6 +423,14 @@ static_cold_func int opt_run(
 	return 0;
 }
 
+static_cold_func int opt_path(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(ctx), ow_unused_var(opt);
+	prepare_mom();
+	ow_syscmd(main_om, OW_CMD_ADDPATH, arg);
+	return 0;
+}
+
 static_cold_func int opt_verbose(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt);
@@ -481,6 +489,7 @@ static const argparse_option_t options[] = {
 	{'i', "repl"   , NULL   , opt_repl_help                 , opt_repl        },
 	{'e', "eval"   , "CODE" , "Evaluate the given CODE."    , opt_eval        },
 	{'r', "run"    , ":MODULE|FILE|-", opt_run_help         , opt_run         },
+	{'P', "path"   , "PATH" , "Add a module search path."   , opt_path        },
 	{'v', "verbose", "[!]M|L|P|C", opt_verbose_help         , opt_verbose     },
 	{0  , "stack-size", "N" , "Set stack size (object count).", opt_stack_size},
 	{0  , NULL     , "..."  , NULL                          , opt_file_or_arg },
@@ -577,6 +586,8 @@ static int ow_main(int argc, char *argv[]) {
 	parse_args(argc, argv, &args);
 
 	prepare_mom();
+
+	ow_syscmd(main_om, OW_CMD_ADDPATH, ".");
 
 	if (args.repl) {
 		status = ow_make_module(main_om, "repl", NULL, OW_MKMOD_LOAD);

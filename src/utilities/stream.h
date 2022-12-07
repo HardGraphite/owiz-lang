@@ -4,12 +4,13 @@
 #include <stddef.h>
 
 #include <compat/kw_static.h>
+#include <utilities/filesystem.h> // ow_path_char_t
 
 /// Input stream.
 struct ow_istream;
 
 /// Open a file as input stream.
-struct ow_istream *ow_istream_open(const char *path);
+struct ow_istream *ow_istream_open(const ow_path_char_t *path);
 /// Take a string as an input stream.
 struct ow_istream *ow_istream_open_mem(const char *s, size_t n);
 /// Get stdin.
@@ -29,7 +30,7 @@ size_t ow_istream_read(struct ow_istream *s, void *buf, size_t buf_sz);
 struct ow_iostream;
 
 /// Open a file as IO stream.
-struct ow_iostream *ow_iostream_open(const char *path, bool readable);
+struct ow_iostream *ow_iostream_open(const ow_path_char_t *path, bool readable);
 /// Open an in-memory IO stream.
 struct ow_iostream *ow_iostream_open_mem(size_t n);
 /// Get stdout.

@@ -314,8 +314,11 @@ static int func_main(struct ow_machine *om) {
 static int initializer(struct ow_machine *om) {
 	ow_push_int(om, 0);
 	ow_store_global(om, "count");
-	if (ow_make_module(om, "readline", NULL, OW_MKMOD_LOAD) == 0)
+	if (ow_make_module(om, "readline", NULL, OW_MKMOD_LOAD) == 0) {
+		ow_dup(om, 1);
 		ow_store_global(om, "readline");
+		ow_invoke(om, 0, OW_IVK_MODULE | OW_IVK_NORETVAL);
+	}
 	// TODO: Set completion entry function.
 	return 0;
 }

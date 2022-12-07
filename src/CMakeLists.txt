@@ -7,8 +7,9 @@ include(FindReadline)
 set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
 
 set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
-set(OW_FILENAME_EXTENSION_SRC ".ow" )
-set(OW_FILENAME_EXTENSION_OBJ ".owo")
+set(OW_FILENAME_EXTENSION_SRC ".ow" ) # Source code.
+set(OW_FILENAME_EXTENSION_BTC ".owc") # Bytecode.
+set(OW_FILENAME_EXTENSION_OBJ ".owo") # Native dynamic library.
 
 ## Collect source files.
 set(ow_main_src "ow.c")
@@ -147,6 +148,7 @@ endforeach()
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
 #pragma once
 #define  OW_FILENAME_EXTENSION_SRC  "@OW_FILENAME_EXTENSION_SRC@"
+#define  OW_FILENAME_EXTENSION_BTC  "@OW_FILENAME_EXTENSION_BTC@"
 #define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
 ]==])
 
@@ -228,11 +230,13 @@ if(ow_exe_targets AND ow_lib_targets)
 		set(ow_install_exe_dir ".")
 		set(ow_install_lib_dir ".")
 		set(ow_install_inc_dir "include")
+		set(ow_install_mod_dir "lib")
 	else()
 		include(GNUInstallDirs)
 		set(ow_install_exe_dir ${CMAKE_INSTALL_BINDIR})
 		set(ow_install_lib_dir ${CMAKE_INSTALL_LIBDIR})
 		set(ow_install_inc_dir ${CMAKE_INSTALL_INCLUDEDIR})
+		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/ow")
 	endif()
 	if(OW_BUILD_SHARED AND OW_PACK_RELA_RPATH AND UNIX)
 		set_target_properties(ow_exe_shared PROPERTIES INSTALL_RPATH
@@ -241,6 +245,7 @@ if(ow_exe_targets AND ow_lib_targets)
 	file(GLOB ow_install_headers "${CMAKE_SOURCE_DIR}/include/*.h")
 	install(TARGETS ${ow_exe_targets} DESTINATION ${ow_install_exe_dir})
 	install(TARGETS ${ow_lib_targets} DESTINATION ${ow_install_lib_dir})
+	install(TARGETS ${ow_mod_targets} DESTINATION ${ow_install_mod_dir})
 	if(OW_PACK_HEADER)
 		install(FILES ${ow_install_headers} DESTINATION ${ow_install_inc_dir})
 	endif()

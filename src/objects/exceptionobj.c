@@ -1,5 +1,6 @@
 #include "exceptionobj.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 
 #include "cfuncobj.h"
@@ -60,6 +61,33 @@ struct ow_exception_obj *ow_exception_new(
 	ow_xarray_init(&obj->backtrace, struct ow_exception_obj_frame_info, 4);
 	obj->data = data;
 	return obj;
+}
+
+struct ow_exception_obj *ow_exception_format(
+		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	struct ow_exception_obj *const exc_o =
+		ow_exception_vformat(om, exc_type, fmt, ap);
+	va_end(ap);
+	return exc_o;
+}
+
+struct ow_exception_obj *ow_exception_vformat(
+		struct ow_machine *om, struct ow_class_obj *exc_type,
+		const char *fmt, va_list data) {
+	char msg_buf[256];
+	const int n = vsnprintf(msg_buf, sizeof msg_buf, fmt, data);
+	if (ow_unlikely(n <= 0))
+		return NULL;
+
+	ow_objmem_push_ngc(om);
+	struct ow_object *const msg_o =
+		ow_object_from(ow_string_obj_new(om, msg_buf, (size_t)n));
+	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
+	ow_objmem_pop_ngc(om);
+
+	return exc_o;
 }
 
 struct ow_object *ow_exception_obj_data(const struct ow_exception_obj *self) {

@@ -2,8 +2,6 @@
 
 #include <assert.h>
 #include <limits.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "globals.h"
@@ -27,28 +25,6 @@
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
 
-/// Format an error.
-#ifdef __GNUC__
-__attribute__((cold))
-#endif // __GNUC__
-ow_noinline ow_nodiscard static struct ow_exception_obj *invoke_impl_make_error(
-		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
-	va_list ap;
-	char buf[64];
-	va_start(ap, fmt);
-	const int n = vsnprintf(buf, sizeof buf, fmt, ap);
-	va_end(ap);
-	assert(n >= 0);
-
-	ow_objmem_push_ngc(om);
-	struct ow_object *const msg_o =
-		ow_object_from(ow_string_obj_new(om, buf, (size_t)n));
-	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
-	ow_objmem_pop_ngc(om);
-
-	return exc_o;
-}
-
 /// Check number of arguments. If there is no error, return NULL.
 ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_argc(
 		struct ow_machine *om, const struct ow_func_spec *func_spec, size_t argc) {
@@ -57,13 +33,13 @@ ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_ar
 	if (ow_likely(expected_argc >= 0)) {
 		if (ow_likely((unsigned int)argc == (unsigned int)expected_argc))
 			return NULL;
-		return invoke_impl_make_error(om, NULL, "too %s arguments",
+		return ow_exception_format(om, NULL, "too %s arguments",
 			(unsigned int)argc < (unsigned int)expected_argc ? "few" : "many");
 	} else {
 		const unsigned int argc_min = (unsigned int)OW_NATIVE_FUNC_VARIADIC_ARGC(argc);
 		if (ow_likely((unsigned int)argc >= argc_min))
 			return NULL;
-		return invoke_impl_make_error(om, NULL, "too few arguments");
+		return ow_exception_format(om, NULL, "too few arguments");
 	}
 }
 
@@ -79,7 +55,7 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_attribute(
 		struct ow_object *argv[2] = {obj, ow_object_from(name)};
 		return ow_machine_call(om, find_attr, 2, argv, result);
 	}
-	*result = ow_object_from(invoke_impl_make_error(
+	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not attribute `%s'",
 		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
 		ow_symbol_obj_data(name)));
@@ -98,7 +74,7 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_method(
 		struct ow_object *argv[2] = {obj, ow_object_from(name)};
 		return ow_machine_call(om, find_meth, 2, argv, result);
 	}
-	*result = ow_object_from(invoke_impl_make_error(
+	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not method `%s'",
 		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
 		ow_symbol_obj_data(name)));
@@ -434,7 +410,7 @@ static int invoke_impl(
 			goto raise_exc; \
 		struct ow_object *const cmp_res_o = *stack.sp; \
 		if (ow_unlikely(!ow_smallint_check(cmp_res_o))) { \
-			*stack.sp = ow_object_from(invoke_impl_make_error( \
+			*stack.sp = ow_object_from(ow_exception_format( \
 				machine, NULL, "wrong type of comparison result")); \
 			goto raise_exc; \
 		} \
@@ -915,13 +891,13 @@ static int invoke_impl(
 
 		default:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL, "unrecognized opcode `%02x' at %p", *ip, ip));
 			goto raise_exc;
 
 		err_not_implemented:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL,
 				"instruction `%s' has not been implemented",
 				ow_opcode_name((enum ow_opcode)*ip)));
@@ -929,7 +905,7 @@ static int invoke_impl(
 
 		err_bad_operand:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL,
 				"illegal operand for instruction `%s' at %p",
 				ow_opcode_name((enum ow_opcode)*ip), ip));
@@ -937,7 +913,7 @@ static int invoke_impl(
 
 		err_cond_is_not_bool:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL, "condition value is not a boolean object"));
 			goto raise_exc;
 
@@ -946,7 +922,7 @@ static int invoke_impl(
 			if (ow_unlikely(ow_smallint_check(operand.pointer) ||
 					!ow_class_obj_is_base(builtin_classes->exception,
 						ow_object_class(operand.pointer)))) {
-				operand.pointer = ow_object_from(invoke_impl_make_error(
+				operand.pointer = ow_object_from(ow_exception_format(
 					machine, NULL, "raise a non-exception object"));
 				*stack.sp = operand.pointer;
 			}

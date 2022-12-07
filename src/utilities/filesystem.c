@@ -1,6 +1,7 @@
 #include "filesystem.h"
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if _IS_WINDOWS_
@@ -20,18 +21,25 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 
-#ifndef PATH_MAX
+#if defined PATH_MAX
+#
+#elif defined MAXPATHLEN
+#	define PATH_MAX MAXPATHLEN
+#else
 ow_pragma_message("PATH_MAX not defined")
 #	define PATH_MAX 4096
-#endif // PATH_MAX
+#endif
 
 #define PREFERRED_DIR_SEP '/'
 
 #elif _IS_WINDOWS_
 
 #include <Windows.h>
+
+#include <compat/kw_thread_local.h>
 
 #define PATH_MAX MAX_PATH
 
@@ -43,7 +51,7 @@ ow_pragma_message("file system utilities are not implemeted")
 
 #endif
 
-static ow_path_char_t path_buffer[PATH_MAX];
+static _Thread_local ow_path_char_t path_buffer[PATH_MAX];
 
 static bool is_dir_sep(ow_path_char_t ch) {
 #if _IS_POSIX_
@@ -67,7 +75,10 @@ static ow_path_char_t *rfind_dir_sep(const ow_path_char_t *path) {
 #endif
 }
 
-static ow_path_char_t *rfind_dot(const ow_path_char_t *path) {
+static ow_path_char_t *rfind_ext_dot(const ow_path_char_t *path) {
+	ow_path_char_t *const last_dir_sep = rfind_dir_sep(path);
+	if (last_dir_sep)
+		path = last_dir_sep + 1;
 #if _IS_POSIX_
 	return strrchr(path, '.');
 #elif _IS_WINDOWS_
@@ -128,14 +139,14 @@ const ow_path_char_t *ow_path_stem(const ow_path_char_t *path) {
 			ow_path_move(path_buffer, path);
 		}
 	}
-	ow_path_char_t *const last_dot = rfind_dot(path_buffer);
+	ow_path_char_t *const last_dot = rfind_ext_dot(path_buffer);
 	if (last_dot && last_dot != path_buffer)
 		*last_dot = 0;
 	return path_buffer;
 }
 
 const ow_path_char_t *ow_path_extension(const ow_path_char_t *path) {
-	const ow_path_char_t *const last_dot = rfind_dot(path);
+	const ow_path_char_t *const last_dot = rfind_ext_dot(path);
 	if (ow_unlikely(!last_dot)) {
 		path_buffer[0] = 0;
 		return path_buffer;
@@ -204,6 +215,20 @@ const ow_path_char_t *ow_path_join(
 	return path_buffer;
 }
 
+const ow_path_char_t *ow_path_replace_extension(
+		const ow_path_char_t *path, const ow_path_char_t *new_ext) {
+	if (path != path_buffer)
+		ow_path_move(path_buffer, path);
+	ow_path_char_t *last_dot = rfind_ext_dot(path_buffer);
+	if (ow_unlikely(!last_dot))
+		last_dot = path_buffer + ow_path_len(path_buffer);
+	if (ow_unlikely(!new_ext))
+		new_ext = OW_PATH_STR("");
+	assert((last_dot - path_buffer) + ow_path_len(new_ext) < PATH_MAX);
+	ow_path_move(last_dot, new_ext);
+	return path_buffer;
+}
+
 #if _IS_WINDOWS_
 
 char *ow_winpath_to_str(const ow_path_char_t *path) {
@@ -215,10 +240,10 @@ char *ow_winpath_to_str(const ow_path_char_t *path) {
 	return u8str;
 }
 
-ow_path_char_t *ow_winpath_from_str(const char *path_str) {
+const ow_path_char_t *ow_winpath_from_str(const char *path_str) {
 	const bool ok =
 		MultiByteToWideChar(CP_UTF8, 0, path_str, -1, path_buffer, PATH_MAX);
-	return ok ? ow_path_dup(path_buffer) : NULL;
+	return ok ? path_buffer : NULL;
 }
 
 #endif // _IS_WINDOWS_
@@ -311,4 +336,20 @@ int ow_fs_iter_dir(
 	FindClose(hFind);
 	return ret;
 #endif
+}
+
+const ow_path_char_t *ow_fs_home_dir(void) {
+#if _IS_WINDOWS_
+	return _wgetenv(L"USERPROFILE");
+#elif _IS_POSIX_
+	return getenv("HOME");
+#else
+	return NULL;
+#endif
+}
+
+ow_path_char_t *_ow_fs_buffer(size_t *buf_sz) {
+	if (buf_sz)
+		*buf_sz = sizeof path_buffer;
+	return path_buffer;
 }

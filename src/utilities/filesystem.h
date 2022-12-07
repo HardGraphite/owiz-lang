@@ -12,15 +12,19 @@
 
 typedef wchar_t ow_path_char_t;
 
-#define OW_PATH_CHR(C) L ## C
-#define OW_PATH_STR(S) L ## S
+#define OW_PATH_CHR(C)   L ## C
+#define OW_PATH_STR(S)   L ## S
+#define OW_PATH_CHR_PRI  "lc"
+#define OW_PATH_STR_PRI  "ls"
 
 #else // !_IS_WINDOWS_
 
 typedef char ow_path_char_t;
 
-#define OW_PATH_CHR(C) C
-#define OW_PATH_STR(S) S
+#define OW_PATH_CHR(C)   C
+#define OW_PATH_STR(S)   S
+#define OW_PATH_CHR_PRI  "c"
+#define OW_PATH_STR_PRI  "s"
 
 #endif // _IS_WINDOWS_
 
@@ -46,15 +50,24 @@ const ow_path_char_t *ow_path_concat(
 /// Join two paths. Thread-local buffer is used.
 const ow_path_char_t *ow_path_join(
 	const ow_path_char_t *path1, const ow_path_char_t *path2);
+/// Replace or add file name extension. Param `new_ext` is optional. Thread-local buffer is used.
+const ow_path_char_t *ow_path_replace_extension(
+	const ow_path_char_t *path, const ow_path_char_t *new_ext);
 
 #if _IS_WINDOWS_
 
-/// Convert path to UTF-8 string.
+/// Convert path to UTF-8 string. Deallocate the string with `ow_free()` to avoid a memory leak.
 ow_nodiscard char *ow_winpath_to_str(const ow_path_char_t *path);
-/// Convert UTF-8 string to path. Return `NULL` if error occurs.
-ow_nodiscard ow_path_char_t *ow_winpath_from_str(const char *path_str);
+/// Convert UTF-8 string to path. Return `NULL` if error occurs. Thread-local buffer is used.
+const ow_path_char_t *ow_winpath_from_str(const char *path_str);
 
-#endif // _IS_WINDOWS_
+#define OW_PATH_FROM_STR(STR) ow_winpath_from_str((STR))
+
+#else
+
+#define OW_PATH_FROM_STR(STR) (STR)
+
+#endif
 
 /// File types.
 enum ow_fs_filetype {
@@ -74,3 +87,9 @@ const ow_path_char_t *ow_fs_absolute(const ow_path_char_t *path);
 int ow_fs_filetype(const ow_path_char_t *path);
 /// Visit files in a directory.
 int ow_fs_iter_dir(const ow_path_char_t *dir, ow_fs_dir_walker_t func, void *arg);
+
+/// Get home directory of current user. Return NULL if unknown. Thread-local buffer might be used.
+const ow_path_char_t *ow_fs_home_dir(void);
+
+/// Get internal thread-local path string buffer.
+ow_path_char_t *_ow_fs_buffer(size_t *buf_sz);

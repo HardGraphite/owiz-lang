@@ -39,6 +39,7 @@ struct ow_array_obj *ow_array_obj_new(
 		for (size_t i = 0; i < elem_count; i++)
 			ow_array_append(&obj->array, elems[i]);
 	}
+	assert(ow_array_obj_data(obj) == &obj->array);
 	return obj;
 }
 

@@ -29,8 +29,14 @@ struct ow_istream_sv {
 	const char *current;
 };
 
-struct ow_istream *ow_istream_open(const char *path) {
-	FILE *const fp = fopen(path, "r");
+struct ow_istream *ow_istream_open(const ow_path_char_t *path) {
+	FILE *const fp =
+#if _IS_WINDOWS_
+		_wfopen
+#else
+		fopen
+#endif
+		(path, OW_PATH_STR("r"));
 	return (struct ow_istream *)fp;
 }
 
@@ -113,8 +119,14 @@ static_assert(
 	offsetof(struct ow_istream_sv, current) == offsetof(struct ow_iostream_sb, current),
 	"");
 
-struct ow_iostream *ow_iostream_open(const char *path, bool readable) {
-	FILE *const fp = fopen(path, readable ? "w+" : "w");
+struct ow_iostream *ow_iostream_open(const ow_path_char_t *path, bool readable) {
+	FILE *const fp =
+#if _IS_WINDOWS_
+		_wfopen
+#else
+		fopen
+#endif
+		(path, readable ? OW_PATH_STR("w+") : OW_PATH_STR("w"));
 	return (struct ow_iostream *)fp;
 }
 

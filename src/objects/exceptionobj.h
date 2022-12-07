@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdarg.h>
 #include <stddef.h>
 
 struct ow_class_obj;
@@ -19,6 +20,12 @@ struct ow_exception_obj_frame_info {
 /// Create a standard exception object. Pass `exc_type=NULL` to use base exception.
 struct ow_exception_obj *ow_exception_new(
 	struct ow_machine *om, struct ow_class_obj *exc_type, struct ow_object *data);
+/// Format message and create an exception like `ow_exception_new()`.
+struct ow_exception_obj *ow_exception_format(
+	struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...);
+/// Like `ow_exception_new()`, but use va_list.
+struct ow_exception_obj *ow_exception_vformat(
+	struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, va_list data);
 /// Get exception data.
 struct ow_object *ow_exception_obj_data(const struct ow_exception_obj *self);
 /// Append a frame info.

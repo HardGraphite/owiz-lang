@@ -39,34 +39,6 @@
 #include <config/options.h>
 #include <config/version.h>
 
-ow_noinline ow_nodiscard static struct ow_exception_obj *_vmake_error(
-		struct ow_machine *om, struct ow_class_obj *exc_type,
-		const char *fmt, va_list data) {
-	char buf[256];
-	const int n = vsnprintf(buf, sizeof buf, fmt, data);
-	assert(n >= 0);
-
-	ow_objmem_push_ngc(om);
-	struct ow_object *const msg_o =
-		ow_object_from(ow_string_obj_new(om, buf, (size_t)n));
-	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
-	ow_objmem_pop_ngc(om);
-
-	return exc_o;
-}
-
-#ifdef __GNUC__
-__attribute__((cold))
-#endif // __GNUC__
-ow_noinline ow_nodiscard static struct ow_exception_obj *_make_error(
-		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	struct ow_exception_obj *const exc_o = _vmake_error(om, exc_type, fmt, ap);
-	va_end(ap);
-	return exc_o;
-}
-
 OW_API union ow_sysconf_result ow_sysconf(int name) {
 	union ow_sysconf_result result;
 
@@ -155,6 +127,10 @@ OW_API int ow_sysctl(int name, const void *val, size_t val_sz) {
 		return 0;
 	}
 
+	case OW_CTL_DEFAULTPATH:
+		ow_sysparam_set_string(ow_sysparam_field_offset(default_paths), val, val_sz);
+		return 0;
+
 	default:
 		return OW_ERR_INDEX;
 	}
@@ -213,7 +189,8 @@ OW_API int ow_make_exception(ow_machine_t *om, int type, const char *fmt, ...) {
 	ow_unused_var(type); // TODO: Make exception of different type.
 	va_list ap;
 	va_start(ap, fmt);
-	struct ow_exception_obj *const exc_o = _vmake_error(om, NULL, fmt, ap);
+	struct ow_exception_obj *const exc_o =
+		ow_exception_format(om, NULL, fmt, ap);
 	va_end(ap);
 	*++om->callstack.regs.sp = ow_object_from(exc_o);
 	return 0;
@@ -234,7 +211,7 @@ ow_noinline static int _compile_module_from_stream(
 		compiler, source, file_name_ss, compile_flags, module);
 	if (ow_unlikely(!ok)) {
 		struct ow_syntax_error *const err = ow_compiler_error(compiler);
-		*om->callstack.regs.sp = ow_object_from(_make_error(
+		*om->callstack.regs.sp = ow_object_from(ow_exception_format(
 			om, NULL, "%s : %u:%u-%u:%u : %s\n", file_name,
 			err->location.begin.line, err->location.begin.column,
 			err->location.end.line, err->location.end.column,
@@ -263,16 +240,19 @@ OW_API int ow_make_module(
 
 	switch (mode) {
 	case OW_MKMOD_NATIVE: {
+		assert(ow_object_class(*om->callstack.regs.sp) == om->builtin_classes->module);
+		struct ow_module_obj *const module =
+			ow_object_cast(*om->callstack.regs.sp, struct ow_module_obj);
 		const struct ow_native_module_def *const mod_def = src;
-		ow_unused_var(mod_def);
-		return OW_ERR_NIMPL; // TODO: Load module from native def.
+		ow_module_obj_load_native_def(om, module, mod_def);
+		return 0;
 	}
 
 	case OW_MKMOD_FILE: {
-		struct ow_istream *const stream = ow_istream_open(src);
+		struct ow_istream *const stream = ow_istream_open(OW_PATH_FROM_STR(src));
 		if (ow_unlikely(!stream)) {
 			*om->callstack.regs.sp = ow_object_from(
-				_make_error(om, NULL, "cannot open file `%s'", src));
+				ow_exception_format(om, NULL, "cannot open file `%s'", src));
 			return OW_ERR_FAIL;
 		}
 		const int status = _compile_module_from_stream(om, src, stream, flags);
@@ -291,11 +271,11 @@ OW_API int ow_make_module(
 		return _compile_module_from_stream(om, "<stdin>", ow_istream_stdin(), flags);
 
 	case OW_MKMOD_LOAD: {
+		struct ow_exception_obj *exc;
 		struct ow_module_obj *const mod =
-			ow_module_manager_load(om->module_manager, name, 0);
+			ow_module_manager_load(om->module_manager, name, 0, &exc);
 		if (ow_unlikely(!mod)) {
-			*om->callstack.regs.sp = ow_object_from(
-				_make_error(om, NULL, "cannot find module `%s'", name));
+			*om->callstack.regs.sp = ow_object_from(exc);
 			return OW_ERR_FAIL;
 		}
 		*om->callstack.regs.sp = ow_object_from(mod);
@@ -658,7 +638,7 @@ OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) {
 					const char *const type_name =
 						ow_symbol_obj_data(_ow_class_obj_pub_info(
 							ow_object_class(_get_local(om, index)))->class_name);
-					*++om->callstack.regs.sp = ow_object_from(_make_error(om, NULL,
+					*++om->callstack.regs.sp = ow_object_from(ow_exception_format(om, NULL,
 						"unexpected %s object for argument %i", type_name, -index));
 					status = OW_ERR_FAIL;
 				}
@@ -666,7 +646,7 @@ OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) {
 			} else if (status == OW_ERR_FAIL) {
 				if (flags & OW_RDARG_MKEXC) {
 					*++om->callstack.regs.sp = ow_object_from(
-						_make_error(om, NULL, "illegal usage of API"));
+						ow_exception_format(om, NULL, "illegal usage of API"));
 					status = OW_ERR_FAIL;
 				}
 				break;
@@ -746,7 +726,7 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 		struct ow_object *const self_o = *(om->callstack.regs.sp - argc + 1);
 		if (ow_unlikely(ow_smallint_check(name_o) ||
 				ow_object_class(name_o) != om->builtin_classes->symbol)) {
-			result = ow_object_from(_make_error(
+			result = ow_object_from(ow_exception_format(
 				om, NULL, "%s is not a %s object", "method name", "Symbol"));
 			status = OW_ERR_FAIL;
 			goto end_invoke;
@@ -760,7 +740,7 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 			*(om->callstack.regs.sp - argc) =
 				ow_class_obj_get_method(self_class, method_index);
 		} else {
-			result = ow_object_from(_make_error(
+			result = ow_object_from(ow_exception_format(
 				om, NULL, "`%s' object has not method `%s'",
 				ow_symbol_obj_data(_ow_class_obj_pub_info(self_class)->class_name),
 				ow_symbol_obj_data(ow_object_cast(name_o, struct ow_symbol_obj))));
@@ -772,7 +752,7 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 		struct ow_object *const mod_o = *(om->callstack.regs.sp - argc);
 		if (ow_unlikely(ow_smallint_check(mod_o) ||
 				ow_object_class(mod_o) != om->builtin_classes->module)) {
-			result = ow_object_from(_make_error(
+			result = ow_object_from(ow_exception_format(
 				om, NULL, "%s is not a %s object", "module", "Module"));
 			status = OW_ERR_FAIL;
 			goto end_invoke;
@@ -789,5 +769,25 @@ end_invoke:
 		*++om->callstack.regs.sp = result;
 
 	assert(status == 0 || status == OW_ERR_FAIL);
+	return status;
+}
+
+OW_API int ow_syscmd(ow_machine_t *om, int name, ...) {
+	int status = 0;
+	va_list ap;
+	va_start(ap, name);
+
+	switch (name) {
+	case OW_CMD_ADDPATH:
+		if (!ow_module_manager_add_path(om->module_manager, va_arg(ap, const char *)))
+			status = OW_ERR_FAIL;
+		break;
+
+	default:
+		status = OW_ERR_INDEX;
+		break;
+	}
+
+	va_end(ap);
 	return status;
 }

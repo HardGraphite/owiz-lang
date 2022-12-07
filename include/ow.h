@@ -126,6 +126,7 @@ OW_API union ow_sysconf_result ow_sysconf(int name) OW_NOEXCEPT;
 
 #define OW_CTL_VERBOSE        0 ///< Enable verbose output. Value: `"[!]NAME"`.
 #define OW_CTL_STACKSIZE      1 ///< Set stack size (number of objects). Value: pointer to integer.
+#define OW_CTL_DEFAULTPATH    2 ///< Default module paths. Value: `"path_1\0path_2\0...path_n\0"`.
 
 /**
  * @breif Write runtime parameters.
@@ -507,6 +508,19 @@ OW_API int ow_drop(ow_machine_t *om, int count) OW_NOEXCEPT;
  * @warning If `OW_IVK_METHOD` is specified, there must be at least 1 argument.
  */
 OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) OW_NOEXCEPT;
+
+#define OW_CMD_ADDPATH      0x0001 ///< Append a module search path. `const char *path`.
+
+/**
+ * @brief Execute a command.
+ *
+ * @param om the instance
+ * @param name a `OW_CMD_XXX` macro
+ * @param ... arguments
+ * @return On success, return `0`. If `name` is illegal, return `OW_ERR_INDEX`;
+ * if error occurs, return `OW_ERR_FAIL`.
+ */
+OW_API int ow_syscmd(ow_machine_t *om, int name, ...) OW_NOEXCEPT;
 
 #ifdef __cplusplus
 }
