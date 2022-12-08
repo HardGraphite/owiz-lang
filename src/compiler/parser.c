@@ -1090,6 +1090,26 @@ static struct ow_ast_ReturnStmt *ow_parser_parse_return_stmt(
 	return ret_stmt;
 }
 
+/// Parse import statement.
+static struct ow_ast_ImportStmt *ow_parser_parse_import_stmt(
+		struct ow_parser *parser) {
+	struct token_queue *const tq = &parser->token_queue;
+	struct ow_ast_ImportStmt *const import_stmt = ow_ast_ImportStmt_new();
+	ow_parser_protect_node(parser, import_stmt);
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_KW_IMPORT);
+	import_stmt->location = token_queue_peek(tq)->location;
+	token_queue_advance(tq);
+
+	assert(!import_stmt->mod_name);
+	ow_parser_check_next(parser, OW_TOK_IDENTIFIER);
+	import_stmt->mod_name = ow_parser_parse_identifier(parser);
+	ow_parser_check_and_ignore(parser, OW_TOK_END_LINE);
+
+	ow_parser_unprotect_node(parser, import_stmt);
+	return import_stmt;
+}
+
 static void ow_parser_parse_block_to(struct ow_parser *, struct ow_ast_BlockStmt *);
 static struct ow_ast_BlockStmt *ow_parser_parse_block_stmt(struct ow_parser *);
 
@@ -1321,6 +1341,9 @@ static struct ow_ast_Stmt *ow_parser_parse_stmt(struct ow_parser *parser) {
 
 	case OW_TOK_KW_RETURN:
 		return (struct ow_ast_Stmt *)ow_parser_parse_return_stmt(parser);
+
+	case OW_TOK_KW_IMPORT:
+		return (struct ow_ast_Stmt *)ow_parser_parse_import_stmt(parser);
 
 	case OW_TOK_KW_IF:
 		return (struct ow_ast_Stmt *)ow_parser_parse_if_else_stmt(parser);

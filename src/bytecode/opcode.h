@@ -72,7 +72,7 @@
 	ELEM(JmpWhenW   , 0x43, i16) \
 	ELEM(JmpUnls    , 0x44,  i8) \
 	ELEM(JmpUnlsW   , 0x45, i16) \
-	ELEM(_46        , 0x46,   0) \
+	ELEM(LdMod      , 0x46, u16) \
 	ELEM(_47        , 0x47,   0) \
 	ELEM(Ret        , 0x48,   0) \
 	ELEM(RetLoc     , 0x49,  u8) \

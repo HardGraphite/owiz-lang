@@ -243,6 +243,18 @@ return_stmt
   ;
 ```
 
+### Import statement
+
+Import a module and store as a variable.
+
+Syntax:
+
+```
+import_stmt
+  = "import" IDENTIFIER END_LINE
+  ;
+```
+
 ### If-else statement
 
 Syntax:

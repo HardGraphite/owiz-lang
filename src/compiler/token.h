@@ -76,6 +76,7 @@
 	ELEM(KW_SELF    , "self"    ) \
 	ELEM(KW_END     , "end"     ) \
 	ELEM(KW_RETURN  , "return"  ) \
+	ELEM(KW_IMPORT  , "import"  ) \
 	ELEM(KW_IF      , "if"      ) \
 	ELEM(KW_ELIF    , "elif"    ) \
 	ELEM(KW_ELSE    , "else"    ) \

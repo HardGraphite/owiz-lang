@@ -53,6 +53,7 @@
 	ELEM(BlockStmt)       \
 	ELEM(ReturnStmt)      \
 	ELEM(MagicReturnStmt) \
+	ELEM(ImportStmt)      \
 	ELEM(IfElseStmt)      \
 	ELEM(ForStmt)         \
 	ELEM(WhileStmt)       \

@@ -9,6 +9,7 @@
 #include "symbols.h"
 #include <bytecode/opcode.h>
 #include <bytecode/operand.h>
+#include <machine/modmgr.h>
 #include <objects/cfuncobj.h>
 #include <objects/classes.h>
 #include <objects/classobj.h>
@@ -725,6 +726,30 @@ static int invoke_impl(
 				goto err_cond_is_not_bool;
 		OP_END
 
+		OP_BEGIN(LdMod)
+			OPERAND(u16, operand.index)
+			struct ow_symbol_obj *sym =
+				ow_func_obj_get_symbol(current_func_obj, operand.index);
+			if (ow_unlikely(!sym))
+				goto err_bad_operand;
+			const char *const sym_str = ow_symbol_obj_data(sym);
+			struct ow_exception_obj *exc_o;
+			struct ow_module_obj *const mod_o =
+				ow_module_manager_load(machine->module_manager, sym_str, 0, &exc_o);
+			if (ow_unlikely(!mod_o)) {
+				*++stack.sp = ow_object_from(exc_o);
+				goto raise_exc;
+			}
+			*++stack.sp = ow_object_from(mod_o);
+			const int status = ow_machine_run(
+				machine, mod_o, false, (struct ow_object **)&exc_o);
+			if (ow_unlikely(status == -1)) {
+				*++stack.sp = ow_object_from(exc_o);
+				goto raise_exc;
+			}
+			assert(status == 0);
+		OP_END
+
 		OP_BEGIN(Ret)
 			NO_OPERAND()
 			operand.pointer = machine_globals->value_nil; // Return value.
@@ -892,7 +917,7 @@ static int invoke_impl(
 		default:
 			ip--;
 			*++stack.sp = ow_object_from(ow_exception_format(
-				machine, NULL, "unrecognized opcode `%02x' at %p", *ip, ip));
+				machine, NULL, "unrecognized opcode `%#04x' at %p", *ip, ip));
 			goto raise_exc;
 
 		err_not_implemented:

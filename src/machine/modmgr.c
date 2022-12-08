@@ -366,7 +366,7 @@ struct ow_module_obj *ow_module_manager_load(
 			}
 			break;
 		} else {
-			assert(!mm->temp_module); // Not found.
+			mm->temp_module = NULL; // Not found or error occurred.
 			break;
 		}
 	} while (false);

@@ -105,7 +105,7 @@ Instructions with i16/u16 operand:
 | `JmpWhenW`   | `0x43` | i16: O  | `cond -> .`         | Jump if top value is true.                  |
 | `JmpUnls`    | `0x44` | i8: O   | `cond -> .`         | Jump if top value is false.                 |
 | `JmpUnlsW`   | `0x45` | i16: O  | `cond -> .`         | Jump if top value is false.                 |
-| `_46`        | `0x46` | 0       |                     | *(reserved)*                                |
+| `LdMod`      | `0x46` | u16: YI | `. -> mod`          | import module by name                       |
 | `_47`        | `0x47` | 0       |                     | *(reserved)*                                |
 | `Ret`        | `0x48` | 0       |                     | Return nil.                                 |
 | `RetLoc`     | `0x49` | u8: I   | `v -> .` / `. -> .` | Return local variable or top value (I=255). |

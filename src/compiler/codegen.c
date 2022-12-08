@@ -1075,6 +1075,21 @@ static void ow_codegen_emit_MagicReturnStmt(
 		codegen, action, (const struct ow_ast_ReturnStmt *)node);
 }
 
+static void ow_codegen_emit_ImportStmt(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_ImportStmt *node) {
+	assert(action == ACT_EVAL);
+	ow_unused_var(action);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	const size_t index = ow_assembler_symbol(
+		as, ow_sharedstr_data(node->mod_name->value),
+		ow_sharedstr_size(node->mod_name->value));
+	if (index > UINT16_MAX)
+		ow_codegen_error_throw(codegen, &node->location, "too many symbols");
+	ow_assembler_append(as, OW_OPC_LdMod, (union ow_operand){.u16 = (uint16_t)index});
+	ow_codegen_emit_Identifier(codegen, ACT_RECV, node->mod_name);
+}
+
 static void ow_codegen_emit_IfElseStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_IfElseStmt *node) {
