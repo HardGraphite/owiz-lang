@@ -115,6 +115,9 @@ typedef union ow_sysconf_result {
 #define OW_SC_DEBUG           0 ///< Whether compiled with debug code.
 #define OW_SC_VERSION         1 ///< Get version number (`(MAJOR<<24)|(MINOR<<16)|(PATCH<<8)`).
 #define OW_SC_VERSION_STR     2 ///< Get version string.
+#define OW_SC_COMPILER        3 ///< Get the compiler that used to build this program.
+#define OW_SC_BUILDTIME       4 ///< Get the time and date when this program was built.
+#define OW_SC_PLATFORM        5 ///< Get the name of current platform.
 
 /**
  * @brief Get configuration information at run time.

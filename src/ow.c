@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -366,6 +367,7 @@ struct ow_args {
 #endif // _MSC_VER
 
 static_cold_func void print_program_help(void);
+static_cold_func void print_detailed_version(void);
 
 static_cold_func ow_noreturn int opt_help(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
@@ -435,6 +437,10 @@ static_cold_func int opt_verbose(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt);
 	if (ow_sysctl(OW_CTL_VERBOSE, arg, (size_t)-1) == OW_ERR_FAIL) {
+		if (toupper(arg[0]) == 'V' && arg[1] == '\0') {
+			print_detailed_version();
+			cleanup_mom_and_exit(EXIT_SUCCESS);
+		}
 		struct ow_args *const args = ctx;
 		fprintf(stderr, "%s: invalid verbose target: `%s'\n", args->prog, arg);
 		cleanup_mom_and_exit(EXIT_FAILURE);
@@ -459,7 +465,7 @@ static_cold_func int opt_file_or_arg(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
 	struct ow_args *const args = ctx;
-	ow_unused_var(arg);
+	ow_unused_var(arg), ow_unused_var(args);
 	assert(!args->argc && !args->argv);
 	return 1;
 }
@@ -470,6 +476,8 @@ static_cold_func int opt_file_or_arg(
 
 #pragma pack(push, 1)
 
+static const char opt_version_help[] =
+	"Print version information and exit. Use `-vV' to print more details.";
 static const char opt_repl_help[] =
 	"Run REPL (interactive mode). "
 	"This option will be automatically enabled if neither `-e' nor "
@@ -481,16 +489,17 @@ static const char opt_run_help[] =
 	"This option will be automatically used if neither `-i' nor `-e' is specified "
 	"and there are reset command-line arguments.";
 static const char opt_verbose_help[] =
-	"Enable or disable verbose output for memory, lexer, parser, code generator.";
+	"Enable or disable verbose output for memory (M), lexer (L), parser (P), "
+	"code generator (C) or detailed version information (V).";
 
 static const argparse_option_t options[] = {
 	{'h', "help"   , NULL   , "Print help message and exit.", opt_help        },
-	{'V', "version", NULL   , "Print version info and exit.", opt_version     },
+	{'V', "version", NULL   , opt_version_help              , opt_version     },
 	{'i', "repl"   , NULL   , opt_repl_help                 , opt_repl        },
 	{'e', "eval"   , "CODE" , "Evaluate the given CODE."    , opt_eval        },
 	{'r', "run"    , ":MODULE|FILE|-", opt_run_help         , opt_run         },
 	{'P', "path"   , "PATH" , "Add a module search path."   , opt_path        },
-	{'v', "verbose", "[!]M|L|P|C", opt_verbose_help         , opt_verbose     },
+	{'v', "verbose", "[!]M|L|P|C|V", opt_verbose_help       , opt_verbose     },
 	{0  , "stack-size", "N" , "Set stack size (object count).", opt_stack_size},
 	{0  , NULL     , "..."  , NULL                          , opt_file_or_arg },
 	{0  , NULL     , NULL   , NULL                          , NULL            },
@@ -559,6 +568,14 @@ static void parse_args(int argc, char *argv[], struct ow_args *args) {
 
 static_cold_func void print_program_help(void) {
 	argparse_help(&program);
+}
+
+static_cold_func void print_detailed_version(void) {
+	printf("%s version %s\n\n", "ow", ow_sysconf(OW_SC_VERSION_STR).s);
+	printf("%-16s: %s\n", "Platform", ow_sysconf(OW_SC_PLATFORM).s);
+	printf("%-16s: %s\n", "Compiler", ow_sysconf(OW_SC_COMPILER).s);
+	printf("%-16s: %s\n", "Build time", ow_sysconf(OW_SC_BUILDTIME).s);
+	printf("%-16s: %s\n", "Build type", ow_sysconf(OW_SC_DEBUG).i ? "debug" : "release");
 }
 
 /// Parse environment variables.

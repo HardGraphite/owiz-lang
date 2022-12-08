@@ -32,10 +32,12 @@
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/attributes.h>
+#include <utilities/platform.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
+#include <config/definitions.h>
 #include <config/options.h>
 #include <config/version.h>
 
@@ -66,6 +68,18 @@ OW_API union ow_sysconf_result ow_sysconf(int name) {
 	case OW_SC_VERSION_STR:
 		result.s = OW_VERSION_STRING;
 		static_assert(sizeof(size_t) >= sizeof(void *), "");
+		break;
+
+	case OW_SC_COMPILER:
+		result.s = OW_BUILD_COMPILER_NAME " " OW_BUILD_COMPILER_VERSION;
+		break;
+
+	case OW_SC_BUILDTIME:
+		result.s = __DATE__ " " __TIME__;
+		break;
+
+	case OW_SC_PLATFORM:
+		result.s = OW_ARCHITECTURE " " OW_SYSTEM_NAME;
 		break;
 
 	default:

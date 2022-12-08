@@ -10,6 +10,8 @@ set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
 set(OW_FILENAME_EXTENSION_SRC ".ow" ) # Source code.
 set(OW_FILENAME_EXTENSION_BTC ".owc") # Bytecode.
 set(OW_FILENAME_EXTENSION_OBJ ".owo") # Native dynamic library.
+set(OW_BUILD_COMPILER_NAME "${CMAKE_C_COMPILER_ID}")
+set(OW_BUILD_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
 
 ## Collect source files.
 set(ow_main_src "ow.c")
@@ -150,6 +152,8 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
 #define  OW_FILENAME_EXTENSION_SRC  "@OW_FILENAME_EXTENSION_SRC@"
 #define  OW_FILENAME_EXTENSION_BTC  "@OW_FILENAME_EXTENSION_BTC@"
 #define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
+#define  OW_BUILD_COMPILER_NAME     "@OW_BUILD_COMPILER_NAME@"
+#define  OW_BUILD_COMPILER_VERSION  "@OW_BUILD_COMPILER_VERSION@"
 ]==])
 
 ## Generate config header: "options.h".
