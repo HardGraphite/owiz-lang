@@ -11,7 +11,41 @@
 #include <machine/invoke.h>
 #include <machine/machine.h>
 #include <utilities/array.h>
+#include <utilities/dynlib.h>
 #include <utilities/hashmap.h>
+#include <utilities/malloc.h>
+
+struct module_dynlib_list_node {
+	ow_dynlib_t *lib_handle;
+	struct module_dynlib_list_node *next;
+};
+
+struct module_dynlib_list {
+	struct module_dynlib_list_node *first_node;
+};
+
+static void module_dynlib_list_init(struct module_dynlib_list *list) {
+	list->first_node = NULL;
+}
+
+static void module_dynlib_list_fini(struct module_dynlib_list *list) {
+	for (struct module_dynlib_list_node *node = list->first_node; node; ) {
+		struct module_dynlib_list_node *const next_node = node->next;
+		ow_dynlib_close(node->lib_handle);
+		ow_free(node);
+		node = next_node;
+	}
+	list->first_node = NULL;
+}
+
+static void module_dynlib_list_add(
+		struct module_dynlib_list *list, ow_dynlib_t *lib_handle) {
+	struct module_dynlib_list_node *const node =
+		ow_malloc(sizeof(struct module_dynlib_list_node));
+	node->lib_handle = lib_handle;
+	node->next = list->first_node;
+	list->first_node = node;
+}
 
 struct ow_module_obj {
 	OW_OBJECT_HEAD
@@ -19,6 +53,7 @@ struct ow_module_obj {
 	struct ow_array globals;
 	struct ow_symbol_obj *name; // Optional.
 	int (*finalizer)(ow_machine_t *);
+	struct module_dynlib_list dynlib_list;
 };
 
 static void ow_module_obj_init(struct ow_module_obj *self) {
@@ -26,11 +61,13 @@ static void ow_module_obj_init(struct ow_module_obj *self) {
 	ow_array_init(&self->globals, 0);
 	self->name = NULL;
 	self->finalizer = NULL;
+	module_dynlib_list_init(&self->dynlib_list);
 }
 
 static void ow_module_obj_fini(struct ow_module_obj *self) {
 	ow_array_fini(&self->globals);
 	ow_hashmap_fini(&self->globals_map);
+	module_dynlib_list_fini(&self->dynlib_list);
 }
 
 static void ow_module_obj_finalizer(struct ow_machine *om, struct ow_object *obj) {
@@ -179,6 +216,10 @@ int ow_module_obj_foreach_global(
 		_ow_module_obj_foreach_global_walker,
 		&(struct _ow_module_obj_foreach_global_context) {self, walker, arg}
 	);
+}
+
+void ow_module_obj_keep_dynlib(struct ow_module_obj *self, void *lib_handle) {
+	module_dynlib_list_add(&self->dynlib_list, lib_handle);
 }
 
 static const struct ow_native_func_def module_methods[] = {

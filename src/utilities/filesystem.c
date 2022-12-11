@@ -257,12 +257,20 @@ bool ow_fs_exists(const ow_path_char_t *path) {
 }
 
 const ow_path_char_t *ow_fs_absolute(const ow_path_char_t *path) {
+	const ow_path_char_t *abs_path;
+	const bool path_is_dup = path >= path_buffer && path < path_buffer + PATH_MAX;
+	if (ow_unlikely(path_is_dup))
+		path = ow_path_dup(path);
 #if _IS_POSIX_
-	return realpath(path, path_buffer);
+	abs_path = realpath(path, path_buffer);
 #elif _IS_WINDOWS_
-	const bool ok = GetFullPathNameW(path, PATH_MAX, path_buffer, NULL);
-	return ok ? path_buffer : NULL;
+	const DWORD n = GetFullPathNameW(path, PATH_MAX, path_buffer, NULL);
+	assert(n <= PATH_MAX);
+	abs_path = n ? path_buffer : NULL;
 #endif
+	if (ow_unlikely(path_is_dup))
+		ow_free((void *)path);
+	return abs_path;
 }
 
 int ow_fs_filetype(const ow_path_char_t *path) {

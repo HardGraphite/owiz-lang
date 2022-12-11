@@ -39,3 +39,5 @@ int ow_module_obj_foreach_global(
 	const struct ow_module_obj *self,
 	int(*walker)(void *arg, struct ow_symbol_obj *name, size_t index, struct ow_object *value),
 	void *arg);
+/// Store a handle to a dynamic library and close it when finalizing.
+void ow_module_obj_keep_dynlib(struct ow_module_obj *self, void *lib_handle);

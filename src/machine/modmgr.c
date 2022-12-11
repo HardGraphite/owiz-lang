@@ -45,23 +45,24 @@ static void _add_default_paths(struct ow_module_manager *mm) {
 	const ow_path_char_t *const exe_path = ow_current_exe_path();
 	if (exe_path) {
 #if _IS_WINDOWS_
-		ow_module_manager_add_path(
-			mm, ow_path_join(ow_path_parent(exe_path), L"lib"));
+		char *const s = ow_winpath_to_str(ow_path_join(ow_path_parent(exe_path), L"lib"));
+		ow_module_manager_add_path(mm, s);
+		ow_free(s);
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
 			mm, ow_path_join(ow_path_parent(exe_path), "../lib/ow"));
 #endif
 	}
 
-	const char *const home_path = ow_fs_home_dir();
+	const ow_path_char_t *const home_path = ow_fs_home_dir();
 	if (home_path) {
 #if _IS_WINDOWS_
 		// TODO: Add user's local library path.
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
 			mm, ow_path_join(home_path, ".local/lib/ow"));
-	}
 #endif
+	}
 }
 
 struct ow_module_manager *ow_module_manager_new(struct ow_machine *om) {
@@ -249,6 +250,7 @@ static bool _load_module_from_dynlib(
 	}
 	const struct ow_native_module_def *const def = ow_dynlib_symbol(lib, sym_buf);
 	if (!def) {
+		ow_dynlib_close(lib);
 		if (exc) {
 			*exc = ow_exception_format(
 				mm->machine, NULL,
@@ -256,9 +258,9 @@ static bool _load_module_from_dynlib(
 		}
 		return false;
 	}
-	// ow_dynlib_close(lib);
-	// TODO: Collect lib handles.
 	_load_module_from_embedded(mm, def);
+	assert(mm->temp_module);
+	ow_module_obj_keep_dynlib(mm->temp_module, lib);
 	return true;
 }
 
@@ -278,7 +280,7 @@ static bool _load_module_from_source(
 	struct ow_compiler *const compiler = ow_compiler_new(mm->machine);
 	mm->temp_module = ow_module_obj_new(mm->machine);
 #if _IS_WINDOWS_
-	ow_path_char_t *_path_as_str = ow_winpath_to_str(file_path);
+	char *const _path_as_str = ow_winpath_to_str(file_path);
 	struct ow_sharedstr *const file_name_ss =
 		ow_sharedstr_new(_path_as_str, (size_t)-1);
 	ow_free(_path_as_str);

@@ -12,8 +12,10 @@
 
 typedef wchar_t ow_path_char_t;
 
-#define OW_PATH_CHR(C)   L ## C
-#define OW_PATH_STR(S)   L ## S
+#define _OW_PATH_CHR(C)  L ## C
+#define _OW_PATH_STR(S)  L ## S
+#define OW_PATH_CHR(C)   _OW_PATH_CHR(C)
+#define OW_PATH_STR(S)   _OW_PATH_STR(S)
 #define OW_PATH_CHR_PRI  "lc"
 #define OW_PATH_STR_PRI  "ls"
 

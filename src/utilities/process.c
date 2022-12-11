@@ -5,8 +5,10 @@
 
 #if defined(_WIN32)
 
+#include <Windows.h>
+
 static bool get_current_exe_path(ow_path_char_t *buffer, size_t buffer_size) {
-	const DWORD n = GetModuleFileNameW(NULL, buffer, buffer_size);
+	const DWORD n = GetModuleFileNameW(NULL, buffer, (DWORD)buffer_size);
 	return n;
 }
 
