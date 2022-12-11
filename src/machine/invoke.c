@@ -229,10 +229,8 @@ static int invoke_impl(
 
 		OP_BEGIN(LdFlt)
 			OPERAND(i8, operand.i8)
-			STACK_COMMIT();
 			*++stack.sp =
 				ow_object_from(ow_float_obj_new(machine, (double)operand.i8));
-			STACK_ASSERT_NC();
 		OP_END
 
 #define IMPL_BIN_OP(OPERATOR, METH_NAME) \
