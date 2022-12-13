@@ -19,6 +19,7 @@
 #include <machine/machine.h>
 #include <machine/modmgr.h>
 #include <machine/sysparam.h>
+#include <objects/arrayobj.h>
 #include <objects/boolobj.h>
 #include <objects/cfuncobj.h>
 #include <objects/classes.h>
@@ -27,10 +28,14 @@
 #include <objects/floatobj.h>
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
+#include <objects/mapobj.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
+#include <objects/setobj.h>
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
+#include <objects/tupleobj.h>
+#include <utilities/array.h>
 #include <utilities/attributes.h>
 #include <utilities/platform.h>
 #include <utilities/stream.h>
@@ -197,6 +202,54 @@ OW_API void ow_push_symbol(ow_machine_t *om, const char *str, size_t len) {
 OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) {
 	assert(str || !len);
 	*++om->callstack.regs.sp = ow_object_from(ow_string_obj_new(om, str, len));
+}
+
+OW_API void ow_make_array(ow_machine_t *om, size_t count) {
+	struct ow_object **data = om->callstack.regs.sp - count + 1;
+	if (ow_unlikely(data < om->callstack.regs.fp)) {
+		data = om->callstack.regs.fp;
+		count = om->callstack.regs.sp - data + 1;
+	}
+	*data = ow_object_from(ow_array_obj_new(om, data, count));
+	om->callstack.regs.sp = data;
+}
+
+OW_API void ow_make_tuple(ow_machine_t *om, size_t count) {
+	struct ow_object **data = om->callstack.regs.sp - count + 1;
+	if (ow_unlikely(data < om->callstack.regs.fp)) {
+		data = om->callstack.regs.fp;
+		count = om->callstack.regs.sp - data + 1;
+	}
+	*data = ow_object_from(ow_tuple_obj_new(om, data, count));
+	om->callstack.regs.sp = data;
+}
+
+OW_API void ow_make_set(ow_machine_t *om, size_t count) {
+	struct ow_object **data = om->callstack.regs.sp - count + 1;
+	if (ow_unlikely(data < om->callstack.regs.fp)) {
+		data = om->callstack.regs.fp;
+		count = om->callstack.regs.sp - data + 1;
+	}
+	struct ow_set_obj *const set = ow_set_obj_new(om);
+	for (size_t i = 0; i < count; i++)
+		ow_set_obj_insert(om, set, data[i]);
+	*data = ow_object_from(set);
+	om->callstack.regs.sp = data;
+}
+
+OW_API void ow_make_map(ow_machine_t *om, size_t count) {
+	struct ow_object **data = om->callstack.regs.sp - count * 2 + 1;
+	if (ow_unlikely(data < om->callstack.regs.fp)) {
+		data = om->callstack.regs.fp;
+		count = (om->callstack.regs.sp - data + 1) / 2;
+	}
+	struct ow_map_obj *const map = ow_map_obj_new(om);
+	for (size_t i = 0; i < count; i++) {
+		struct ow_object **const data_i = data + (i * 2);
+		ow_map_obj_set(om, map, data_i[0], data_i[1]);
+	}
+	*data = ow_object_from(map);
+	om->callstack.regs.sp = data;
 }
 
 OW_API int ow_make_exception(ow_machine_t *om, int type, const char *fmt, ...) {
@@ -402,7 +455,7 @@ OW_API int ow_load_attribute(ow_machine_t *om, int index, const char *name) {
 }
 
 OW_API void ow_dup(ow_machine_t *om, size_t count) {
-	assert(om->callstack.frame_info_list.current);
+	assert(om->callstack.regs.sp >= om->callstack.regs.fp);
 	struct ow_object *const v = *om->callstack.regs.sp;
 	while (count--)
 		*++om->callstack.regs.sp = v;
@@ -536,6 +589,128 @@ OW_API int ow_read_string_to(
 	if (ow_likely(cp_n == str_sz))
 		return (int)cp_n;
 	assert(cp_n == buf_sz && buf_sz < str_sz);
+	return OW_ERR_FAIL;
+}
+
+size_t ow_read_array(ow_machine_t *om, int index, size_t elem_idx) {
+	struct ow_object *const v = _get_local(om, index);
+	if (ow_unlikely(!v))
+		return OW_ERR_INDEX;
+	if (ow_unlikely(ow_smallint_check(v)))
+		return OW_ERR_TYPE;
+	if (ow_unlikely(!ow_class_obj_is_base(
+			om->builtin_classes->array, ow_object_class(v))))
+		return OW_ERR_TYPE;
+	struct ow_array *const data =
+		ow_array_obj_data(ow_object_cast(v, struct ow_array_obj));
+	const size_t len = ow_array_size(data);
+	assert(len < SIZE_MAX / 2);
+	if (ow_likely(elem_idx >= 1 && elem_idx <= len)) {
+		*++om->callstack.regs.sp = ow_array_at(data, elem_idx - 1);
+		return 0;
+	}
+	if (elem_idx == 0)
+		return len;
+	if (elem_idx == (size_t)-1) {
+		for (size_t i = 0; i < len; i++)
+			*++om->callstack.regs.sp = ow_array_at(data, i);
+		return len;
+	}
+	return OW_ERR_FAIL;
+}
+
+size_t ow_read_tuple(ow_machine_t *om, int index, size_t elem_idx) {
+	struct ow_object *const v = _get_local(om, index);
+	if (ow_unlikely(!v))
+		return OW_ERR_INDEX;
+	if (ow_unlikely(ow_smallint_check(v)))
+		return OW_ERR_TYPE;
+	if (ow_unlikely(!ow_class_obj_is_base(
+			om->builtin_classes->tuple, ow_object_class(v))))
+		return OW_ERR_TYPE;
+	struct ow_tuple_obj *const tuple_obj = ow_object_cast(v, struct ow_tuple_obj);
+	struct ow_object *const elem = ow_tuple_obj_get(tuple_obj, elem_idx - 1);
+	if (ow_likely(elem)) {
+		*++om->callstack.regs.sp = elem;
+		return 0;
+	}
+	const size_t len = ow_tuple_obj_length(tuple_obj);
+	assert(len < SIZE_MAX / 2);
+	if (elem_idx == 0)
+		return len;
+	if (elem_idx == (size_t)-1) {
+		struct ow_object **const start = om->callstack.regs.sp + 1;
+		om->callstack.regs.sp += len;
+		const size_t copied_cnt = ow_tuple_obj_copy(tuple_obj, 0, len, start, len);
+		ow_unused_var(copied_cnt);
+		assert(copied_cnt == len);
+		return len;
+	}
+	return OW_ERR_FAIL;
+}
+
+static int _set_expand_walker(void *arg, struct ow_object *elem) {
+	struct ow_machine *const om = arg;
+	*++om->callstack.regs.sp = elem;
+	return 0;
+}
+
+OW_API size_t ow_read_set(ow_machine_t *om, int index, int op) {
+	struct ow_object *const v = _get_local(om, index);
+	if (ow_unlikely(!v))
+		return OW_ERR_INDEX;
+	if (ow_unlikely(ow_smallint_check(v)))
+		return OW_ERR_TYPE;
+	if (ow_unlikely(!ow_class_obj_is_base(
+		om->builtin_classes->set, ow_object_class(v))))
+		return OW_ERR_TYPE;
+	struct ow_set_obj *const set_obj = ow_object_cast(v, struct ow_set_obj);
+	const size_t len = ow_set_obj_length(set_obj);
+	assert(len < SIZE_MAX / 2);
+	if (op == 0)
+		return len;
+	if (op == -1) {
+		ow_set_obj_foreach(set_obj, _set_expand_walker, om);
+		return len;
+	}
+	return OW_ERR_ARG;
+}
+
+static int _map_expand_walker(
+		void *arg, struct ow_object *key, struct ow_object *val) {
+	struct ow_machine *const om = arg;
+	*++om->callstack.regs.sp = key;
+	*++om->callstack.regs.sp = val;
+	return 0;
+}
+
+OW_API size_t ow_read_map(ow_machine_t *om, int index, int key_idx) {
+	struct ow_object *const v = _get_local(om, index);
+	if (ow_unlikely(!v))
+		return OW_ERR_INDEX;
+	if (ow_unlikely(ow_smallint_check(v)))
+		return OW_ERR_TYPE;
+	if (ow_unlikely(!ow_class_obj_is_base(
+		om->builtin_classes->map, ow_object_class(v))))
+		return OW_ERR_TYPE;
+	struct ow_map_obj *const map_obj = ow_object_cast(v, struct ow_map_obj);
+	if (key_idx >= -255) {
+		struct ow_object *const kv = _get_local(om, key_idx);
+		if (!kv)
+			return OW_ERR_FAIL;
+		struct ow_object *const res = ow_map_obj_get(om, map_obj, kv);
+		if (ow_unlikely(!res))
+			return OW_ERR_FAIL;
+		*++om->callstack.regs.sp = res;
+		return 0;
+	}
+	const size_t len = ow_map_obj_length(map_obj);
+	if (key_idx == OW_RDMAP_GETLEN)
+		return len;
+	if (key_idx == OW_RDMAP_EXPAND) {
+		ow_map_obj_foreach(map_obj, _map_expand_walker, om);
+		return len;
+	}
 	return OW_ERR_FAIL;
 }
 
@@ -733,11 +908,9 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 
 	const int mode = flags & 0xf;
 	if (mode == 0) {
-	do_invoke:
 		status = ow_machine_invoke(om, argc, &result);
 	} else if (mode == OW_IVK_METHOD) {
 		struct ow_object *const name_o = *(om->callstack.regs.sp - argc);
-		struct ow_object *const self_o = *(om->callstack.regs.sp - argc + 1);
 		if (ow_unlikely(ow_smallint_check(name_o) ||
 				ow_object_class(name_o) != om->builtin_classes->symbol)) {
 			result = ow_object_from(ow_exception_format(
@@ -745,23 +918,8 @@ OW_API int ow_invoke(ow_machine_t *om, int argc, int flags) {
 			status = OW_ERR_FAIL;
 			goto end_invoke;
 		}
-		struct ow_class_obj *const self_class =
-			ow_unlikely(ow_smallint_check(self_o)) ?
-				om->builtin_classes->int_ : ow_object_class(self_o);
-		const size_t method_index = ow_class_obj_find_method(
-			self_class, ow_object_cast(name_o, struct ow_symbol_obj));
-		if (ow_likely(method_index != (size_t)-1)) {
-			*(om->callstack.regs.sp - argc) =
-				ow_class_obj_get_method(self_class, method_index);
-		} else {
-			result = ow_object_from(ow_exception_format(
-				om, NULL, "`%s' object has not method `%s'",
-				ow_symbol_obj_data(_ow_class_obj_pub_info(self_class)->class_name),
-				ow_symbol_obj_data(ow_object_cast(name_o, struct ow_symbol_obj))));
-			status = OW_ERR_FAIL;
-			goto end_invoke;
-		}
-		goto do_invoke;
+		status = ow_machine_call_method(
+			om, ow_object_cast(name_o, struct ow_symbol_obj), argc, NULL, &result);
 	} else if (mode == OW_IVK_MODULE) {
 		struct ow_object *const mod_o = *(om->callstack.regs.sp - argc);
 		if (ow_unlikely(ow_smallint_check(mod_o) ||

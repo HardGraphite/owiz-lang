@@ -5,6 +5,7 @@
 struct ow_machine;
 struct ow_module_obj;
 struct ow_object;
+struct ow_symbol_obj;
 
 /// Invoke an invocable object.
 /// The object and arguments shall have been pushed to stack in order.
@@ -17,6 +18,13 @@ int ow_machine_invoke(struct ow_machine *om, int argc, struct ow_object **res_ou
 /// Call an invocable object with arguments.
 int ow_machine_call(
 	struct ow_machine *om, struct ow_object *func,
+	int argc, struct ow_object *argv[], struct ow_object **res_out);
+
+/// Call method of an object with arguments. The first argument is the object itself.
+/// If param `argv` is NULL, the method (a placeholder) and the arguments
+/// shall have been pushed like using `ow_machine_invoke()`.
+int ow_machine_call_method(
+	struct ow_machine *om, struct ow_symbol_obj *method_name,
 	int argc, struct ow_object *argv[], struct ow_object **res_out);
 
 /// Wrap and call a native function with arguments. Not recommended.

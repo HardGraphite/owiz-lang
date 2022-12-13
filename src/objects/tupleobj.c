@@ -102,7 +102,7 @@ struct ow_tuple_obj *ow_tuple_obj_new(
 	return (struct ow_tuple_obj *)obj;
 }
 
-static void _ow_tuple_obj_copy_impl(
+static size_t _ow_tuple_obj_copy_impl(
 		const struct ow_tuple_obj *tuple,
 		size_t pos, size_t len, struct ow_object *buf[], size_t buf_size) {
 	assert(pos + len <= tuple->elem_count);
@@ -116,9 +116,10 @@ static void _ow_tuple_obj_copy_impl(
 		struct ow_object **const max_ptr = begin_ptr + buf_size;
 		if (ow_unlikely(end_ptr > max_ptr))
 			end_ptr = max_ptr;
-		memcpy(buf, begin_ptr, (size_t)(end_ptr - begin_ptr) * sizeof(void *));
+		const size_t cp_n = (size_t)(end_ptr - begin_ptr);
+		memcpy(buf, begin_ptr, cp_n * sizeof(void *));
+		return cp_n;
 	}
-		break;
 
 	case TUPLE_SLICE: {
 		struct ow_tuple_obj_impl_slice *const tuple_slice =
@@ -129,33 +130,36 @@ static void _ow_tuple_obj_copy_impl(
 		struct ow_object **const max_ptr = begin_ptr + buf_size;
 		if (ow_unlikely(end_ptr > max_ptr))
 			end_ptr = max_ptr;
-		memcpy(buf, begin_ptr, (size_t)(end_ptr - begin_ptr) * sizeof(void *));
+		const size_t cp_n = (size_t)(end_ptr - begin_ptr);
+		memcpy(buf, begin_ptr, cp_n * sizeof(void *));
+		return cp_n;
 	}
-		break;
 
 	case TUPLE_CONS: {
 		struct ow_tuple_obj_impl_cons *const tuple_cons =
 			(struct ow_tuple_obj_impl_cons *)tuple;
 		const size_t tuple1_size = tuple_cons->tuple1->elem_count;
 		if (tuple1_size < pos) {
-			_ow_tuple_obj_copy_impl(
+			return _ow_tuple_obj_copy_impl(
 				tuple_cons->tuple2, pos - tuple1_size, len, buf, buf_size);
 		} else {
-			_ow_tuple_obj_copy_impl(tuple_cons->tuple1, pos, len, buf, buf_size);
-			_ow_tuple_obj_copy_impl(
+			size_t cp_n = 0;
+			cp_n += _ow_tuple_obj_copy_impl(
+				tuple_cons->tuple1, pos, len, buf, buf_size);
+			cp_n += _ow_tuple_obj_copy_impl(
 				tuple_cons->tuple2,
 				0, len - (tuple1_size - pos),
 				buf + tuple1_size, buf_size - tuple1_size);
+			return cp_n;
 		}
 	}
-		break;
 
 	default:
 		ow_unreachable();
 	}
 }
 
-static void ow_tuple_obj_copy(
+size_t ow_tuple_obj_copy(
 		struct ow_tuple_obj *self, size_t pos, size_t len,
 		struct ow_object *buf[], size_t buf_sz) {
 	if (ow_unlikely(pos + len >= self->elem_count)) {
@@ -167,7 +171,7 @@ static void ow_tuple_obj_copy(
 		}
 	}
 
-	_ow_tuple_obj_copy_impl(self, pos, len, buf, buf_sz);
+	return _ow_tuple_obj_copy_impl(self, pos, len, buf, buf_sz);
 }
 
 struct ow_tuple_obj *ow_tuple_obj_slice(
@@ -288,6 +292,40 @@ struct ow_object **ow_tuple_obj_flatten(
 			*size = tuple_inner->elem_count;
 		return tuple_inner->elems;
 	} else {
+		ow_unreachable();
+	}
+}
+
+size_t ow_tuple_obj_length(const struct ow_tuple_obj *self) {
+	return self->elem_count;
+}
+
+struct ow_object *ow_tuple_obj_get(const struct ow_tuple_obj *self, size_t index) {
+	if (ow_unlikely(index >= self->elem_count))
+		return NULL;
+
+	switch (ow_tuple_obj_impl_get_subtype(&self->_meta)) {
+	case TUPLE_INNER:
+		return ((struct ow_tuple_obj_impl_inner *)self)->elems[index];
+
+	case TUPLE_SLICE: {
+		struct ow_tuple_obj_impl_slice *const tuple_slice =
+			(struct ow_tuple_obj_impl_slice *)self;
+		return tuple_slice->tuple->elems[tuple_slice->begin_index + index];
+	}
+
+	case TUPLE_CONS: {
+		struct ow_tuple_obj_impl_cons *const tuple_cons =
+			(struct ow_tuple_obj_impl_cons *)self;
+		const size_t tuple1_elem_count = tuple_cons->tuple1->elem_count;
+		if (index < tuple1_elem_count)
+			self = tuple_cons->tuple1;
+		else
+			self = tuple_cons->tuple2, index -= tuple1_elem_count;
+		return ow_tuple_obj_get(self, index);
+	}
+
+	default:
 		ow_unreachable();
 	}
 }

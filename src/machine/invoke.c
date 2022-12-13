@@ -10,6 +10,7 @@
 #include <bytecode/opcode.h>
 #include <bytecode/operand.h>
 #include <machine/modmgr.h>
+#include <objects/arrayobj.h>
 #include <objects/cfuncobj.h>
 #include <objects/classes.h>
 #include <objects/classobj.h>
@@ -17,12 +18,15 @@
 #include <objects/floatobj.h>
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
+#include <objects/mapobj.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
 #include <objects/object.h>
+#include <objects/setobj.h>
 #include <objects/smallint.h>
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
+#include <objects/tupleobj.h>
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
 
@@ -907,6 +911,90 @@ static int invoke_impl(
 			goto op_PrepMethY_1;
 		OP_END
 
+		OP_BEGIN(MkArr)
+			OPERAND(u8, operand.count)
+		op_MkArr_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			STACK_COMMIT();
+			struct ow_array_obj *const obj =
+				ow_array_obj_new(machine, data, operand.count);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkArrW)
+			OPERAND(u16, operand.count)
+			goto op_MkArr_1;
+		OP_END
+
+		OP_BEGIN(MkTup)
+			OPERAND(u8, operand.count)
+		op_MkTup_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			STACK_COMMIT();
+			struct ow_tuple_obj *const obj =
+				ow_tuple_obj_new(machine, data, operand.count);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkTupW)
+			OPERAND(u16, operand.count)
+			goto op_MkTup_1;
+		OP_END
+
+		OP_BEGIN(MkSet)
+			OPERAND(u8, operand.count)
+		op_MkSet_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			*++stack.sp = machine_globals->value_nil;
+			STACK_COMMIT();
+			struct ow_set_obj *const obj = ow_set_obj_new(machine);
+			STACK_ASSERT_NC();
+			*stack.sp = ow_object_from(obj);
+			for (size_t i = 0; i < operand.index; i++)
+				ow_set_obj_insert(machine, obj, data[i]);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkSetW)
+			OPERAND(u16, operand.count)
+			goto op_MkSet_1;
+		OP_END
+
+		OP_BEGIN(MkMap)
+			OPERAND(u8, operand.count)
+		op_MkMap_1:;
+			struct ow_object **data = stack.sp - operand.count * 2 + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			*++stack.sp = machine_globals->value_nil;
+			STACK_COMMIT();
+			struct ow_map_obj *const obj = ow_map_obj_new(machine);
+			STACK_ASSERT_NC();
+			*stack.sp = ow_object_from(obj);
+			for (size_t i = 0; i < operand.index; i++)
+				ow_map_obj_set(machine, obj, data[i], data[i + 1]);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkMapW)
+			OPERAND(u16, operand.count)
+			goto op_MkMap_1;
+		OP_END
+
 #undef OP_BEGIN
 #undef OP_END
 #undef OPERAND
@@ -998,6 +1086,38 @@ int ow_machine_call(
 	ow_callstack_push(om->callstack, func);
 	for (int i = 0; i < argc; i++)
 		ow_callstack_push(om->callstack, argv[i]);
+	return ow_machine_invoke(om, argc, res_out);
+}
+
+int ow_machine_call_method(
+		struct ow_machine *om, struct ow_symbol_obj *method_name,
+		int argc, struct ow_object *argv[], struct ow_object **res_out) {
+	assert(argc > 0);
+	assert(argv || om->callstack.regs.sp > om->callstack.regs.fp);
+	struct ow_object *const obj = argv ? argv[0] : om->callstack.regs.sp[1 - argc];
+	struct ow_class_obj *const obj_class =
+		ow_unlikely(ow_smallint_check(obj)) ?
+			om->builtin_classes->int_ : ow_object_class(obj);
+	const size_t index = ow_class_obj_find_method(obj_class, method_name);
+	struct ow_object *method;
+	if (ow_likely(index != (size_t)-1)) {
+		method = ow_class_obj_get_method(obj_class, index);
+	} else {
+		ow_objmem_push_ngc(om);
+		const bool ok = invoke_impl_do_find_method(
+			om, obj, obj_class, method_name, &method);
+		ow_objmem_pop_ngc(om);
+		if (ow_unlikely(!ok)) {
+			ow_object_from(ow_exception_format(
+				om, NULL, "`%s' object has not method `%s'",
+				ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+				ow_symbol_obj_data(ow_object_cast(method_name, struct ow_symbol_obj))));
+			return -1;
+		}
+	}
+	if (argv)
+		return ow_machine_call(om, method, argc, argv, res_out);
+	om->callstack.regs.sp[-argc] = method;
 	return ow_machine_invoke(om, argc, res_out);
 }
 

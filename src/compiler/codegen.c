@@ -956,32 +956,80 @@ static void ow_codegen_emit_NotExpr(
 		codegen, action, (const struct ow_ast_UnOpExpr *)node, OW_OPC_Not);
 }
 
+ow_noinline static void ow_codegen_emit_MakeContainerExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_node_array *elems, const struct ow_source_range *location,
+		enum ow_opcode opcode, enum ow_opcode opcode_w) {
+	assert(action == ACT_PUSH || action == ACT_EVAL);
+	const size_t elem_count = ow_ast_node_array_size(elems);
+	for (size_t i = 0; i < elem_count; i++)
+		ow_codegen_emit_node(codegen, ACT_PUSH, ow_ast_node_array_at(elems, i));
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	if (elem_count <= UINT8_MAX)
+		ow_assembler_append(as, opcode, (union ow_operand){.u8 = (uint8_t)elem_count});
+	else if (elem_count <= UINT16_MAX)
+		ow_assembler_append(as, opcode_w, (union ow_operand){.u16 = (uint16_t)elem_count});
+	else
+		ow_codegen_error_throw(codegen, location, "too many elements");
+	if (action != ACT_PUSH)
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+}
+
+ow_noinline static void ow_codegen_emit_MakePairContainerExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_nodepair_array *elems, const struct ow_source_range *location,
+		enum ow_opcode opcode, enum ow_opcode opcode_w) {
+	assert(action == ACT_PUSH || action == ACT_EVAL);
+	const size_t elem_count = ow_ast_nodepair_array_size(elems);
+	for (size_t i = 0; i < elem_count; i++) {
+		const struct ow_ast_nodepair_array_elem pair = ow_ast_nodepair_array_at(elems, i);
+		ow_codegen_emit_node(codegen, ACT_PUSH, pair.first);
+		ow_codegen_emit_node(codegen, ACT_PUSH, pair.second);
+	}
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	if (elem_count <= UINT8_MAX)
+		ow_assembler_append(as, opcode, (union ow_operand){.u8 = (uint8_t)elem_count});
+	else if (elem_count <= UINT16_MAX)
+		ow_assembler_append(as, opcode_w, (union ow_operand){.u16 = (uint16_t)elem_count});
+	else
+		ow_codegen_error_throw(codegen, location, "too many elements");
+	if (action != ACT_PUSH)
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+}
+
 static void ow_codegen_emit_TupleExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_TupleExpr *node) {
-	ow_unused_var(action);
+	if (action != ACT_RECV) {
+		ow_codegen_emit_MakeContainerExpr(
+			codegen, action, &node->elems, &node->location,
+			OW_OPC_MkTup, OW_OPC_MkTupW);
+		return;
+	}
+	// TODO: Unpacking.
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+
 }
 
 static void ow_codegen_emit_ArrayExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ArrayExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakeContainerExpr(
+		codegen, action, &node->elems, &node->location, OW_OPC_MkArr, OW_OPC_MkArrW);
 }
 
 static void ow_codegen_emit_SetExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SetExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakeContainerExpr(
+		codegen, action, &node->elems, &node->location, OW_OPC_MkSet, OW_OPC_MkSetW);
 }
 
 static void ow_codegen_emit_MapExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MapExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakePairContainerExpr(
+		codegen, action, &node->pairs, &node->location, OW_OPC_MkMap, OW_OPC_MkMapW);
 }
 
 static void ow_codegen_emit_CallExpr(

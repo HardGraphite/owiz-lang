@@ -103,6 +103,83 @@ static void test_simple_values(ow_machine_t *om) {
 	ow_drop(om, -1);
 }
 
+static void test_containers(ow_machine_t *om) {
+	assert(ow_drop(om, 0) == 0);
+
+	const int N = 100;
+#define PREPARE_ELEMS \
+	ow_drop(om, -1); \
+	for (int i = 0; i < N; i++) { \
+		ow_push_int(om, i); \
+		ow_dup(om, 1); \
+	} \
+	assert(ow_drop(om, 0) == (N * 2)); \
+// ^^^ PUSH_ELEMS ^^^
+
+	PREPARE_ELEMS
+	ow_make_array(om, N * 2);
+	TEST_ASSERT_EQ(ow_drop(om, 0), 1);
+	TEST_ASSERT_EQ(ow_read_array(om, 0, 0), (size_t)(N * 2));
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j < 2; j++) {
+			const size_t status1 = ow_read_array(om, 0, (size_t)(i * 2 + j + 1));
+			TEST_ASSERT_EQ(status1, 0);
+			intmax_t elem_val;
+			const int status2 = ow_read_int(om, 0, &elem_val);
+			TEST_ASSERT_EQ(status2, 0);
+			TEST_ASSERT_EQ(elem_val, (intmax_t)i);
+			ow_drop(om, 1);
+		}
+	}
+	ow_read_array(om, 0, (size_t)-1);
+	TEST_ASSERT_EQ(ow_drop(om, 0), N * 2 + 1);
+
+	PREPARE_ELEMS
+	ow_make_tuple(om, N * 2);
+	TEST_ASSERT_EQ(ow_drop(om, 0), 1);
+	TEST_ASSERT_EQ(ow_read_tuple(om, 0, 0), (size_t)(N * 2));
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j < 2; j++) {
+			const size_t status1 = ow_read_tuple(om, 0, (size_t)(i * 2 + j + 1));
+			TEST_ASSERT_EQ(status1, 0);
+			intmax_t elem_val;
+			const int status2 = ow_read_int(om, 0, &elem_val);
+			TEST_ASSERT_EQ(status2, 0);
+			TEST_ASSERT_EQ(elem_val, (intmax_t)i);
+			ow_drop(om, 1);
+		}
+	}
+	ow_read_tuple(om, 0, (size_t)-1);
+	TEST_ASSERT_EQ(ow_drop(om, 0), N * 2 + 1);
+
+	PREPARE_ELEMS
+	ow_make_set(om, N * 2);
+	TEST_ASSERT_EQ(ow_drop(om, 0), 1);
+	TEST_ASSERT_EQ(ow_read_set(om, 0, 0), (size_t)N);
+	ow_read_set(om, 0, -1);
+	TEST_ASSERT_EQ(ow_drop(om, 0), N + 1);
+
+	PREPARE_ELEMS
+	ow_make_map(om, N);
+	TEST_ASSERT_EQ(ow_drop(om, 0), 1);
+	TEST_ASSERT_EQ(ow_read_map(om, 0, OW_RDMAP_GETLEN), (size_t)N);
+	for (int i = 0; i < N; i++) {
+		ow_push_int(om, i);
+		const size_t status1 = ow_read_map(om, 1, 2);
+		TEST_ASSERT_EQ(status1, 0);
+		intmax_t val;
+		const int status2 = ow_read_int(om, 0, &val);
+		TEST_ASSERT_EQ(status2, 0);
+		TEST_ASSERT_EQ(val, (intmax_t)i);
+		ow_drop(om, 2);
+	}
+	ow_read_map(om, 0, OW_RDMAP_EXPAND);
+	TEST_ASSERT_EQ(ow_drop(om, 0), N * 2 + 1);
+
+#undef PREPARE_ELEMS
+	ow_drop(om, -1);
+}
+
 static void test_load_and_store(ow_machine_t *om) {
 	int status;
 	int64_t tmp_int64;
@@ -137,6 +214,7 @@ int main(void) {
 	test_create();
 	ow_machine_t *const om = ow_create();
 	test_simple_values(om);
+	test_containers(om);
 	test_load_and_store(om);
 	ow_destroy(om);
 }

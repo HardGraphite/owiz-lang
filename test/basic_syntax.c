@@ -106,6 +106,18 @@ static void test_expressions(ow_machine_t *om) {
 	TEST_ASSERT(eval_and_cmp_int(om, "1 + 2 * 3", 7));
 	TEST_ASSERT(eval_and_cmp_int(om, "(1+2)*3", 9));
 	TEST_ASSERT(eval_and_cmp_int(om, "(((1)+(2))*(3))", 9));
+
+	TEST_ASSERT(check(om, "()"));
+	TEST_ASSERT(check(om, "(1,)"));
+	TEST_ASSERT(check(om, "(1, 2)"));
+	TEST_ASSERT(check(om, "[]"));
+	TEST_ASSERT(check(om, "[1]"));
+	TEST_ASSERT(check(om, "[1,2,]"));
+	TEST_ASSERT(check(om, "{,}"));
+	TEST_ASSERT(check(om, "{1}"));
+	TEST_ASSERT(check(om, "{}"));
+	TEST_ASSERT(check(om, "{1 => '1'}"));
+	TEST_ASSERT(check(om, "{1=>'1',2=>'2',}"));
 }
 
 static void test_statements(ow_machine_t *om) {

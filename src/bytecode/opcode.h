@@ -82,6 +82,14 @@
 	ELEM(_4d        , 0x4d,   0) \
 	ELEM(PrepMethY  , 0x4e,  u8) \
 	ELEM(PrepMethYW , 0x4f, u16) \
+	ELEM(MkArr      , 0x50,  u8) \
+	ELEM(MkArrW     , 0x51, u16) \
+	ELEM(MkTup      , 0x52,  u8) \
+	ELEM(MkTupW     , 0x53, u16) \
+	ELEM(MkSet      , 0x54,  u8) \
+	ELEM(MkSetW     , 0x55, u16) \
+	ELEM(MkMap      , 0x56,  u8) \
+	ELEM(MkMapW     , 0x57, u16) \
 // ^^^ OW_OPCODE_LIST ^^^
 
 /// Opcodes.

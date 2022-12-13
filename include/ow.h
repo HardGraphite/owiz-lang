@@ -1,6 +1,7 @@
 #ifndef OW_H
 #define OW_H
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -230,6 +231,38 @@ OW_API void ow_push_symbol(ow_machine_t *om, const char *str, size_t len) OW_NOE
 OW_API void ow_push_string(ow_machine_t *om, const char *str, size_t len) OW_NOEXCEPT;
 
 /**
+ * @brief Pop elements and create an Array object.
+ *
+ * @param om the instance
+ * @param count number of elements
+ */
+OW_API void ow_make_array(ow_machine_t *om, size_t count) OW_NOEXCEPT;
+
+/**
+ * @brief Pop elements and create a Tuple object.
+ *
+ * @param om the instance
+ * @param count number of elements
+ */
+OW_API void ow_make_tuple(ow_machine_t *om, size_t count) OW_NOEXCEPT;
+
+/**
+ * @brief Pop elements and create a Set object.
+ *
+ * @param om the instance
+ * @param count number of objects to pop
+ */
+OW_API void ow_make_set(ow_machine_t *om, size_t count) OW_NOEXCEPT;
+
+/**
+ * @brief Pop keys and values and create a Map object.
+ *
+ * @param om the instance
+ * @param count number of key-value pairs to pop
+ */
+OW_API void ow_make_map(ow_machine_t *om, size_t count) OW_NOEXCEPT;
+
+/**
  * @brief Create and push an exception.
  *
  * @param om the instance
@@ -417,6 +450,67 @@ OW_API int ow_read_string_to(
 #define OW_RDEXC_PRINT  0x10 ///< Print to stdout or stderr.
 #define OW_RDEXC_TOBUF  0x20 ///< Write to a buffer.
 #define OW_RDEXC_PUSH   0x30 ///< Push the exception data.
+
+/**
+ * @brief Push element(s) of an Array object.
+ *
+ * @param om the instance
+ * @param index index of local variable like param `index` in `ow_load_local()`,
+ * or `0` to represent the top object on stack
+ * @param elem_idx 1-based index of element to get; `-1` to push all elements;
+ * `0` to return array length only
+ * @return On success, if param `elem_idx` is `0` or `-1`, return array length,
+ * otherwise, return `0`. If `index` is out of range, return `OW_ERR_INDEX`;
+ * if the object class mismatches, return `OW_ERR_TYPE`;
+ * if `elem_idx` is out of range, return `OW_ERR_FAIL`.
+ */
+OW_API size_t ow_read_array(ow_machine_t *om, int index, size_t elem_idx) OW_NOEXCEPT;
+
+/**
+ * @brief Push element(s) of a Tuple object.
+ *
+ * @param om the instance
+ * @param index index of local variable like param `index` in `ow_load_local()`,
+ * or `0` to represent the top object on stack
+ * @param elem_idx 1-based index of element to get; `-1` to push all elements;
+ * `0` to return tuple length only
+ * @return On success, if param `elem_idx` is `0` or `-1`, return array length,
+ * otherwise, return `0`. If `index` is out of range, return `OW_ERR_INDEX`;
+ * if the object class mismatches, return `OW_ERR_TYPE`;
+ * if `elem_idx` is out of range, return `OW_ERR_FAIL`.
+ */
+OW_API size_t ow_read_tuple(ow_machine_t *om, int index, size_t elem_idx) OW_NOEXCEPT;
+
+/**
+ * @brief Push element(s) of a set object.
+ *
+ * @param om the instance
+ * @param index index of local variable like param `index` in `ow_load_local()`,
+ * or `0` to represent the top object on stack
+ * @param op `-1` to push all elements; `0` to return number of elements only
+ * @return On success, return array length. If `index` is out of range,
+ * return `OW_ERR_INDEX`; if the object class mismatches, return `OW_ERR_TYPE`;
+ * if `op` is invalid, return `OW_ERR_ARG`.
+ */
+OW_API size_t ow_read_set(ow_machine_t *om, int index, int op) OW_NOEXCEPT;
+
+#define OW_RDMAP_GETLEN      (INT_MIN + 0) ///< Get number of elements only.
+#define OW_RDMAP_EXPAND      (INT_MIN + 1) ///< Push all keys and values.
+
+/**
+ * @brief Push element(s) of a map object.
+ *
+ * @param om the instance
+ * @param index index of local variable like param `index` in `ow_load_local()`,
+ * or `0` to represent the top object on stack
+ * @param key_idx index of a local variable like param `index`, which is the key;
+ * or a `OW_RDMAP_GETLEN` or `OW_RDMAP_EXPAND` macro
+ * @return On success, if param `key_idx` is `OW_RDMAP_XXX`, return element count,
+ * otherwise, return `0`. If `index` is out of range, return `OW_ERR_INDEX`;
+ * if the object class mismatches, return `OW_ERR_TYPE`;
+ * if `key_idx` is out of range or key does not exist, return `OW_ERR_FAIL`.
+ */
+OW_API size_t ow_read_map(ow_machine_t *om, int index, int key_idx) OW_NOEXCEPT;
 
 /**
  * @brief Get or print contents of an exception.

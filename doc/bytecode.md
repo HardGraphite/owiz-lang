@@ -115,6 +115,14 @@ Instructions with i16/u16 operand:
 | `_4d`        | `0x4d` | 0       |                     | *(reserved)*                                |
 | `PrepMethY`  | `0x4e` | u8: I   | `obj -> meth,obj`   | Load method by symbol and push object.      |
 | `PrepMethYW` | `0x4f` | u16: I  | `obj -> meth,obj`   | Load method by symbol and push object.      |
+| `MkArr`      | `0x50` | u8: N   | `e1,e2,... -> arr`  | Make an array.                              |
+| `MkArrW`     | `0x51` | u16: N  | `e1,e2,... -> arr`  | Make an array.                              |
+| `MkTup`      | `0x52` | u8: N   | `e1,e2,... -> tup`  | Make a tuple.                               |
+| `MkTupW`     | `0x53` | u16: N  | `e1,e2,... -> tup`  | Make a tuple.                               |
+| `MkSet`      | `0x54` | u8: N   | `e1,e2,... -> set`  | Make a set.                                 |
+| `MkSetW`     | `0x55` | u16: N  | `e1,e2,... -> set`  | Make a set.                                 |
+| `MkMap`      | `0x56` | u8: N   | `k1,v1,... -> map`  | Make a map.                                 |
+| `MkMapW`     | `0x57` | u16: N  | `k1,v2,... -> map`  | Make a map.                                 |
 
 Meaning of operand column:
 

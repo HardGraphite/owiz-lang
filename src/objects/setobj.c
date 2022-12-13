@@ -5,6 +5,7 @@
 #include "classes_util.h"
 #include "memory.h"
 #include "natives.h"
+#include "object.h"
 #include "object_util.h"
 #include <machine/machine.h>
 #include <utilities/hashmap.h>
@@ -42,6 +43,37 @@ struct ow_set_obj *ow_set_obj_new(struct ow_machine *om) {
 		struct ow_set_obj);
 	ow_hashmap_init(&obj->data, 0);
 	return obj;
+}
+
+void ow_set_obj_insert(
+		struct ow_machine *om, struct ow_set_obj *self,	struct ow_object *val) {
+	struct ow_hashmap_funcs mf = OW_OBJECT_HASHMAP_FUNCS_INIT(om);
+	ow_hashmap_set(&self->data, &mf, val, NULL);
+}
+
+size_t ow_set_obj_length(const struct ow_set_obj *self) {
+	return ow_hashmap_size(&self->data);
+}
+
+struct _ow_set_obj_foreach_walker_wrapper_arg {
+	int (*walker)(void *, struct ow_object *);
+	void *walker_arg;
+};
+
+static int _ow_set_obj_foreach_walker_wrapper(
+		void *_arg, const void *key, void *val) {
+	struct _ow_set_obj_foreach_walker_wrapper_arg *const arg = _arg;
+	ow_unused_var(val);
+	assert(val == NULL);
+	return arg->walker(arg->walker_arg, (void *)key);
+}
+
+int ow_set_obj_foreach(
+		const struct ow_set_obj *self,
+		int (*walker)(void *arg, struct ow_object *elem), void *arg) {
+	return ow_hashmap_foreach(
+		&self->data, _ow_set_obj_foreach_walker_wrapper,
+		&(struct _ow_set_obj_foreach_walker_wrapper_arg){walker, arg});
 }
 
 static const struct ow_native_func_def set_methods[] = {
