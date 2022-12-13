@@ -9,7 +9,7 @@ else()
 		"Neither `OW_BUILD_SHARED` nor `OW_BUILD_STATIC` is ON. Cannot do tests.")
 endif()
 
-file(GLOB ow_test_c_files "*.c")
+file(GLOB ow_test_c_files "*.c" "*.cc")
 foreach(file IN LISTS ow_test_c_files)
 	get_filename_component(out_name ${file} NAME_WE)
 	set(tgt_name "ow_test_${out_name}")
