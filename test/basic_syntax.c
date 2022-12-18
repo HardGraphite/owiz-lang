@@ -118,6 +118,12 @@ static void test_expressions(ow_machine_t *om) {
 	TEST_ASSERT(check(om, "{}"));
 	TEST_ASSERT(check(om, "{1 => '1'}"));
 	TEST_ASSERT(check(om, "{1=>'1',2=>'2',}"));
+	TEST_ASSERT(check(om, "((),())"));
+	TEST_ASSERT(check(om, "[[],[]]"));
+	TEST_ASSERT(check(om, "{{},{}}"));
+	TEST_ASSERT(!check(om, "(,)"));
+	TEST_ASSERT(!check(om, "[,]"));
+	TEST_ASSERT(!check(om, "{,,}"));
 }
 
 static void test_statements(ow_machine_t *om) {
