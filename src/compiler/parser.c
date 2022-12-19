@@ -23,6 +23,7 @@
 /// Token queue.
 struct token_queue {
 	struct ow_token   _tokens[1];
+	size_t            _ign_eol_cnt;
 	struct ow_lexer  *_lexer;
 	struct ow_parser *_parser;
 };
@@ -31,6 +32,7 @@ struct token_queue {
 static void token_queue_init(struct token_queue *tq, struct ow_parser *parser) {
 	for (size_t i = 0; i < sizeof tq->_tokens / sizeof tq->_tokens[0]; i++)
 		ow_token_init(&tq->_tokens[i]);
+	tq->_ign_eol_cnt = 0;
 	tq->_lexer = ow_parser_lexer(parser);
 	tq->_parser = parser;
 }
@@ -57,16 +59,47 @@ ow_noinline ow_noreturn static void ow_parser_error_throw_lex_err(
 
 /// Move to next token.
 static void token_queue_advance(struct token_queue *tq) {
+advance_again:;
 	const bool ok = ow_lexer_next(tq->_lexer, &tq->_tokens[0]);
 	if (ow_unlikely(!ok)) {
 		const struct ow_syntax_error *const err = ow_lexer_error(tq->_lexer);
 		ow_parser_error_throw_lex_err(tq->_parser, err);
+	}
+	if (ow_unlikely(ow_token_type(&tq->_tokens[0]) == OW_TOK_END_LINE
+			&& tq->_ign_eol_cnt)) {
+		goto advance_again;
 	}
 }
 
 /// Sync with lexer. Call this function after `token_queue_clear()`.
 static void token_queue_sync(struct token_queue *tq) {
 	token_queue_advance(tq);
+}
+
+/// Enter an ignoring-end-of-line region.
+static void token_queue_push_iel(struct token_queue *tq) {
+	assert(tq->_ign_eol_cnt < SIZE_MAX);
+	assert(ow_token_type(token_queue_peek(tq)) != OW_TOK_END_LINE);
+	tq->_ign_eol_cnt++;
+}
+
+/// Leave an ignoring-end-of-line region.
+static void token_queue_pop_iel(struct token_queue *tq) {
+	assert(tq->_ign_eol_cnt > 0);
+	tq->_ign_eol_cnt--;
+}
+
+/// Check whether in an ignoring-end-of-line region.
+ow_unused_func static bool token_queue_test_iel(struct token_queue *tq) {
+	return tq->_ign_eol_cnt;
+}
+
+/// Set ignoring-end-of-line region level and return the old level.
+ow_unused_func static size_t token_queue_set_iel(
+		struct token_queue *tq, size_t new_level) {
+	const size_t old_level = tq->_ign_eol_cnt;
+	tq->_ign_eol_cnt = new_level;
+	return old_level;
 }
 
 /// A stack of AST nodes.
@@ -656,19 +689,18 @@ static struct ow_ast_Expr *expr_parser_output_expression(struct expr_parser *ep)
 
 static struct ow_ast_Expr *ow_parser_parse_expr(struct ow_parser *);
 
-/// Parse call-expr argument list.
+/// Parse call-expr argument list, i.e. `(a1, a2, ...)`.
 static void ow_parser_parse_CallExpr_args(
 		struct ow_parser *parser, struct ow_ast_CallExpr *call_expr) {
 	struct token_queue *const tq = &parser->token_queue;
 
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_L_PAREN);
+	token_queue_push_iel(tq);
 	token_queue_advance(tq);
 
 	while (1) {
-		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_PAREN)) {
-			token_queue_advance(tq);
+		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_PAREN))
 			break;
-		}
 
 		struct ow_ast_Expr *const arg_expr = ow_parser_parse_expr(parser);
 		ow_ast_node_array_append(&call_expr->args, (struct ow_ast_node *)arg_expr);
@@ -677,7 +709,6 @@ static void ow_parser_parse_CallExpr_args(
 		if (ow_likely(trailing_tok_tp == OW_TOK_COMMA)) {
 			token_queue_advance(tq);
 		} else if (trailing_tok_tp == OW_TOK_R_PAREN) {
-			token_queue_advance(tq);
 			break;
 		} else {
 			struct ow_token *const tok = token_queue_peek(tq);
@@ -686,21 +717,24 @@ static void ow_parser_parse_CallExpr_args(
 				')', ow_token_type_represent(trailing_tok_tp));
 		}
 	}
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_PAREN);
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 }
 
-/// Parse subscript-expr index list.
+/// Parse subscript-expr index list, i.e. `[i1, i2, ...]`.
 static void ow_parser_parse_SubscriptExpr_indices(
 		struct ow_parser *parser, struct ow_ast_SubscriptExpr *subscript_expr) {
 	struct token_queue *const tq = &parser->token_queue;
 
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_L_BRACKET);
+	token_queue_push_iel(tq);
 	token_queue_advance(tq);
 
 	while (1) {
-		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACKET)) {
-			token_queue_advance(tq);
+		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACKET))
 			break;
-		}
 
 		struct ow_ast_Expr *const arg_expr = ow_parser_parse_expr(parser);
 		ow_ast_node_array_append(&subscript_expr->args, (struct ow_ast_node *)arg_expr);
@@ -709,7 +743,6 @@ static void ow_parser_parse_SubscriptExpr_indices(
 		if (ow_likely(trailing_tok_tp == OW_TOK_COMMA)) {
 			token_queue_advance(tq);
 		} else if (trailing_tok_tp == OW_TOK_R_BRACKET) {
-			token_queue_advance(tq);
 			break;
 		} else {
 			struct ow_token *const tok = token_queue_peek(tq);
@@ -718,20 +751,23 @@ static void ow_parser_parse_SubscriptExpr_indices(
 				']', ow_token_type_represent(trailing_tok_tp));
 		}
 	}
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACKET);
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 }
 
 /// Parse elements for an array-like expr and fill `ow_ast_ArrayLikeExpr`.
+/// The end-token will be left in the token queue.
 static void ow_parser_parse_ArrayLikeExpr_elems(
 		struct ow_parser *parser, struct ow_ast_ArrayLikeExpr *expr,
 		enum ow_token_type end_tok) {
 	struct token_queue *const tq = &parser->token_queue;
+	assert(token_queue_test_iel(tq));
 
 	while (1) {
-		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == end_tok)) {
-			expr->location.end = token_queue_peek(tq)->location.end;
-			token_queue_advance(tq);
+		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == end_tok))
 			break;
-		}
 
 		struct ow_ast_Expr *const elem_expr = ow_parser_parse_expr(parser);
 		ow_ast_node_array_append(&expr->elems, (struct ow_ast_node *)elem_expr);
@@ -740,8 +776,6 @@ static void ow_parser_parse_ArrayLikeExpr_elems(
 		if (ow_likely(trailing_tok_tp == OW_TOK_COMMA)) {
 			token_queue_advance(tq);
 		} else if (trailing_tok_tp == end_tok) {
-			expr->location.end = token_queue_peek(tq)->location.end;
-			token_queue_advance(tq);
 			break;
 		} else {
 			struct ow_token *const tok = token_queue_peek(tq);
@@ -751,6 +785,9 @@ static void ow_parser_parse_ArrayLikeExpr_elems(
 				ow_token_type_represent(trailing_tok_tp));
 		}
 	}
+
+	assert(ow_token_type(token_queue_peek(tq)) == end_tok);
+	expr->location.end = token_queue_peek(tq)->location.end;
 }
 
 /// Parse a tuple expr or an expr starts with `(`. The next token must be `(`.
@@ -761,12 +798,14 @@ static struct ow_ast_Expr *ow_parser_parse_TupleExpr_or_expr(struct ow_parser *p
 
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_L_PAREN);
 	const struct ow_source_location loc_begin = token_queue_peek(tq)->location.begin;
+	token_queue_push_iel(tq);
 	token_queue_advance(tq);
 
 	if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_PAREN)) {
 		struct ow_ast_TupleExpr *const tuple_expr = ow_ast_TupleExpr_new();
 		tuple_expr->location.begin = loc_begin;
 		tuple_expr->location.end = token_queue_peek(tq)->location.end;
+		token_queue_pop_iel(tq);
 		token_queue_advance(tq);
 		return (struct ow_ast_Expr *)tuple_expr;
 	}
@@ -774,6 +813,7 @@ static struct ow_ast_Expr *ow_parser_parse_TupleExpr_or_expr(struct ow_parser *p
 	expr = ow_parser_parse_expr(parser);
 	tok_tp = ow_token_type(token_queue_peek(tq));
 	if (ow_unlikely(tok_tp == OW_TOK_R_PAREN)) {
+		token_queue_pop_iel(tq);
 		token_queue_advance(tq);
 		return expr;
 	}
@@ -792,6 +832,8 @@ static struct ow_ast_Expr *ow_parser_parse_TupleExpr_or_expr(struct ow_parser *p
 
 	ow_parser_parse_ArrayLikeExpr_elems(
 		parser, (struct ow_ast_ArrayLikeExpr *)tuple_expr, OW_TOK_R_PAREN);
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 	ow_parser_unprotect_node(parser, tuple_expr);
 	return (struct ow_ast_Expr *)tuple_expr;
 }
@@ -803,9 +845,12 @@ static struct ow_ast_Expr *ow_parser_parse_ArrayExpr(struct ow_parser *parser) {
 	ow_parser_protect_node(parser, array_expr);
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_L_BRACKET);
 	array_expr->location.begin = token_queue_peek(tq)->location.begin;
+	token_queue_push_iel(tq);
 	token_queue_advance(tq);
 	ow_parser_parse_ArrayLikeExpr_elems(
 		parser, (struct ow_ast_ArrayLikeExpr *)array_expr, OW_TOK_R_BRACKET);
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 	ow_parser_unprotect_node(parser, array_expr);
 	return (struct ow_ast_Expr *)array_expr;
 }
@@ -818,6 +863,7 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 
 	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_L_BRACE);
 	const struct ow_source_location loc_begin = token_queue_peek(tq)->location.begin;
+	token_queue_push_iel(tq);
 	token_queue_advance(tq);
 
 	tok_tp = ow_token_type(token_queue_peek(tq));
@@ -825,6 +871,7 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 		struct ow_ast_MapExpr *const map_expr = ow_ast_MapExpr_new();
 		map_expr->location.begin = loc_begin;
 		map_expr->location.end = token_queue_peek(tq)->location.end;
+		token_queue_pop_iel(tq);
 		token_queue_advance(tq);
 		return (struct ow_ast_Expr *)map_expr;
 	} else if (ow_unlikely(tok_tp == OW_TOK_COMMA)) {
@@ -837,6 +884,7 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 		struct ow_ast_SetExpr *const set_expr = ow_ast_SetExpr_new();
 		set_expr->location.begin = loc_begin;
 		set_expr->location.end = token_queue_peek(tq)->location.end;
+		token_queue_pop_iel(tq);
 		token_queue_advance(tq);
 		return (struct ow_ast_Expr *)set_expr;
 	}
@@ -848,6 +896,7 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 		ow_ast_node_array_append(&set_expr->elems, (struct ow_ast_node *)expr);
 		set_expr->location.begin = loc_begin;
 		set_expr->location.end = token_queue_peek(tq)->location.end;
+		token_queue_pop_iel(tq);
 		token_queue_advance(tq);
 		return (struct ow_ast_Expr *)set_expr;
 	} else if (ow_unlikely(tok_tp == OW_TOK_COMMA)) {
@@ -857,6 +906,8 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 		token_queue_advance(tq);
 		ow_parser_parse_ArrayLikeExpr_elems(
 			parser, (struct ow_ast_ArrayLikeExpr *)set_expr, OW_TOK_R_BRACE);
+		token_queue_pop_iel(tq);
+		token_queue_advance(tq);
 		return (struct ow_ast_Expr *)set_expr;
 	}
 
@@ -870,11 +921,8 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 	goto enter_loop;
 
 	while (1) {
-		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACE)) {
-			map_expr->location.end = token_queue_peek(tq)->location.end;
-			token_queue_advance(tq);
+		if (ow_unlikely(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACE))
 			break;
-		}
 
 		pair.first = (struct ow_ast_node *)ow_parser_parse_expr(parser);
 		ow_parser_protect_node(parser, pair.first);
@@ -898,8 +946,6 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 		if (ow_likely(tok_tp == OW_TOK_COMMA)) {
 			token_queue_advance(tq);
 		} else if (tok_tp == OW_TOK_R_BRACE) {
-			map_expr->location.end = token_queue_peek(tq)->location.end;
-			token_queue_advance(tq);
 			break;
 		} else {
 			ow_parser_error_throw(
@@ -907,6 +953,11 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 				'}', ow_token_type_represent(tok_tp));
 		}
 	}
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_R_BRACE);
+	map_expr->location.end = token_queue_peek(tq)->location.end;
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 
 	ow_parser_unprotect_node(parser, map_expr);
 	return (struct ow_ast_Expr *)map_expr;
@@ -1211,11 +1262,14 @@ static struct ow_ast_FuncStmt *ow_parser_parse_func_stmt(
 	ow_parser_check_next(parser, OW_TOK_IDENTIFIER);
 	func_stmt->name = ow_parser_parse_identifier(parser);
 
+	token_queue_push_iel(tq);
 	ow_parser_check_and_ignore(parser, OW_TOK_L_PAREN);
 	assert(!func_stmt->args);
 	func_stmt->args = ow_ast_ArrayExpr_new();
 	ow_parser_parse_ArrayLikeExpr_elems(
 		parser, (struct ow_ast_ArrayLikeExpr *)func_stmt->args, OW_TOK_R_PAREN);
+	token_queue_pop_iel(tq);
+	token_queue_advance(tq);
 	for (size_t i = 0, n = ow_ast_node_array_size(&func_stmt->args->elems); i < n; i++) {
 		struct ow_ast_node *const param = ow_ast_node_array_at(&func_stmt->args->elems, i);
 		if (ow_unlikely(param->type != OW_AST_NODE_Identifier)) {

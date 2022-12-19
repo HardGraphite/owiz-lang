@@ -121,9 +121,25 @@ static void test_expressions(ow_machine_t *om) {
 	TEST_ASSERT(check(om, "((),())"));
 	TEST_ASSERT(check(om, "[[],[]]"));
 	TEST_ASSERT(check(om, "{{},{}}"));
+	TEST_ASSERT(check(om, "(\n1\n)"));
+	TEST_ASSERT(check(om, "(\n1\n,\n)"));
+	TEST_ASSERT(check(om, "[\n1\n]"));
+	TEST_ASSERT(check(om, "{\n1\n}"));
+	TEST_ASSERT(check(om, "{\n1\n=>'1'\n,\n2\n=>'2'\n}"));
 	TEST_ASSERT(!check(om, "(,)"));
 	TEST_ASSERT(!check(om, "[,]"));
 	TEST_ASSERT(!check(om, "{,,}"));
+
+	TEST_ASSERT(check(om, "function()"));
+	TEST_ASSERT(check(om, "function(1)"));
+	TEST_ASSERT(check(om, "function(1,)"));
+	TEST_ASSERT(check(om, "function(\n1\n,\n2\n)"));
+//	TEST_ASSERT(check(om, "object[1]"));
+//	TEST_ASSERT(check(om, "object[1,2]"));
+//	TEST_ASSERT(check(om, "object[\n1\n,\n2\n]"));
+	TEST_ASSERT(!check(om, "function(,)"));
+//	TEST_ASSERT(!check(om, "object[]"));
+//	TEST_ASSERT(!check(om, "object[,]"));
 }
 
 static void test_statements(ow_machine_t *om) {
