@@ -18,6 +18,8 @@ struct ow_symbol_obj;
 	ELEM(inv , "~"  ) \
 	ELEM(cmp , "<=>") \
 	ELEM(call, "()" ) \
+	ELEM(get_elem, "[]") \
+	ELEM(set_elem, "[]=") \
 	ELEM(anon, ""   ) \
 	ELEM(main, "main") \
 	ELEM(hash, "__hash__") \

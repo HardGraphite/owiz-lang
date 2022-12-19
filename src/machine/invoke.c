@@ -667,11 +667,36 @@ static int invoke_impl(
 		OP_END
 
 		OP_BEGIN(LdElem)
-			goto err_not_implemented;
+			NO_OPERAND()
+			struct ow_object *const obj = stack.sp[-1];
+			stack.sp++;
+			stack.sp[0] = stack.sp[-1];
+			stack.sp[-1] = obj;
+			STACK_COMMIT();
+			const bool ok = invoke_impl_get_method_y(
+				machine, obj, common_symbols->get_elem, stack.sp - 2);
+			STACK_ASSERT_NC();
+			if (ow_unlikely(!ok)) {
+				stack.sp -= 2;
+				goto raise_exc;
+			}
+			DO_CALL(2);
 		OP_END
 
 		OP_BEGIN(StElem)
-			goto err_not_implemented;
+			NO_OPERAND()
+			struct ow_object *const obj = stack.sp[-1];
+			struct ow_object *const elem = stack.sp[-2];
+			*++stack.sp = elem;
+			STACK_COMMIT();
+			const bool ok = invoke_impl_get_method_y(
+				machine, obj, common_symbols->set_elem, stack.sp - 3);
+			STACK_ASSERT_NC();
+			if (ow_unlikely(!ok)) {
+				stack.sp -= 3;
+				goto raise_exc;
+			}
+			DO_CALL(3);
 		OP_END
 
 		OP_BEGIN(Jmp)

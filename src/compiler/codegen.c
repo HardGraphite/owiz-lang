@@ -687,8 +687,10 @@ ow_noinline static void ow_codegen_emit_EqlOpExpr(
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const enum ow_ast_node_type lhs_type = node->lhs->type;
-	if (ow_unlikely(lhs_type != OW_AST_NODE_Identifier
-					&& lhs_type != OW_AST_NODE_AttrAccessExpr))
+	if (ow_unlikely(
+			lhs_type != OW_AST_NODE_Identifier &&
+			lhs_type != OW_AST_NODE_AttrAccessExpr &&
+			lhs_type != OW_AST_NODE_SubscriptExpr))
 		ow_codegen_error_throw(codegen, &node->location, "illegal assignment");
 	if (opcode == (enum ow_opcode)0)
 		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
@@ -1060,8 +1062,35 @@ static void ow_codegen_emit_CallExpr(
 static void ow_codegen_emit_SubscriptExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SubscriptExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+
+	ow_codegen_emit_node(codegen, ACT_PUSH, (const struct ow_ast_node *)node->obj);
+	if (ow_ast_node_array_size(&node->args) == 1) {
+		ow_codegen_emit_node(
+			codegen, ACT_PUSH, ow_ast_node_array_at(&node->args, 0));
+	} else {
+		const size_t args_cnt = ow_ast_node_array_size(&node->args);
+		if (ow_unlikely(args_cnt > UINT8_MAX))
+			ow_codegen_error_throw(codegen, &node->location, "too many keys");
+		for (size_t i = 0; i < args_cnt; i++) {
+			ow_codegen_emit_node(
+				codegen, ACT_PUSH, ow_ast_node_array_at(&node->args, i));
+		}
+		ow_assembler_append(
+			as, OW_OPC_MkTup, (union ow_operand){.u8 = (uint8_t)args_cnt});
+	}
+
+	enum ow_opcode opcode;
+	if (action == ACT_PUSH || ow_unlikely(action == ACT_EVAL))
+		opcode = OW_OPC_LdElem;
+	else if (action == ACT_RECV)
+		opcode = OW_OPC_StElem;
+	else
+		ow_unreachable();
+	ow_assembler_append(as, opcode, (union ow_operand){.u8 = 0});
+
+	if (ow_unlikely(action == ACT_EVAL))
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
 static void ow_codegen_emit_ExprStmt(
