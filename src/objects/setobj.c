@@ -86,4 +86,5 @@ OW_BICLS_CLASS_DEF_EX(set) = {
 	.methods   = set_methods,
 	.finalizer = ow_set_obj_finalizer,
 	.gc_marker = ow_set_obj_gc_marker,
+	.extended  = false,
 };

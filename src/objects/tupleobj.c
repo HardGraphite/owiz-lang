@@ -340,4 +340,5 @@ OW_BICLS_CLASS_DEF_EX(tuple) = {
 	.methods   = tuple_methods,
 	.finalizer = NULL,
 	.gc_marker = ow_tuple_obj_gc_marker,
+	.extended  = true,
 };

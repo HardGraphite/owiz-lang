@@ -65,9 +65,10 @@ void ow_class_obj_set_static(
 ow_static_inline bool ow_class_obj_is_base(
 	struct ow_class_obj *self, struct ow_class_obj *derived_class);
 
-struct _ow_class_obj_pub_info {
+struct ow_class_obj_pub_info {
 	size_t basic_field_count;
 	size_t native_field_count;
+	bool has_extra_fields;
 	struct ow_class_obj *super_class; // optional
 	struct ow_symbol_obj *class_name; // optional
 	void (*finalizer)(struct ow_machine *, struct ow_object *); // optional
@@ -76,25 +77,25 @@ struct _ow_class_obj_pub_info {
 
 void _ow_class_obj_fini(struct ow_class_obj *self);
 
-ow_static_forceinline const struct _ow_class_obj_pub_info *_ow_class_obj_pub_info(
+ow_static_forceinline const struct ow_class_obj_pub_info *ow_class_obj_pub_info(
 		const struct ow_class_obj *self) {
-	return (const struct _ow_class_obj_pub_info *)
+	return (const struct ow_class_obj_pub_info *)
 		((const unsigned char *)self + OW_OBJECT_SIZE);
 }
 
 ow_static_forceinline struct ow_symbol_obj *ow_class_obj_name(
 		const struct ow_class_obj *self) {
-	return _ow_class_obj_pub_info(self)->class_name;
+	return ow_class_obj_pub_info(self)->class_name;
 }
 
 ow_static_forceinline struct ow_class_obj *ow_class_obj_super(
 		const struct ow_class_obj *self) {
-	return _ow_class_obj_pub_info(self)->super_class;
+	return ow_class_obj_pub_info(self)->super_class;
 }
 
 ow_static_forceinline size_t ow_class_obj_attribute_count(
 		const struct ow_class_obj *self) {
-	return _ow_class_obj_pub_info(self)->basic_field_count;
+	return ow_class_obj_pub_info(self)->basic_field_count;
 }
 
 ow_static_inline bool ow_class_obj_is_base(
@@ -104,6 +105,6 @@ ow_static_inline bool ow_class_obj_is_base(
 			return false;
 		if (derived_class == self)
 			return true;
-		derived_class = _ow_class_obj_pub_info(derived_class)->super_class;
+		derived_class = ow_class_obj_super(derived_class);
 	}
 }

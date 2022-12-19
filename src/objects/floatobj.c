@@ -34,4 +34,5 @@ OW_BICLS_CLASS_DEF_EX(float_) = {
 	.methods   = float_methods,
 	.finalizer = NULL,
 	.gc_marker = NULL,
+	.extended  = false,
 };

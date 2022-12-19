@@ -53,4 +53,5 @@ OW_BICLS_CLASS_DEF_EX(array) = {
 	.methods   = array_methods,
 	.finalizer = ow_array_obj_finalizer,
 	.gc_marker = ow_array_obj_gc_marker,
+	.extended  = false,
 };

@@ -232,4 +232,5 @@ OW_BICLS_CLASS_DEF_EX(module) = {
 	.methods   = module_methods,
 	.finalizer = ow_module_obj_finalizer,
 	.gc_marker = ow_module_obj_gc_marker,
+	.extended  = false,
 };

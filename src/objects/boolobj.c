@@ -32,4 +32,5 @@ OW_BICLS_CLASS_DEF_EX(bool_) = {
 	.methods   = bool_methods,
 	.finalizer = NULL,
 	.gc_marker = NULL,
+	.extended  = false,
 };

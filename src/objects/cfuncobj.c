@@ -38,4 +38,5 @@ OW_BICLS_CLASS_DEF_EX(cfunc) = {
 	.methods   = cfunc_methods,
 	.finalizer = NULL,
 	.gc_marker = ow_cfunc_obj_gc_marker,
+	.extended  = false,
 };

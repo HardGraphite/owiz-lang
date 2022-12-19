@@ -347,4 +347,5 @@ OW_BICLS_CLASS_DEF_EX(string) = {
 	.methods   = string_methods,
 	.finalizer = NULL,
 	.gc_marker = ow_string_obj_gc_marker,
+	.extended  = true,
 };

@@ -825,7 +825,7 @@ OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) {
 				}
 				if (flags & OW_RDARG_MKEXC) {
 					const char *const type_name =
-						ow_symbol_obj_data(_ow_class_obj_pub_info(
+						ow_symbol_obj_data(ow_class_obj_pub_info(
 							ow_object_class(_get_local(om, index)))->class_name);
 					*++om->callstack.regs.sp = ow_object_from(ow_exception_format(om, NULL,
 						"unexpected %s object for argument %i", type_name, -index));

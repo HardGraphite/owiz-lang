@@ -62,7 +62,7 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_attribute(
 	}
 	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not attribute `%s'",
-		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+		ow_symbol_obj_data(ow_class_obj_name(obj_class)),
 		ow_symbol_obj_data(name)));
 	return -1;
 }
@@ -81,7 +81,7 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_method(
 	}
 	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not method `%s'",
-		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+		ow_symbol_obj_data(ow_class_obj_name(obj_class)),
 		ow_symbol_obj_data(name)));
 	return -1;
 }
@@ -1110,7 +1110,7 @@ int ow_machine_call_method(
 		if (ow_unlikely(!ok)) {
 			ow_object_from(ow_exception_format(
 				om, NULL, "`%s' object has not method `%s'",
-				ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+				ow_symbol_obj_data(ow_class_obj_name(obj_class)),
 				ow_symbol_obj_data(ow_object_cast(method_name, struct ow_symbol_obj))));
 			return -1;
 		}

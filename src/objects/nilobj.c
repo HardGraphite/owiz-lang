@@ -30,4 +30,5 @@ OW_BICLS_CLASS_DEF_EX(nil) = {
 	.methods   = nil_methods,
 	.finalizer = NULL,
 	.gc_marker = NULL,
+	.extended  = false,
 };

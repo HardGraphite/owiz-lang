@@ -78,4 +78,5 @@ OW_BICLS_CLASS_DEF_EX(map) = {
 	.methods   = map_methods,
 	.finalizer = ow_map_obj_finalizer,
 	.gc_marker = ow_map_obj_gc_marker,
+	.extended  = false,
 };

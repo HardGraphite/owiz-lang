@@ -52,8 +52,8 @@ struct ow_exception_obj *ow_exception_new(
 	if (ow_unlikely(!exc_type))
 		exc_type = om->builtin_classes->exception;
 	assert(ow_class_obj_is_base(om->builtin_classes->exception, exc_type));
-	assert(_ow_class_obj_pub_info(om->builtin_classes->exception)->basic_field_count
-		== _ow_class_obj_pub_info(exc_type)->basic_field_count);
+	assert(ow_class_obj_attribute_count(om->builtin_classes->exception)
+		== ow_class_obj_attribute_count(exc_type));
 
 	struct ow_exception_obj *const obj = ow_object_cast(
 		ow_objmem_allocate(om, exc_type, 0),
@@ -114,7 +114,7 @@ void ow_exception_obj_print(
 
 	if (flags & 1) {
 		struct ow_symbol_obj *const name_sym =
-			_ow_class_obj_pub_info(ow_object_class(ow_object_from(self)))->class_name;
+			ow_class_obj_name(ow_object_class(ow_object_from(self)));
 		snprintf(buffer, sizeof buffer, "Exception `%s': ", ow_symbol_obj_data(name_sym));
 		ow_iostream_puts(stream, buffer);
 
@@ -162,4 +162,5 @@ OW_BICLS_CLASS_DEF_EX(exception) = {
 	.methods   = exception_methods,
 	.finalizer = ow_exception_obj_finalizer,
 	.gc_marker = ow_exception_obj_gc_marker,
+	.extended  = false,
 };
