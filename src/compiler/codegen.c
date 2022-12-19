@@ -875,8 +875,6 @@ static void ow_codegen_emit_AttrAccessExpr(
 			opcode = OW_OPC_LdAttrYW, operand.u16 = (uint16_t)sym_idx;
 		else
 			ow_unreachable();
-		if (ow_unlikely(action == ACT_EVAL))
-			ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 	} else if (action == ACT_RECV) {
 		if (sym_idx <= UINT8_MAX)
 			opcode = OW_OPC_StAttrY, operand.u8 = (uint8_t)sym_idx;
@@ -888,6 +886,8 @@ static void ow_codegen_emit_AttrAccessExpr(
 		ow_unreachable();
 	}
 	ow_assembler_append(as, opcode, operand);
+	if (ow_unlikely(action == ACT_EVAL))
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
 static void ow_codegen_emit_MethodUseExpr(
