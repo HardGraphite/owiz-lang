@@ -299,6 +299,11 @@ struct ow_ast_SubscriptExpr {
 	struct ow_ast_node_array args;
 };
 
+struct ow_ast_LambdaExpr {
+	OW_AST_NODE_HEAD
+	struct ow_ast_FuncStmt *func;
+};
+
 struct ow_ast_ExprStmt {
 	OW_AST_NODE_HEAD
 	struct ow_ast_Expr *expr;

@@ -427,6 +427,14 @@ static void ow_ast_SubscriptExpr_fini(struct ow_ast_SubscriptExpr *node) {
 	ow_ast_CallLikeExpr_fini((struct ow_ast_CallLikeExpr *)node);
 }
 
+static void ow_ast_LambdaExpr_init(struct ow_ast_LambdaExpr *node) {
+	node->func = NULL;
+}
+
+static void ow_ast_LambdaExpr_fini(struct ow_ast_LambdaExpr *node) {
+	if (ow_likely(node->func)) ow_ast_node_del((struct ow_ast_node *)node->func);
+}
+
 static void ow_ast_ExprStmt_init(struct ow_ast_ExprStmt *node) {
 	node->expr = NULL;
 }

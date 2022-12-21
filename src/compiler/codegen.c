@@ -1093,6 +1093,18 @@ static void ow_codegen_emit_SubscriptExpr(
 		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
+static void ow_codegen_emit_LambdaExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_LambdaExpr *node) {
+	assert(action == ACT_EVAL || action == ACT_PUSH);
+	assert(node->func && !node->func->name);
+	ow_codegen_emit_FuncStmt(codegen, ACT_PUSH, node->func);
+	if (ow_unlikely(action == ACT_EVAL)) {
+		struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+	}
+}
+
 static void ow_codegen_emit_ExprStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ExprStmt *node) {
@@ -1256,7 +1268,7 @@ static void ow_codegen_emit_FuncStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_FuncStmt *node) {
 	ow_unused_var(action);
-	assert(action == ACT_EVAL);
+	assert(action == ACT_EVAL || action == ACT_PUSH);
 	if (ow_unlikely(ow_ast_node_array_size(&node->args->elems) >= INT8_MAX))
 		ow_codegen_error_throw(codegen, &node->args->location, "too many arguments");
 	struct ow_func_obj *func;
@@ -1292,19 +1304,30 @@ static void ow_codegen_emit_FuncStmt(
 		scope_stack_pop(&codegen->scope_stack);
 	}
 
-	{
-		struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
-		const size_t const_index = ow_assembler_constant(
-			as, (struct ow_assembler_constant){
-				.type = OW_AS_CONST_OBJ, .o = ow_object_from(func)});
-		ow_codegen_asm_push_constant(
-			codegen, (const struct ow_ast_node *)node, as, const_index);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	const size_t const_index = ow_assembler_constant(
+		as,
+		(struct ow_assembler_constant){
+			.type = OW_AS_CONST_OBJ,
+			.o = ow_object_from(func)
+		}
+	);
+	ow_codegen_asm_push_constant(
+		codegen, (const struct ow_ast_node *)node, as, const_index);
+	if (action == ACT_EVAL) {
+		assert(node->name);
 		ow_codegen_emit_Identifier(codegen, ACT_RECV, node->name);
+	} else if (action == ACT_PUSH) {
+		assert(!node->name);
+		// Used in `ow_codegen_emit_LambdaExpr()`.
+	} else {
+		ow_unreachable();
 	}
 
 #if OW_DEBUG_CODEGEN
 	if (ow_unlikely(codegen->verbose)) {
-		const char *const name = ow_sharedstr_data(node->name->value);
+		const char *const name = node->name ?
+			ow_sharedstr_data(node->name->value) : "<lambda>";
 		verbose_dump_func(node->location.begin.line, name, func);
 	}
 #endif // OW_DEBUG_CODEGEN

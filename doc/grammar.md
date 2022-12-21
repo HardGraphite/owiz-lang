@@ -194,6 +194,28 @@ list[0]
 matrix[3,2]
 ```
 
+### LambdaExpr
+
+Syntax:
+
+```
+lambda_expr
+  = "func" "(" func_stmt_arglist ")" "=>" expr
+  | "func" "(" func_stmt_arglist ")" block_stmt "end"
+```
+
+Examples:
+
+```
+func (a, b) => a + b
+
+(func (a, b)
+  if a < b
+    return a
+  return b
+end)
+```
+
 ## Statements
 
 ### Expression statement

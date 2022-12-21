@@ -137,6 +137,9 @@ static void test_expressions(ow_machine_t *om) {
 	TEST_ASSERT(check(om, "object[1]"));
 	TEST_ASSERT(check(om, "object[1,2]"));
 	TEST_ASSERT(check(om, "object[\n1\n,\n2\n]"));
+
+	TEST_ASSERT(eval_and_cmp_int(om, "f=func(a,b,c)=>a*b+c; f(3,2,1)", 7));
+	TEST_ASSERT(eval_and_cmp_int(om, "f=func(a,b) if a<b; return a; end; return b; end; f(-1,1)", -1));
 }
 
 static void test_statements(ow_machine_t *om) {

@@ -227,3 +227,10 @@ ow_static_inline void ow_token_assign_string(
 	tok->_type = tp;
 	tok->_data.s = ow_sharedstr_ref(val);
 }
+
+/// Move token value to another.
+ow_static_inline void ow_token_move(
+		struct ow_token *dest, struct ow_token *src) {
+	*dest = *src;
+	src->_type = OW_TOK_END;
+}

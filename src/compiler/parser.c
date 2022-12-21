@@ -20,9 +20,13 @@
 #	include <stdio.h>
 #endif // OW_DEBUG_PARSER
 
+/// Max number of tokens in `struct token_queue`.
+#define TOKEN_QUEUE_CAP 2
+
 /// Token queue.
 struct token_queue {
-	struct ow_token   _tokens[1];
+	struct ow_token   _tokens[TOKEN_QUEUE_CAP];
+	size_t            _token_cnt;
 	size_t            _ign_eol_cnt;
 	struct ow_lexer  *_lexer;
 	struct ow_parser *_parser;
@@ -30,8 +34,9 @@ struct token_queue {
 
 /// Initialize token queue.
 static void token_queue_init(struct token_queue *tq, struct ow_parser *parser) {
-	for (size_t i = 0; i < sizeof tq->_tokens / sizeof tq->_tokens[0]; i++)
+	for (size_t i = 0; i < TOKEN_QUEUE_CAP; i++)
 		ow_token_init(&tq->_tokens[i]);
+	tq->_token_cnt = 0;
 	tq->_ign_eol_cnt = 0;
 	tq->_lexer = ow_parser_lexer(parser);
 	tq->_parser = parser;
@@ -39,40 +44,74 @@ static void token_queue_init(struct token_queue *tq, struct ow_parser *parser) {
 
 /// Finalize token queue.
 static void token_queue_fini(struct token_queue *tq) {
-	for (size_t i = 0; i < sizeof tq->_tokens / sizeof tq->_tokens[0]; i++)
+	for (size_t i = 0; i < TOKEN_QUEUE_CAP; i++)
 		ow_token_fini(&tq->_tokens[i]);
 }
 
 /// Reset the queue.
 static void token_queue_clear(struct token_queue *tq) {
-	for (size_t i = 0; i < sizeof tq->_tokens / sizeof tq->_tokens[0]; i++)
+	for (size_t i = 0; i < TOKEN_QUEUE_CAP; i++)
 		ow_token_assign_simple(&tq->_tokens[i], OW_TOK_END);
-}
-
-/// View current token.
-static struct ow_token *token_queue_peek(struct token_queue *tq) {
-	return &tq->_tokens[0];
+	tq->_token_cnt = 0;
+	tq->_ign_eol_cnt = 0;
 }
 
 ow_noinline ow_noreturn static void ow_parser_error_throw_lex_err(
 	struct ow_parser *, const struct ow_syntax_error *);
 
+/// View current token.
+static struct ow_token *token_queue_peek(struct token_queue *tq) {
+	assert(tq->_token_cnt >= 1);
+	return &tq->_tokens[0];
+}
+
+/// View next token.
+static struct ow_token *token_queue_peek2(struct token_queue *tq) {
+	assert(tq->_token_cnt >= 1);
+	if (tq->_token_cnt == 1) {
+		bool ok;
+	next_token:
+		ok = ow_lexer_next(tq->_lexer, &tq->_tokens[1]);
+		if (ow_unlikely(!ok)) {
+			const struct ow_syntax_error *const err = ow_lexer_error(tq->_lexer);
+			ow_parser_error_throw_lex_err(tq->_parser, err);
+		}
+		if (ow_unlikely(ow_token_type(&tq->_tokens[1]) == OW_TOK_END_LINE
+				&& tq->_ign_eol_cnt)) {
+			goto next_token;
+		}
+		tq->_token_cnt = 2;
+	}
+	return &tq->_tokens[1];
+}
+
 /// Move to next token.
 static void token_queue_advance(struct token_queue *tq) {
-advance_again:;
-	const bool ok = ow_lexer_next(tq->_lexer, &tq->_tokens[0]);
+	bool ok;
+	static_assert(TOKEN_QUEUE_CAP == 2, "");
+	if (ow_unlikely(tq->_token_cnt == 2)) {
+		ow_token_move(&tq->_tokens[0], &tq->_tokens[1]);
+		tq->_token_cnt = 1;
+		goto check_eol;
+	}
+	assert(tq->_token_cnt == 1);
+next_token:
+	ok = ow_lexer_next(tq->_lexer, &tq->_tokens[0]);
 	if (ow_unlikely(!ok)) {
 		const struct ow_syntax_error *const err = ow_lexer_error(tq->_lexer);
 		ow_parser_error_throw_lex_err(tq->_parser, err);
 	}
+check_eol:
 	if (ow_unlikely(ow_token_type(&tq->_tokens[0]) == OW_TOK_END_LINE
 			&& tq->_ign_eol_cnt)) {
-		goto advance_again;
+		goto next_token;
 	}
 }
 
 /// Sync with lexer. Call this function after `token_queue_clear()`.
 static void token_queue_sync(struct token_queue *tq) {
+	assert(tq->_token_cnt == 0);
+	tq->_token_cnt = 1;
 	token_queue_advance(tq);
 }
 
@@ -963,6 +1002,49 @@ static struct ow_ast_Expr *ow_parser_parse_SetExpr_or_MapExpr(struct ow_parser *
 	return (struct ow_ast_Expr *)map_expr;
 }
 
+static void _parse_func_def_args(struct ow_parser *, struct ow_ast_FuncStmt *);
+static void ow_parser_parse_block_to(struct ow_parser *, struct ow_ast_BlockStmt *);
+static struct ow_ast_ExprStmt *ow_parser_make_expr_stmt(struct ow_ast_Expr *);
+
+/// Parse an lambda function expression. Similar to `ow_parser_parse_func_stmt()`.
+static struct ow_ast_LambdaExpr *ow_parser_parse_lambda_expr(
+		struct ow_parser *parser) {
+	struct token_queue *const tq = &parser->token_queue;
+	struct ow_ast_LambdaExpr *const lambda_expr = ow_ast_LambdaExpr_new();
+	ow_parser_protect_node(parser, lambda_expr);
+	assert(!lambda_expr->func);
+	lambda_expr->func = ow_ast_FuncStmt_new();
+	struct ow_ast_FuncStmt *const func_stmt = lambda_expr->func;
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_KW_FUNC);
+	lambda_expr->location.begin = token_queue_peek(tq)->location.begin;
+	token_queue_advance(tq);
+
+	assert(!func_stmt->name); // No name.
+	_parse_func_def_args(parser, func_stmt);
+
+	if (ow_token_type(token_queue_peek(tq)) == OW_TOK_FATARROW) {
+		token_queue_advance(tq);
+		struct ow_ast_Expr *const expr = ow_parser_parse_expr(parser);
+		struct ow_ast_ReturnStmt *const ret_stmt = ow_ast_ReturnStmt_new();
+		ret_stmt->ret_val = expr;
+		ret_stmt->location = expr->location;
+		func_stmt->location.end = expr->location.end;
+		ow_ast_node_array_append(&func_stmt->stmts, (struct ow_ast_node *)ret_stmt);
+	} else {
+		const size_t iel_lv = token_queue_set_iel(tq, 0);
+		ow_parser_parse_block_to(parser, (struct ow_ast_BlockStmt *)func_stmt);
+		const size_t iel_lv_1 = token_queue_set_iel(tq, iel_lv);
+		ow_unused_var(iel_lv_1);
+		assert(iel_lv_1 == 0);
+		func_stmt->location.end = token_queue_peek(tq)->location.end;
+		ow_parser_check_and_ignore(parser, OW_TOK_KW_END);
+	}
+
+	ow_parser_unprotect_node(parser, lambda_expr);
+	return lambda_expr;
+}
+
 /// Parser an expression.
 static struct ow_ast_Expr *ow_parser_parse_expr(struct ow_parser *parser) {
 	struct expr_parser *const ep = ow_parser_expr_parser_borrow(parser);
@@ -1078,6 +1160,10 @@ static struct ow_ast_Expr *ow_parser_parse_expr(struct ow_parser *parser) {
 			}
 		} else if (OW_TOK_KW_NIL <= tok_tp && tok_tp <= OW_TOK_KW_FALSE) {
 			goto tok_is_value;
+		} else if (tok_tp == OW_TOK_KW_FUNC) {
+			expr_parser_input_operand(
+				ep, (struct ow_ast_Expr *)ow_parser_parse_lambda_expr(parser));
+			last_tok_is_operand = true;
 		} else {
 			break;
 		}
@@ -1247,21 +1333,9 @@ static struct ow_ast_WhileStmt *ow_parser_parse_while_stmt(
 	return while_stmt;
 }
 
-/// Parse func statement.
-static struct ow_ast_FuncStmt *ow_parser_parse_func_stmt(
-		struct ow_parser *parser) {
+static void _parse_func_def_args(
+		struct ow_parser *parser, struct ow_ast_FuncStmt *func_stmt) {
 	struct token_queue *const tq = &parser->token_queue;
-	struct ow_ast_FuncStmt *const func_stmt = ow_ast_FuncStmt_new();
-	ow_parser_protect_node(parser, func_stmt);
-
-	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_KW_FUNC);
-	func_stmt->location.begin = token_queue_peek(tq)->location.begin;
-	token_queue_advance(tq);
-
-	assert(!func_stmt->name);
-	ow_parser_check_next(parser, OW_TOK_IDENTIFIER);
-	func_stmt->name = ow_parser_parse_identifier(parser);
-
 	token_queue_push_iel(tq);
 	ow_parser_check_and_ignore(parser, OW_TOK_L_PAREN);
 	assert(!func_stmt->args);
@@ -1278,6 +1352,24 @@ static struct ow_ast_FuncStmt *ow_parser_parse_func_stmt(
 				"param-%zu is not a legal formal parameter", i + 1);
 		}
 	}
+}
+
+/// Parse func statement.
+static struct ow_ast_FuncStmt *ow_parser_parse_func_stmt(
+		struct ow_parser *parser) {
+	struct token_queue *const tq = &parser->token_queue;
+	struct ow_ast_FuncStmt *const func_stmt = ow_ast_FuncStmt_new();
+	ow_parser_protect_node(parser, func_stmt);
+
+	assert(ow_token_type(token_queue_peek(tq)) == OW_TOK_KW_FUNC);
+	func_stmt->location.begin = token_queue_peek(tq)->location.begin;
+	token_queue_advance(tq);
+
+	assert(!func_stmt->name);
+	ow_parser_check_next(parser, OW_TOK_IDENTIFIER);
+	func_stmt->name = ow_parser_parse_identifier(parser);
+
+	_parse_func_def_args(parser, func_stmt);
 	ow_parser_check_and_ignore(parser, OW_TOK_END_LINE);
 
 	ow_parser_parse_block_to(parser, (struct ow_ast_BlockStmt *)func_stmt);
@@ -1291,7 +1383,8 @@ static struct ow_ast_FuncStmt *ow_parser_parse_func_stmt(
 
 /// Parse next statement. If reaches unexpected token, return NULL.
 static struct ow_ast_Stmt *ow_parser_parse_stmt(struct ow_parser *parser) {
-	struct ow_token *const tok = token_queue_peek(&parser->token_queue);
+	struct token_queue *const tq = &parser->token_queue;
+	struct ow_token *const tok = token_queue_peek(tq);
 
 	switch (ow_token_type(tok)) {
 	case OW_TOK_OP_ADD:
@@ -1379,7 +1472,10 @@ static struct ow_ast_Stmt *ow_parser_parse_stmt(struct ow_parser *parser) {
 		return (struct ow_ast_Stmt *)ow_parser_parse_while_stmt(parser);
 
 	case OW_TOK_KW_FUNC:
-		return (struct ow_ast_Stmt *)ow_parser_parse_func_stmt(parser);
+		return ow_likely(ow_token_type(token_queue_peek2(tq)) == OW_TOK_IDENTIFIER) ?
+			(struct ow_ast_Stmt *)ow_parser_parse_func_stmt(parser):
+			(struct ow_ast_Stmt *)
+				ow_parser_make_expr_stmt(ow_parser_parse_expr(parser))/*lambda*/;
 
 	case OW_TOK_KW_END:
 	case OW_TOK_KW_SELF:
@@ -1388,7 +1484,7 @@ static struct ow_ast_Stmt *ow_parser_parse_stmt(struct ow_parser *parser) {
 		return NULL;
 
 	case OW_TOK_END_LINE:
-		token_queue_advance(&parser->token_queue); // Ignore the empty statement.
+		token_queue_advance(tq); // Ignore the empty statement.
 		return ow_parser_parse_stmt(parser);
 
 	case OW_TOK_END:
