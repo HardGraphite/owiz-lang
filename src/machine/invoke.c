@@ -315,7 +315,7 @@ static int invoke_impl(
 	struct ow_object *const val = stack.sp[0]; \
 	if (ow_smallint_check(val)) { \
 		const ow_smallint_t res = OPERATOR ow_smallint_from_ptr(val); \
-		*--stack.sp = ow_int_obj_or_smallint(machine, res); \
+		*stack.sp = ow_int_obj_or_smallint(machine, res); \
 	} else { \
 		*++stack.sp = val; \
 		STACK_COMMIT(); \
