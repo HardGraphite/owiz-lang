@@ -25,14 +25,14 @@
 
 #include <stdio.h>
 
-#include <bytecode/dumpcode.h>
+#include <bytecode/disassemble.h>
 #include <objects/funcobj.h>
 #include <utilities/stream.h>
 
 static void verbose_dump_func(
 		unsigned int line, const char *name, struct ow_func_obj *func) {
 	fprintf(stderr, "[CODEGEN] %s (line %u) vvv\n", name, line);
-	ow_bytecode_dump(func->code, 0, func->code_size, (size_t)-1, ow_iostream_stderr());
+	ow_bytecode_dump(func->code, 0, func->code_size, func, 0, (size_t)-1, ow_iostream_stderr());
 	fputs("[CODEGEN] ^^^\n", stderr);
 }
 

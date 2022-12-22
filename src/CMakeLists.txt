@@ -2,6 +2,7 @@ option(OW_DEBUG_LEXER "Compile debugging code for lexer." OFF)
 option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
 option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
+option(OW_BUILD_BYTECODE_DUMP_COMMENT "Print operand comment in `ow_bytecode_dump()`." ON)
 
 include(FindReadline)
 set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
@@ -163,6 +164,7 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
 #cmakedefine01  OW_DEBUG_LEXER
 #cmakedefine01  OW_DEBUG_PARSER
 #cmakedefine01  OW_DEBUG_CODEGEN
+#cmakedefine01  OW_BUILD_BYTECODE_DUMP_COMMENT
 #cmakedefine01  OW_LIB_READLINE_USE_LIBEDIT
 ]==])
 
