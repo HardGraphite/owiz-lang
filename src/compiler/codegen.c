@@ -1145,15 +1145,15 @@ static void ow_codegen_emit_ReturnStmt(
 			if (scope->type != SCOPE_FUNC)
 				break;
 			const size_t index = scope_find_variable(scope, name);
-			if (index >= UINT8_MAX)
+			if (index > UINT8_MAX)
 				break;
 			ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = (uint8_t)index});
 			return;
 		} while (0);
 		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->ret_val);
-		ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = UINT8_MAX});
-	} else {
 		ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+	} else {
+		ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 	}
 }
 
@@ -1285,8 +1285,9 @@ static void ow_codegen_emit_FuncStmt(
 		ow_codegen_emit_BlockStmt(
 			codegen, ACT_EVAL, (const struct ow_ast_BlockStmt *)node);
 		const enum ow_opcode last_opcode = ow_assembler_last(as);
-		if (!(last_opcode == OW_OPC_Ret || last_opcode == OW_OPC_RetLoc))
-			ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+		if (!(last_opcode == OW_OPC_Ret ||
+				last_opcode == OW_OPC_RetNil || last_opcode == OW_OPC_RetLoc))
+			ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 
 		const struct ow_assembler_output_spec as_output_spec = {
 			codegen->module,
@@ -1411,7 +1412,7 @@ static void ow_codegen_emit_Module(
 	_scope_load_module_globals(scope, codegen->module);
 
 	ow_codegen_emit_BlockStmt(codegen, ACT_EVAL, node->code);
-	ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+	ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 
 	ow_unused_var(scope);
 	assert(code_stack_top(&codegen->code_stack) == as);

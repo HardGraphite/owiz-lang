@@ -106,9 +106,9 @@ Instructions with i16/u16 operand:
 | `JmpUnls`    | `0x44` | i8: O   | `cond -> .`         | Jump if top value is false.                 |
 | `JmpUnlsW`   | `0x45` | i16: O  | `cond -> .`         | Jump if top value is false.                 |
 | `LdMod`      | `0x46` | u16: YI | `. -> mod`          | import module by name                       |
-| `_47`        | `0x47` | 0       |                     | *(reserved)*                                |
-| `Ret`        | `0x48` | 0       |                     | Return nil.                                 |
-| `RetLoc`     | `0x49` | u8: I   | `v -> .` / `. -> .` | Return local variable or top value (I=255). |
+| `Ret`        | `0x47` | 0       |                     | Return top value.                           |
+| `RetNil`     | `0x48` | 0       |                     | Return nil.                                 |
+| `RetLoc`     | `0x49` | u8: I   | `v -> .` / `. -> .` | Return local variable.                      |
 | `Call`       | `0x4a` | u8: C   | `fn,a... -> [ret]`  | Call a function.                            |
 | `_4b`        | `0x4b` | 0       |                     | *(reserved)*                                |
 | `_4c`        | `0x4c` | 0       |                     | *(reserved)*                                |

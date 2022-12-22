@@ -779,7 +779,8 @@ static int invoke_impl(
 
 		OP_BEGIN(Ret)
 			NO_OPERAND()
-			operand.pointer = machine_globals->value_nil; // Return value.
+			operand.pointer = *stack.sp;
+			// Return value is stored in `operand.pointer`.
 		op_Ret_2:;
 			ip = current_frame->prev_ip;
 			stack.fp = current_frame->prev_fp;
@@ -808,14 +809,17 @@ static int invoke_impl(
 			current_module = current_func_obj->module;
 		OP_END
 
+		OP_BEGIN(RetNil)
+			NO_OPERAND()
+			operand.pointer = machine_globals->value_nil;
+			goto op_Ret_2;
+		OP_END
+
 		OP_BEGIN(RetLoc)
 			OPERAND(u8, operand.index)
-			if (operand.index == UINT8_MAX)
-				operand.pointer = *stack.sp;
-			else if (ow_likely(stack.fp + operand.index < stack.sp))
-				operand.pointer = stack.fp[operand.index];
-			else
+			if (ow_unlikely(stack.fp + operand.index > stack.sp))
 				goto err_bad_operand;
+			operand.pointer = stack.fp[operand.index];
 			goto op_Ret_2;
 		OP_END
 

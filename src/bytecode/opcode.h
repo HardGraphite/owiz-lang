@@ -73,8 +73,8 @@
 	ELEM(JmpUnls    , 0x44,  i8) \
 	ELEM(JmpUnlsW   , 0x45, i16) \
 	ELEM(LdMod      , 0x46, u16) \
-	ELEM(_47        , 0x47,   0) \
-	ELEM(Ret        , 0x48,   0) \
+	ELEM(Ret        , 0x47,   0) \
+	ELEM(RetNil     , 0x48,   0) \
 	ELEM(RetLoc     , 0x49,  u8) \
 	ELEM(Call       , 0x4a,  u8) \
 	ELEM(_4b        , 0x4b,   0) \
