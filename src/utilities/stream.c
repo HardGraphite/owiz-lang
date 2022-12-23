@@ -214,14 +214,13 @@ const struct ow_stream_operations ow_strview_stream_operations = {
 	.puts  = (sop_puts_t) ow_strview_stream_puts ,
 };
 
-bool ow_strview_stream_open(
+void ow_strview_stream_open(
 		struct ow_strview_stream *stream, const char *str, size_t len) {
 	stream->_ops = &ow_strview_stream_operations;
 	stream->_open_flags = OW_STREAM_OPEN_READ;
 	stream->begin = str;
 	stream->end = str + (len == (size_t)-1 ? strlen(str) : len);
 	stream->current = str;
-	return true;
 }
 
 void ow_strview_stream_close(struct ow_strview_stream *stream) {
@@ -290,13 +289,12 @@ const struct ow_stream_operations ow_string_stream_operations = {
 	.puts  = (sop_puts_t) ow_string_stream_puts ,
 };
 
-bool ow_string_stream_open(struct ow_string_stream *stream) {
+void ow_string_stream_open(struct ow_string_stream *stream) {
 	stream->_ops = &ow_string_stream_operations;
 	stream->_open_flags = OW_STREAM_OPEN_READ | OW_STREAM_OPEN_WRITE;
 	stream->begin   = NULL;
 	stream->end     = NULL;
 	stream->current = NULL;
-	return true;
 }
 
 void ow_string_stream_close(struct ow_string_stream *stream) {

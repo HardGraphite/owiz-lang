@@ -86,7 +86,7 @@ struct ow_strview_stream {
 };
 
 extern const struct ow_stream_operations ow_strview_stream_operations;
-bool ow_strview_stream_open(struct ow_strview_stream *stream, const char *str, size_t len);
+void ow_strview_stream_open(struct ow_strview_stream *stream, const char *str, size_t len);
 void ow_strview_stream_close(struct ow_strview_stream *stream);
 bool ow_strview_stream_eof(const struct ow_strview_stream *stream);
 size_t ow_strview_stream_read(struct ow_strview_stream *stream, void *buf, size_t buf_sz);
@@ -105,7 +105,7 @@ struct ow_string_stream {
 };
 
 extern const struct ow_stream_operations ow_string_stream_operations;
-bool ow_string_stream_open(struct ow_string_stream *stream);
+void ow_string_stream_open(struct ow_string_stream *stream);
 void ow_string_stream_close(struct ow_string_stream *stream);
 bool ow_string_stream_eof(const struct ow_string_stream *stream);
 size_t ow_string_stream_read(struct ow_string_stream *stream, void *buf, size_t buf_sz);

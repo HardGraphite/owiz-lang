@@ -20,16 +20,23 @@ struct ow_machine;
 	ELEM(module)      \
 	ELEM(nil)         \
 	ELEM(set)         \
+	ELEM(stream)      \
 	ELEM(string)      \
 	ELEM(symbol)      \
 	ELEM(tuple)       \
 // ^^^ OW_BICLS_LIST ^^^
+
+#define OW_BICLS_STREAM_LIST \
+	ELEM(file)          \
+	ELEM(string_stream) \
+/// ^^^ OW_BICLS_STREAM_LIST ^^^
 
 /// A collection of builtin classes.
 struct ow_builtin_classes {
 #define ELEM(NAME) struct ow_class_obj * NAME;
 	OW_BICLS_LIST0
 	OW_BICLS_LIST
+	OW_BICLS_STREAM_LIST
 #undef ELEM
 };
 
