@@ -31,11 +31,20 @@ ow_pragma_message("thread utilities are not implemeted")
 
 #if OW_THRD_WINNT
 
+#ifdef _MSC_VER
+#	pragma warning(push)
+#	pragma warning(disable: 4324)
+#endif // _MSC_VER
+
 struct winnt_thrd_create_func_wrapper_arg {
 	ow_thrd_start_t func;
 	void *func_arg;
 	atomic_int ready;
 };
+
+#ifdef _MSC_VER
+#	pragma warning(pop)
+#endif // _MSC_VER
 
 static unsigned int __stdcall winnt_thrd_create_func_wrapper(void *arg) {
 	struct winnt_thrd_create_func_wrapper_arg *const wrapper_arg = arg;

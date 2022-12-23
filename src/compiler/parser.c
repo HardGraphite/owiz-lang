@@ -613,7 +613,7 @@ static void _expr_parser_gen_op_expr(struct expr_parser *ep) {
 
 	case OW_TOK_OP_CALL:
 		if (ow_unlikely(ast_node_stack_size(&ep->_operand_stack) < 2))
-			goto no_enough_operands;
+			goto no_enough_operands_no_op_expr;
 		assert(ast_node_stack_top(&ep->_operand_stack)->type == OW_AST_NODE_CallExpr);
 		op_expr.call =
 			(struct ow_ast_CallExpr *)ast_node_stack_release(&ep->_operand_stack);
@@ -629,7 +629,7 @@ static void _expr_parser_gen_op_expr(struct expr_parser *ep) {
 
 	case OW_TOK_OP_SUBSCRIPT:
 		if (ow_unlikely(ast_node_stack_size(&ep->_operand_stack) < 2))
-			goto no_enough_operands;
+			goto no_enough_operands_no_op_expr;
 		assert(ast_node_stack_top(&ep->_operand_stack)->type == OW_AST_NODE_SubscriptExpr);
 		op_expr.subscript =
 			(struct ow_ast_SubscriptExpr *)ast_node_stack_release(&ep->_operand_stack);
@@ -645,6 +645,7 @@ static void _expr_parser_gen_op_expr(struct expr_parser *ep) {
 
 	no_enough_operands:
 		ow_ast_node_del(op_expr.node);
+	no_enough_operands_no_op_expr:
 		ow_parser_error_throw(
 			ep->_parser,
 			&ow_xarray_last(&ep->_operator_stack, struct _expr_parser_op_info).location,

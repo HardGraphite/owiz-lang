@@ -145,7 +145,7 @@ void ow_bytecode_dump(
 
 #if OW_BUILD_BYTECODE_DUMP_COMMENT
 
-#if defined __GNUC__ || defined __clang__
+#if defined __GNUC__ && !defined __clang__
 #	pragma GCC push_options
 #	pragma GCC optimize ("Oz")
 #elif defined _MSC_VER
@@ -217,7 +217,7 @@ static const char *write_operand_comment(
 	return NULL;
 }
 
-#if defined __GNUC__ || defined __clang__
+#if defined __GNUC__ && !defined __clang__
 #	pragma GCC pop_options
 #elif defined _MSC_VER
 #	pragma optimize("s", on)

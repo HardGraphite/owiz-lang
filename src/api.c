@@ -595,12 +595,12 @@ OW_API int ow_read_string_to(
 size_t ow_read_array(ow_machine_t *om, int index, size_t elem_idx) {
 	struct ow_object *const v = _get_local(om, index);
 	if (ow_unlikely(!v))
-		return OW_ERR_INDEX;
+		return (size_t)OW_ERR_INDEX;
 	if (ow_unlikely(ow_smallint_check(v)))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	if (ow_unlikely(!ow_class_obj_is_base(
 			om->builtin_classes->array, ow_object_class(v))))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	struct ow_array *const data =
 		ow_array_obj_data(ow_object_cast(v, struct ow_array_obj));
 	const size_t len = ow_array_size(data);
@@ -616,18 +616,18 @@ size_t ow_read_array(ow_machine_t *om, int index, size_t elem_idx) {
 			*++om->callstack.regs.sp = ow_array_at(data, i);
 		return len;
 	}
-	return OW_ERR_FAIL;
+	return (size_t)OW_ERR_FAIL;
 }
 
 size_t ow_read_tuple(ow_machine_t *om, int index, size_t elem_idx) {
 	struct ow_object *const v = _get_local(om, index);
 	if (ow_unlikely(!v))
-		return OW_ERR_INDEX;
+		return (size_t)OW_ERR_INDEX;
 	if (ow_unlikely(ow_smallint_check(v)))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	if (ow_unlikely(!ow_class_obj_is_base(
 			om->builtin_classes->tuple, ow_object_class(v))))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	struct ow_tuple_obj *const tuple_obj = ow_object_cast(v, struct ow_tuple_obj);
 	struct ow_object *const elem = ow_tuple_obj_get(tuple_obj, elem_idx - 1);
 	if (ow_likely(elem)) {
@@ -646,7 +646,7 @@ size_t ow_read_tuple(ow_machine_t *om, int index, size_t elem_idx) {
 		assert(copied_cnt == len);
 		return len;
 	}
-	return OW_ERR_FAIL;
+	return (size_t)OW_ERR_FAIL;
 }
 
 static int _set_expand_walker(void *arg, struct ow_object *elem) {
@@ -658,12 +658,12 @@ static int _set_expand_walker(void *arg, struct ow_object *elem) {
 OW_API size_t ow_read_set(ow_machine_t *om, int index, int op) {
 	struct ow_object *const v = _get_local(om, index);
 	if (ow_unlikely(!v))
-		return OW_ERR_INDEX;
+		return (size_t)OW_ERR_INDEX;
 	if (ow_unlikely(ow_smallint_check(v)))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	if (ow_unlikely(!ow_class_obj_is_base(
-		om->builtin_classes->set, ow_object_class(v))))
-		return OW_ERR_TYPE;
+			om->builtin_classes->set, ow_object_class(v))))
+		return (size_t)OW_ERR_TYPE;
 	struct ow_set_obj *const set_obj = ow_object_cast(v, struct ow_set_obj);
 	const size_t len = ow_set_obj_length(set_obj);
 	assert(len < SIZE_MAX / 2);
@@ -673,7 +673,7 @@ OW_API size_t ow_read_set(ow_machine_t *om, int index, int op) {
 		ow_set_obj_foreach(set_obj, _set_expand_walker, om);
 		return len;
 	}
-	return OW_ERR_ARG;
+	return (size_t)OW_ERR_ARG;
 }
 
 static int _map_expand_walker(
@@ -687,20 +687,20 @@ static int _map_expand_walker(
 OW_API size_t ow_read_map(ow_machine_t *om, int index, int key_idx) {
 	struct ow_object *const v = _get_local(om, index);
 	if (ow_unlikely(!v))
-		return OW_ERR_INDEX;
+		return (size_t)OW_ERR_INDEX;
 	if (ow_unlikely(ow_smallint_check(v)))
-		return OW_ERR_TYPE;
+		return (size_t)OW_ERR_TYPE;
 	if (ow_unlikely(!ow_class_obj_is_base(
-		om->builtin_classes->map, ow_object_class(v))))
-		return OW_ERR_TYPE;
+			om->builtin_classes->map, ow_object_class(v))))
+		return (size_t)OW_ERR_TYPE;
 	struct ow_map_obj *const map_obj = ow_object_cast(v, struct ow_map_obj);
 	if (key_idx >= -255) {
 		struct ow_object *const kv = _get_local(om, key_idx);
 		if (!kv)
-			return OW_ERR_FAIL;
+			return (size_t)OW_ERR_FAIL;
 		struct ow_object *const res = ow_map_obj_get(om, map_obj, kv);
 		if (ow_unlikely(!res))
-			return OW_ERR_FAIL;
+			return (size_t)OW_ERR_FAIL;
 		*++om->callstack.regs.sp = res;
 		return 0;
 	}
@@ -711,7 +711,7 @@ OW_API size_t ow_read_map(ow_machine_t *om, int index, int key_idx) {
 		ow_map_obj_foreach(map_obj, _map_expand_walker, om);
 		return len;
 	}
-	return OW_ERR_FAIL;
+	return (size_t)OW_ERR_FAIL;
 }
 
 OW_API int ow_read_exception(ow_machine_t *om, int index, int flags, ...) {
@@ -769,8 +769,8 @@ OW_API int ow_read_args(ow_machine_t *om, int flags, const char *fmt, ...) {
 
 	if (ow_unlikely(!fmt)) {
 		const unsigned int argc =
-			om->callstack.regs.fp - 1
-				- om->callstack.frame_info_list.current->arg_list;
+			(unsigned int)(om->callstack.regs.fp - 1
+				- om->callstack.frame_info_list.current->arg_list);
 		va_start(ap, fmt);
 		*va_arg(ap, unsigned int *) = argc;
 		va_end(ap);

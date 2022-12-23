@@ -3,3 +3,26 @@
 !.git*
 
 *build*/
+*.tmp
+
+*.patch
+*.orig
+*.rej
+
+*.d
+*.gch
+*.pch
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.out
+*.exe
+
+__pycache__/
+*.pyc
+*.pyd
+*.pyo

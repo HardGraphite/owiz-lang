@@ -1,0 +1,9 @@
+*       text=auto
+
+*.c     diff=cpp
+*.cc    diff=cpp
+*.h     diff=cpp
+*.py    diff=python
+*.md    diff=markdown
+
+.*      export-ignore

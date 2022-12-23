@@ -15,11 +15,12 @@ ow_hash_t ow_hash_double(double val) {
 	const int32_t as_int = (int32_t)val;
 	static_assert(sizeof as_int == sizeof(ow_hash_t), "");
 	if ((double)as_int == val)
-		return (ow_hash_t)as_int;
+		return ow_hash_int(as_int);
 
-	const float as_float = (float)val;
-	static_assert(sizeof as_float == sizeof(ow_hash_t), "");
-	return *(ow_hash_t *)&as_float;
+	static_assert(sizeof(float) == sizeof(ow_hash_t), "");
+	union { float f; int32_t i; } converter;
+	converter.f = (float)val;
+	return converter.i >> 2;
 }
 
 #ifdef _MSC_VER
