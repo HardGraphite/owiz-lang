@@ -109,30 +109,30 @@ const struct ow_exception_obj_frame_info *ow_exception_obj_backtrace(
 
 void ow_exception_obj_print(
 		struct ow_machine *om, struct ow_exception_obj *self,
-		struct ow_iostream *stream, int flags) {
+		struct ow_stream *stream, int flags) {
 	char buffer[128];
 
 	if (flags & 1) {
 		struct ow_symbol_obj *const name_sym =
 			ow_class_obj_name(ow_object_class(ow_object_from(self)));
 		snprintf(buffer, sizeof buffer, "Exception `%s': ", ow_symbol_obj_data(name_sym));
-		ow_iostream_puts(stream, buffer);
+		ow_stream_puts(stream, buffer);
 
 		if (!ow_smallint_check(self->data) &&
 				ow_object_class(self->data) == om->builtin_classes->string) {
 			struct ow_string_obj *const str_o =
 				ow_object_cast(self->data, struct ow_string_obj);
-			ow_iostream_puts(stream, ow_string_obj_flatten(om, str_o, NULL));
+			ow_stream_puts(stream, ow_string_obj_flatten(om, str_o, NULL));
 		} else {
 			// TODO: Print data of other type.
-			ow_iostream_puts(stream, "...");
+			ow_stream_puts(stream, "...");
 		}
-		ow_iostream_putc(stream, '\n');
+		ow_stream_putc(stream, '\n');
 	}
 
 	if (flags & 2) {
 		if (ow_xarray_size(&self->backtrace))
-			ow_iostream_puts(stream, "Stack trace:\n");
+			ow_stream_puts(stream, "Stack trace:\n");
 
 		for (size_t i = 0, n = ow_xarray_size(&self->backtrace); i < n; i++) {
 			const struct ow_exception_obj_frame_info *const fi =
@@ -146,8 +146,8 @@ void ow_exception_obj_print(
 			else
 				func_name = "???"; // TODO: Get name of other type of functions.
 			snprintf(buffer, sizeof buffer, " [%zu] %s @%p", i, func_name, (void *)fi->ip);
-			ow_iostream_puts(stream, buffer);
-			ow_iostream_putc(stream, '\n');
+			ow_stream_puts(stream, buffer);
+			ow_stream_putc(stream, '\n');
 		}
 	}
 }

@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 struct ow_class_obj;
-struct ow_iostream;
+struct ow_stream;
 struct ow_machine;
 struct ow_object;
 
@@ -38,4 +38,4 @@ const struct ow_exception_obj_frame_info *ow_exception_obj_backtrace(
 /// Print exception. `flags & 1`: print data; `flag & 2`: print backtrace.
 void ow_exception_obj_print(
 	struct ow_machine *om, struct ow_exception_obj *self,
-	struct ow_iostream *stream, int flags);
+	struct ow_stream *stream, int flags);

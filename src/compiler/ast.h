@@ -5,7 +5,7 @@
 #include "location.h"
 
 struct ow_ast_Module;
-struct ow_iostream;
+struct ow_stream;
 struct ow_sharedstr;
 
 /// Abstract syntax tree.
@@ -27,7 +27,7 @@ void ow_ast_set_module(struct ow_ast *ast, struct ow_ast_Module *mod);
 /// Get module node. Return NULL if not set.
 struct ow_ast_Module *ow_ast_get_module(const struct ow_ast *ast);
 /// Print the AST.
-void ow_ast_dump(const struct ow_ast *ast, struct ow_iostream *out);
+void ow_ast_dump(const struct ow_ast *ast, struct ow_stream *out);
 
 #include "ast_node_list.h"
 

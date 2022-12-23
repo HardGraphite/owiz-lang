@@ -4,7 +4,7 @@
 
 #include <utilities/attributes.h>
 
-struct ow_istream;
+struct ow_stream;
 struct ow_sharedstr;
 struct ow_syntax_error;
 struct ow_token;
@@ -20,7 +20,7 @@ void ow_lexer_del(struct ow_lexer *lexer);
 void ow_lexer_verbose(struct ow_lexer *lexer, bool status);
 /// Reset and use the given source to start new scanning.
 void ow_lexer_source(struct ow_lexer *lexer,
-	struct ow_istream *stream, struct ow_sharedstr *file_name);
+	struct ow_stream *stream, struct ow_sharedstr *file_name);
 /// Delete data.
 void ow_lexer_clear(struct ow_lexer *lexer);
 /// Scan for next token. On error, return false, and `result` will not be modified.

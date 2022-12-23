@@ -6,7 +6,7 @@
 #include "opcode.h"
 
 struct ow_func_obj;
-struct ow_iostream;
+struct ow_stream;
 
 /// Callback function for `ow_bytecode_disassemble()`.
 /// Return a non-zero value to stop disassembling.
@@ -29,4 +29,4 @@ int ow_bytecode_disassemble(
 void ow_bytecode_dump(
 	const unsigned char *code, size_t offset, size_t length,
 	struct ow_func_obj *func, size_t offset_off,
-	size_t mark_off, struct ow_iostream *out);
+	size_t mark_off, struct ow_stream *out);

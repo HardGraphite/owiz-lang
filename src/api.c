@@ -266,7 +266,7 @@ OW_API int ow_make_exception(ow_machine_t *om, int type, const char *fmt, ...) {
 /// Compile code from stream and store to the module object on stack top.
 /// If error occurs, replace the module object with an exception.
 ow_noinline static int _compile_module_from_stream(
-		ow_machine_t *om, const char *file_name, struct ow_istream *source, int flags) {
+		ow_machine_t *om, const char *file_name, struct ow_stream *source, int flags) {
 	struct ow_compiler *const compiler = ow_compiler_new(om);
 	assert(ow_object_class(*om->callstack.regs.sp) == om->builtin_classes->module);
 	struct ow_module_obj *const module =
@@ -316,26 +316,28 @@ OW_API int ow_make_module(
 	}
 
 	case OW_MKMOD_FILE: {
-		struct ow_istream *const stream = ow_istream_open(OW_PATH_FROM_STR(src));
+		struct ow_stream *const stream =
+			ow_stream_open_file(OW_PATH_FROM_STR(src), OW_STREAM_OPEN_READ);
 		if (ow_unlikely(!stream)) {
 			*om->callstack.regs.sp = ow_object_from(
 				ow_exception_format(om, NULL, "cannot open file `%s'", src));
 			return OW_ERR_FAIL;
 		}
 		const int status = _compile_module_from_stream(om, src, stream, flags);
-		ow_istream_close(stream);
+		ow_stream_close(stream);
 		return status;
 	}
 
 	case OW_MKMOD_STRING: {
-		struct ow_istream *const stream = ow_istream_open_mem(src, (size_t)-1);
+		struct ow_stream *const stream =
+			ow_stream_open_string(src, (size_t)-1, OW_STREAM_OPEN_READ);
 		const int status = _compile_module_from_stream(om, "<string>", stream, flags);
-		ow_istream_close(stream);
+		ow_stream_close(stream);
 		return status;
 	}
 
 	case OW_MKMOD_STDIN:
-		return _compile_module_from_stream(om, "<stdin>", ow_istream_stdin(), flags);
+		return _compile_module_from_stream(om, "<stdin>", ow_stream_stdin(), flags);
 
 	case OW_MKMOD_LOAD: {
 		struct ow_exception_obj *exc;
@@ -731,13 +733,13 @@ OW_API int ow_read_exception(ow_machine_t *om, int index, int flags, ...) {
 		*++om->callstack.regs.sp = ow_exception_obj_data(exc_o);
 	} else {
 		va_list ap;
-		struct ow_iostream *out_stream;
+		struct ow_stream *out_stream;
 		va_start(ap, flags);
 		if (flags_target == OW_RDEXC_PRINT) {
 			FILE *const fp = va_arg(ap, FILE *);
-			out_stream = fp == stdout ? ow_iostream_stdout() : ow_iostream_stderr();
+			out_stream = fp == stdout ? ow_stream_stdout() : ow_stream_stderr();
 		} else if (flags_target == OW_RDEXC_TOBUF) {
-			out_stream = ow_iostream_open_mem(256);
+			out_stream = ow_stream_open_string(NULL, 0, OW_STREAM_OPEN_WRITE);
 		} else {
 			out_stream = NULL;
 		}
@@ -748,14 +750,14 @@ OW_API int ow_read_exception(ow_machine_t *om, int index, int flags, ...) {
 			pri_flags |= 2;
 		ow_exception_obj_print(om, exc_o, out_stream, pri_flags);
 		if (flags_target == OW_RDEXC_TOBUF) {
-			const char *data[2];
-			ow_istream_data(out_stream, data);
-			const size_t data_size = (size_t)(data[1] - data[0]);
+			size_t data_size;
+			const char *const data =
+				ow_string_stream_data((struct ow_string_stream *)out_stream, &data_size);
 			char *const buf = va_arg(ap, char *);
 			const size_t buf_size = va_arg(ap, size_t);
-			memcpy(buf, data[0], buf_size > data_size ? data_size : buf_size);
+			memcpy(buf, data, buf_size > data_size ? data_size : buf_size);
 			buf[buf_size > data_size ? data_size : buf_size - 1] = '\0';
-			ow_iostream_close(out_stream);
+			ow_stream_close(out_stream);
 		}
 		va_end(ap);
 	}

@@ -5,7 +5,7 @@
 #include <utilities/attributes.h>
 
 struct ow_codegen;
-struct ow_istream;
+struct ow_stream;
 struct ow_machine;
 struct ow_module_obj;
 struct ow_parser;
@@ -30,7 +30,7 @@ void ow_compiler_clear(struct ow_compiler *compiler);
 /// Do compilation. Return whether successful.
 bool ow_compiler_compile(
 	struct ow_compiler *compiler,
-	struct ow_istream *stream, struct ow_sharedstr *file_name,
+	struct ow_stream *stream, struct ow_sharedstr *file_name,
 	int flags, struct ow_module_obj *module);
 /// Get last error.
 struct ow_syntax_error *ow_compiler_error(struct ow_compiler *compiler);

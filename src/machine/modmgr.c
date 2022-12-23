@@ -267,7 +267,8 @@ static bool _load_module_from_dynlib(
 static bool _load_module_from_source(
 		struct ow_module_manager *mm, const ow_path_char_t *file_path,
 		struct ow_exception_obj **exc) {
-	struct ow_istream *const file_stream = ow_istream_open(file_path);
+	struct ow_stream *const file_stream =
+		ow_stream_open_file(file_path, OW_STREAM_OPEN_READ);
 	if (!file_stream) {
 		if (exc) {
 			*exc = ow_exception_format(
@@ -305,7 +306,7 @@ static bool _load_module_from_source(
 
 	ow_sharedstr_unref(file_name_ss);
 	ow_compiler_del(compiler);
-	ow_istream_close(file_stream);
+	ow_stream_close(file_stream);
 	return ok;
 }
 

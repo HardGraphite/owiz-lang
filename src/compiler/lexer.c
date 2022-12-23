@@ -97,7 +97,7 @@ static enum ow_token_type ow_lexer_keywords_map_query(const char *s) {
 	((LEXER_P)->code_buffer + OW_LEXER_CODE_BUFFER_SIZE)
 
 struct ow_lexer {
-	struct ow_istream *stream;
+	struct ow_stream *stream;
 	struct ow_source_location location;
 	const char *code_current;
 	const char *code_end;
@@ -131,7 +131,7 @@ ow_noinline ow_noreturn static void ow_lexer_error_throw(
 
 ow_noinline static int ow_lexer_code_refill_and_peek(struct ow_lexer *lexer) {
 	assert(lexer->code_current == lexer->code_end);
-	const size_t n = ow_istream_read(
+	const size_t n = ow_stream_read(
 		lexer->stream, lexer->code_buffer, OW_LEXER_CODE_BUFFER_SIZE);
 	if (ow_unlikely(!n))
 		return EOF;
@@ -220,7 +220,7 @@ void ow_lexer_verbose(struct ow_lexer *lexer, bool status) {
 }
 
 void ow_lexer_source(struct ow_lexer *lexer,
-		struct ow_istream *stream, struct ow_sharedstr *file_name) {
+		struct ow_stream *stream, struct ow_sharedstr *file_name) {
 	ow_lexer_clear(lexer);
 	lexer->stream = stream;
 	lexer->location.line = 1;
