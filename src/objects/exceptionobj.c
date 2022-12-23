@@ -1,5 +1,6 @@
 #include "exceptionobj.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 
 #include "cfuncobj.h"
@@ -51,8 +52,8 @@ struct ow_exception_obj *ow_exception_new(
 	if (ow_unlikely(!exc_type))
 		exc_type = om->builtin_classes->exception;
 	assert(ow_class_obj_is_base(om->builtin_classes->exception, exc_type));
-	assert(_ow_class_obj_pub_info(om->builtin_classes->exception)->basic_field_count
-		== _ow_class_obj_pub_info(exc_type)->basic_field_count);
+	assert(ow_class_obj_attribute_count(om->builtin_classes->exception)
+		== ow_class_obj_attribute_count(exc_type));
 
 	struct ow_exception_obj *const obj = ow_object_cast(
 		ow_objmem_allocate(om, exc_type, 0),
@@ -60,6 +61,33 @@ struct ow_exception_obj *ow_exception_new(
 	ow_xarray_init(&obj->backtrace, struct ow_exception_obj_frame_info, 4);
 	obj->data = data;
 	return obj;
+}
+
+struct ow_exception_obj *ow_exception_format(
+		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	struct ow_exception_obj *const exc_o =
+		ow_exception_vformat(om, exc_type, fmt, ap);
+	va_end(ap);
+	return exc_o;
+}
+
+struct ow_exception_obj *ow_exception_vformat(
+		struct ow_machine *om, struct ow_class_obj *exc_type,
+		const char *fmt, va_list data) {
+	char msg_buf[256];
+	const int n = vsnprintf(msg_buf, sizeof msg_buf, fmt, data);
+	if (ow_unlikely(n <= 0))
+		return NULL;
+
+	ow_objmem_push_ngc(om);
+	struct ow_object *const msg_o =
+		ow_object_from(ow_string_obj_new(om, msg_buf, (size_t)n));
+	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
+	ow_objmem_pop_ngc(om);
+
+	return exc_o;
 }
 
 struct ow_object *ow_exception_obj_data(const struct ow_exception_obj *self) {
@@ -86,7 +114,7 @@ void ow_exception_obj_print(
 
 	if (flags & 1) {
 		struct ow_symbol_obj *const name_sym =
-			_ow_class_obj_pub_info(ow_object_class(ow_object_from(self)))->class_name;
+			ow_class_obj_name(ow_object_class(ow_object_from(self)));
 		snprintf(buffer, sizeof buffer, "Exception `%s': ", ow_symbol_obj_data(name_sym));
 		ow_iostream_puts(stream, buffer);
 
@@ -134,4 +162,5 @@ OW_BICLS_CLASS_DEF_EX(exception) = {
 	.methods   = exception_methods,
 	.finalizer = ow_exception_obj_finalizer,
 	.gc_marker = ow_exception_obj_gc_marker,
+	.extended  = false,
 };

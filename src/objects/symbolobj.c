@@ -187,4 +187,5 @@ OW_BICLS_CLASS_DEF_EX(symbol) = {
 	.methods   = symbol_methods,
 	.finalizer = NULL,
 	.gc_marker = NULL,
+	.extended  = true,
 };

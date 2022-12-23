@@ -49,9 +49,12 @@
 	ELEM(MapExpr)         \
 	ELEM(CallExpr)        \
 	ELEM(SubscriptExpr)   \
+	ELEM(LambdaExpr)      \
 	ELEM(ExprStmt)        \
 	ELEM(BlockStmt)       \
 	ELEM(ReturnStmt)      \
+	ELEM(MagicReturnStmt) \
+	ELEM(ImportStmt)      \
 	ELEM(IfElseStmt)      \
 	ELEM(ForStmt)         \
 	ELEM(WhileStmt)       \

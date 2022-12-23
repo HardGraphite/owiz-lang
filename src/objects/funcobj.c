@@ -113,4 +113,5 @@ OW_BICLS_CLASS_DEF_EX(func) = {
 	.methods   = func_methods,
 	.finalizer = ow_func_obj_finalizer,
 	.gc_marker = ow_func_obj_gc_marker,
+	.extended  = true,
 };

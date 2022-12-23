@@ -2,6 +2,17 @@ option(OW_DEBUG_LEXER "Compile debugging code for lexer." OFF)
 option(OW_DEBUG_PARSER "Compile debugging code for parser." OFF)
 option(OW_DEBUG_CODEGEN "Compile debugging code for code generator." OFF)
 option(OW_DEBUG_MEMORY "Compile debugging code for memory management." OFF)
+option(OW_BUILD_BYTECODE_DUMP_COMMENT "Print operand comment in `ow_bytecode_dump()`." ON)
+
+include(FindReadline)
+set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
+
+set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
+set(OW_FILENAME_EXTENSION_SRC ".ow" ) # Source code.
+set(OW_FILENAME_EXTENSION_BTC ".owc") # Bytecode.
+set(OW_FILENAME_EXTENSION_OBJ ".owo") # Native dynamic library.
+set(OW_BUILD_COMPILER_NAME "${CMAKE_C_COMPILER_ID}")
+set(OW_BUILD_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
 
 ## Collect source files.
 set(ow_main_src "ow.c")
@@ -11,7 +22,6 @@ foreach(sub_dir IN ITEMS
 		"compat"
 		"compiler"
 		"machine"
-		"modules"
 		"objects"
 		"utilities"
 	)
@@ -61,15 +71,6 @@ if(OW_BUILD_STATIC)
 	message(STATUS "Output directory for `OW_BUILD_STATIC` is ${ow_out_static_dir}.")
 endif()
 
-## Add include directories.
-foreach(tgt IN LISTS ow_exe_targets ow_lib_targets)
-	target_include_directories(
-		${tgt} PRIVATE
-		"${CMAKE_SOURCE_DIR}/include"
-		"${CMAKE_CURRENT_SOURCE_DIR}"
-	)
-endforeach()
-
 # Add definitions for library targets.
 foreach(tgt IN LISTS ow_lib_targets)
 	target_compile_definitions(
@@ -78,39 +79,103 @@ foreach(tgt IN LISTS ow_lib_targets)
 	)
 endforeach()
 
-## Add "OW_DEBUG_XXX" flags.
-foreach(opt_name IN ITEMS
-		OW_DEBUG_LEXER
-		OW_DEBUG_PARSER
-		OW_DEBUG_CODEGEN
-		OW_DEBUG_MEMORY
-	)
-	if(${opt_name})
-		foreach(tgt IN LISTS ow_lib_targets)
-			target_compile_definitions(${tgt} PRIVATE "${opt_name}=1")
-		endforeach()
-		message(STATUS "`${opt_name}` is enabled")
+## Handle module list.
+include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_conf.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_util.cmake")
+if(NOT DEFINED OW_EMBEDDED_MODULES)
+	set(OW_EMBEDDED_MODULES "*;-%")
+endif()
+if(NOT DEFINED OW_DYNAMIC_MODULES)
+	set(OW_DYNAMIC_MODULES "%")
+endif()
+set(mod_list_common_suffix)
+if(NOT LibReadline_FOUND)
+	list(APPEND mod_list_common_suffix "-readline")
+endif()
+foreach(mod_list IN ITEMS OW_EMBEDDED_MODULES OW_DYNAMIC_MODULES)
+	list(APPEND ${mod_list} ${mod_list_common_suffix})
+endforeach()
+set(OW_EMBEDDED_MODULES ${OW_EMBEDDED_MODULES} CACHE
+	STRING "List of embedded modules. ${ow_mod_util_conf_list_doc}")
+set(OW_DYNAMIC_MODULES ${OW_DYNAMIC_MODULES} CACHE
+	STRING "List of dynamic modules. ${ow_mod_util_conf_list_doc}")
+ow_mod_util_collect_embedded_modules("${OW_EMBEDDED_MODULES}" ow_embedded_mods)
+ow_mod_util_collect_dynamic_modules("${OW_DYNAMIC_MODULES}" ow_dynamic_mods)
+foreach(tgt IN LISTS ow_lib_targets)
+	get_target_property(tgt_type ${tgt} TYPE)
+	if(tgt_type STREQUAL "STATIC_LIBRARY")
+		set(scope "PUBLIC")
+	else()
+		set(scope "PRIVATE")
 	endif()
+	foreach(mod_name IN LISTS ow_embedded_mods)
+		ow_mod_util_add_sources(${tgt} PRIVATE ${mod_name})
+		ow_mod_util_link_libraries(${tgt} ${scope} ${mod_name})
+		message(STATUS "Add embedded module `${mod_name}'.")
+	endforeach()
+endforeach()
+set(ow_mod_targets)
+foreach(mod_name IN LISTS ow_dynamic_mods)
+	set(tgt "ow_mod_${mod_name}")
+	add_library(${tgt} MODULE)
+	target_compile_definitions(${tgt} PRIVATE "OW_EXPORT_MOD=1")
+	set_target_properties(
+		${tgt} PROPERTIES
+		PREFIX ""
+		OUTPUT_NAME ${mod_name}
+		SUFFIX ${OW_FILENAME_EXTENSION_OBJ}
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/modules"
+	)
+	ow_mod_util_add_sources(${tgt} PRIVATE ${mod_name})
+	ow_mod_util_link_libraries(${tgt} PRIVATE ${mod_name})
+	list(APPEND ow_mod_targets ${tgt})
+	message(STATUS "Add dynamic module `${mod_name}'.")
+endforeach()
+include(mkcode)
+ow_make_c_macro_list("OW_EMBEDDED_MODULE_LIST" "${ow_embedded_mods}" tmp_str)
+string(CONCAT tmp_str "// \"@OW_EMBEDDED_MODULES@\"\n\n" "${tmp_str}")
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/module_list.h" @ONLY CONTENT "${tmp_str}")
+unset(tmp_str)
+
+## Add include directories.
+foreach(tgt IN LISTS ow_exe_targets ow_lib_targets ow_mod_targets)
+	target_include_directories(
+		${tgt} PRIVATE
+		"${CMAKE_SOURCE_DIR}/include"
+		"${CMAKE_CURRENT_SOURCE_DIR}"
+		"${CMAKE_CURRENT_BINARY_DIR}"
+	)
 endforeach()
 
-## Rules to generate machine/version.h file.
-if(OW_DEVELOPING)
-	set(version_file "${CMAKE_SOURCE_DIR}/VERSION.txt")
-	set(version_header_file "${CMAKE_CURRENT_SOURCE_DIR}/machine/version.h")
-	add_custom_command(
-		OUTPUT "${version_header_file}"
-		COMMAND "${CMAKE_SOURCE_DIR}/tool/version.py"
-			"${version_file}" -H "${version_header_file}"
-		DEPENDS "${version_file}"
-		COMMENT "Generating ${version_header_file}"
-		VERBATIM
-	)
-	foreach(tgt IN LISTS ow_lib_targets)
-		target_sources(${tgt} PRIVATE ${version_header_file}) # As dependencies.
-	endforeach()
-	unset(version_file)
-	unset(version_header_file)
-endif()
+## Generate config header: "definitions.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
+#pragma once
+#define  OW_FILENAME_EXTENSION_SRC  "@OW_FILENAME_EXTENSION_SRC@"
+#define  OW_FILENAME_EXTENSION_BTC  "@OW_FILENAME_EXTENSION_BTC@"
+#define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
+#define  OW_BUILD_COMPILER_NAME     "@OW_BUILD_COMPILER_NAME@"
+#define  OW_BUILD_COMPILER_VERSION  "@OW_BUILD_COMPILER_VERSION@"
+]==])
+
+## Generate config header: "options.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
+#pragma once
+#cmakedefine01  OW_DEBUG_MEMORY
+#cmakedefine01  OW_DEBUG_LEXER
+#cmakedefine01  OW_DEBUG_PARSER
+#cmakedefine01  OW_DEBUG_CODEGEN
+#cmakedefine01  OW_BUILD_BYTECODE_DUMP_COMMENT
+#cmakedefine01  OW_LIB_READLINE_USE_LIBEDIT
+]==])
+
+## Generate config header: "version.h".
+file(CONFIGURE OUTPUT "${ow_conf_header_dir}/version.h" @ONLY CONTENT [==[
+#pragma once
+#define  OW_VERSION_MAJOR   @OW_VERSION_MAJOR@
+#define  OW_VERSION_MINOR   @OW_VERSION_MINOR@
+#define  OW_VERSION_PATCH   @OW_VERSION_PATCH@
+#define  OW_VERSION_STRING  "@OW_VERSION_STRING@"
+]==])
 
 ## Rules to generate compiler/ast_node_xxx.h files.
 if(OW_DEVELOPING)
@@ -171,11 +236,13 @@ if(ow_exe_targets AND ow_lib_targets)
 		set(ow_install_exe_dir ".")
 		set(ow_install_lib_dir ".")
 		set(ow_install_inc_dir "include")
+		set(ow_install_mod_dir "lib")
 	else()
 		include(GNUInstallDirs)
 		set(ow_install_exe_dir ${CMAKE_INSTALL_BINDIR})
 		set(ow_install_lib_dir ${CMAKE_INSTALL_LIBDIR})
 		set(ow_install_inc_dir ${CMAKE_INSTALL_INCLUDEDIR})
+		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/ow")
 	endif()
 	if(OW_BUILD_SHARED AND OW_PACK_RELA_RPATH AND UNIX)
 		set_target_properties(ow_exe_shared PROPERTIES INSTALL_RPATH
@@ -184,6 +251,7 @@ if(ow_exe_targets AND ow_lib_targets)
 	file(GLOB ow_install_headers "${CMAKE_SOURCE_DIR}/include/*.h")
 	install(TARGETS ${ow_exe_targets} DESTINATION ${ow_install_exe_dir})
 	install(TARGETS ${ow_lib_targets} DESTINATION ${ow_install_lib_dir})
+	install(TARGETS ${ow_mod_targets} DESTINATION ${ow_install_mod_dir})
 	if(OW_PACK_HEADER)
 		install(FILES ${ow_install_headers} DESTINATION ${ow_install_inc_dir})
 	endif()

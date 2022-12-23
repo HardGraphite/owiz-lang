@@ -15,6 +15,8 @@ struct ow_syntax_error;
 /// The compiler.
 struct ow_compiler;
 
+#define OW_COMPILE_RETLASTEXPR    0x0001
+
 /// Create a compiler.
 ow_nodiscard struct ow_compiler *ow_compiler_new(struct ow_machine *om);
 /// Destroy a compiler.

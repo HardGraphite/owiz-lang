@@ -72,9 +72,9 @@
 	ELEM(JmpWhenW   , 0x43, i16) \
 	ELEM(JmpUnls    , 0x44,  i8) \
 	ELEM(JmpUnlsW   , 0x45, i16) \
-	ELEM(_46        , 0x46,   0) \
-	ELEM(_47        , 0x47,   0) \
-	ELEM(Ret        , 0x48,   0) \
+	ELEM(LdMod      , 0x46, u16) \
+	ELEM(Ret        , 0x47,   0) \
+	ELEM(RetNil     , 0x48,   0) \
 	ELEM(RetLoc     , 0x49,  u8) \
 	ELEM(Call       , 0x4a,  u8) \
 	ELEM(_4b        , 0x4b,   0) \
@@ -82,6 +82,14 @@
 	ELEM(_4d        , 0x4d,   0) \
 	ELEM(PrepMethY  , 0x4e,  u8) \
 	ELEM(PrepMethYW , 0x4f, u16) \
+	ELEM(MkArr      , 0x50,  u8) \
+	ELEM(MkArrW     , 0x51, u16) \
+	ELEM(MkTup      , 0x52,  u8) \
+	ELEM(MkTupW     , 0x53, u16) \
+	ELEM(MkSet      , 0x54,  u8) \
+	ELEM(MkSetW     , 0x55, u16) \
+	ELEM(MkMap      , 0x56,  u8) \
+	ELEM(MkMapW     , 0x57, u16) \
 // ^^^ OW_OPCODE_LIST ^^^
 
 /// Opcodes.

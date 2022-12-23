@@ -428,6 +428,14 @@ static void ow_ast_MapExpr_dump(
 	print_node_end_tag(name, level, out);
 }
 
+static void ow_ast_LambdaExpr_dump(
+		const struct ow_ast_LambdaExpr *node, size_t level, struct ow_iostream *out) {
+	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);
+	print_node_begin_tag(name, &node->location, level, out);
+	ow_ast_FuncStmt_dump(node->func, level + 1, out);
+	print_node_end_tag(name, level, out);
+}
+
 static void ow_ast_ExprStmt_dump(
 		const struct ow_ast_ExprStmt *node, size_t level, struct ow_iostream *out) {
 	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);
@@ -452,6 +460,19 @@ static void ow_ast_ReturnStmt_dump(
 	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);
 	print_node_begin_tag(name, &node->location, level, out);
 	ow_ast_node_dump((const struct ow_ast_node *)node->ret_val, level + 1, out);
+	print_node_end_tag(name, level, out);
+}
+
+static void ow_ast_MagicReturnStmt_dump(
+		const struct ow_ast_MagicReturnStmt *node, size_t level, struct ow_iostream *out) {
+	ow_ast_ReturnStmt_dump((const struct ow_ast_ReturnStmt *)node, level, out);
+}
+
+static void ow_ast_ImportStmt_dump(
+		const struct ow_ast_ImportStmt *node, size_t level, struct ow_iostream *out) {
+	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);
+	print_node_begin_tag(name, &node->location, level, out);
+	ow_ast_node_dump((const struct ow_ast_node *)node->mod_name, level + 1, out);
 	print_node_end_tag(name, level, out);
 }
 
@@ -509,7 +530,8 @@ static void ow_ast_FuncStmt_dump(
 	const char *const name = ow_ast_node_name((const struct ow_ast_node *)node);
 	print_node_begin_tag(name, &node->location, level, out);
 	print_node_begin_tag("name", NULL, level + 1, out);
-	ow_ast_Identifier_dump(node->name, level + 2, out);
+	if (node->name)
+		ow_ast_Identifier_dump(node->name, level + 2, out);
 	print_node_end_tag("name", level + 1, out);
 	print_node_begin_tag("args", NULL, level + 1, out);
 	ow_ast_ArrayExpr_dump(node->args, level + 2, out);

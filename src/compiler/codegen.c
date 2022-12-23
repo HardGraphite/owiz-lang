@@ -2,13 +2,13 @@
 
 #include <assert.h>
 #include <setjmp.h>
-#include <string.h>
 
 #include "assembler.h"
 #include "ast.h"
 #include "error.h"
 #include <machine/globals.h>
 #include <machine/machine.h>
+#include <machine/symbols.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
 #include <objects/symbolobj.h>
@@ -19,22 +19,24 @@
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
-#ifndef NDEBUG
+#include <config/options.h>
+
+#if OW_DEBUG_CODEGEN
 
 #include <stdio.h>
 
-#include <bytecode/dumpcode.h>
+#include <bytecode/disassemble.h>
 #include <objects/funcobj.h>
 #include <utilities/stream.h>
 
 static void verbose_dump_func(
 		unsigned int line, const char *name, struct ow_func_obj *func) {
 	fprintf(stderr, "[CODEGEN] %s (line %u) vvv\n", name, line);
-	ow_bytecode_dump(func->code, 0, func->code_size, (size_t)-1, ow_iostream_stderr());
+	ow_bytecode_dump(func->code, 0, func->code_size, func, 0, (size_t)-1, ow_iostream_stderr());
 	fputs("[CODEGEN] ^^^\n", stderr);
 }
 
-#endif // NDEBUG
+#endif // OW_DEBUG_CODEGEN
 
 /// A stack of assemblers.
 struct code_stack {
@@ -685,8 +687,10 @@ ow_noinline static void ow_codegen_emit_EqlOpExpr(
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const enum ow_ast_node_type lhs_type = node->lhs->type;
-	if (ow_unlikely(lhs_type != OW_AST_NODE_Identifier
-					&& lhs_type != OW_AST_NODE_AttrAccessExpr))
+	if (ow_unlikely(
+			lhs_type != OW_AST_NODE_Identifier &&
+			lhs_type != OW_AST_NODE_AttrAccessExpr &&
+			lhs_type != OW_AST_NODE_SubscriptExpr))
 		ow_codegen_error_throw(codegen, &node->location, "illegal assignment");
 	if (opcode == (enum ow_opcode)0)
 		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->rhs);
@@ -871,8 +875,6 @@ static void ow_codegen_emit_AttrAccessExpr(
 			opcode = OW_OPC_LdAttrYW, operand.u16 = (uint16_t)sym_idx;
 		else
 			ow_unreachable();
-		if (ow_unlikely(action == ACT_EVAL))
-			ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 	} else if (action == ACT_RECV) {
 		if (sym_idx <= UINT8_MAX)
 			opcode = OW_OPC_StAttrY, operand.u8 = (uint8_t)sym_idx;
@@ -884,6 +886,8 @@ static void ow_codegen_emit_AttrAccessExpr(
 		ow_unreachable();
 	}
 	ow_assembler_append(as, opcode, operand);
+	if (ow_unlikely(action == ACT_EVAL))
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
 }
 
 static void ow_codegen_emit_MethodUseExpr(
@@ -954,32 +958,80 @@ static void ow_codegen_emit_NotExpr(
 		codegen, action, (const struct ow_ast_UnOpExpr *)node, OW_OPC_Not);
 }
 
+ow_noinline static void ow_codegen_emit_MakeContainerExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_node_array *elems, const struct ow_source_range *location,
+		enum ow_opcode opcode, enum ow_opcode opcode_w) {
+	assert(action == ACT_PUSH || action == ACT_EVAL);
+	const size_t elem_count = ow_ast_node_array_size(elems);
+	for (size_t i = 0; i < elem_count; i++)
+		ow_codegen_emit_node(codegen, ACT_PUSH, ow_ast_node_array_at(elems, i));
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	if (elem_count <= UINT8_MAX)
+		ow_assembler_append(as, opcode, (union ow_operand){.u8 = (uint8_t)elem_count});
+	else if (elem_count <= UINT16_MAX)
+		ow_assembler_append(as, opcode_w, (union ow_operand){.u16 = (uint16_t)elem_count});
+	else
+		ow_codegen_error_throw(codegen, location, "too many elements");
+	if (action != ACT_PUSH)
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+}
+
+ow_noinline static void ow_codegen_emit_MakePairContainerExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_nodepair_array *elems, const struct ow_source_range *location,
+		enum ow_opcode opcode, enum ow_opcode opcode_w) {
+	assert(action == ACT_PUSH || action == ACT_EVAL);
+	const size_t elem_count = ow_ast_nodepair_array_size(elems);
+	for (size_t i = 0; i < elem_count; i++) {
+		const struct ow_ast_nodepair_array_elem pair = ow_ast_nodepair_array_at(elems, i);
+		ow_codegen_emit_node(codegen, ACT_PUSH, pair.first);
+		ow_codegen_emit_node(codegen, ACT_PUSH, pair.second);
+	}
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	if (elem_count <= UINT8_MAX)
+		ow_assembler_append(as, opcode, (union ow_operand){.u8 = (uint8_t)elem_count});
+	else if (elem_count <= UINT16_MAX)
+		ow_assembler_append(as, opcode_w, (union ow_operand){.u16 = (uint16_t)elem_count});
+	else
+		ow_codegen_error_throw(codegen, location, "too many elements");
+	if (action != ACT_PUSH)
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+}
+
 static void ow_codegen_emit_TupleExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_TupleExpr *node) {
-	ow_unused_var(action);
+	if (action != ACT_RECV) {
+		ow_codegen_emit_MakeContainerExpr(
+			codegen, action, &node->elems, &node->location,
+			OW_OPC_MkTup, OW_OPC_MkTupW);
+		return;
+	}
+	// TODO: Unpacking.
 	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+
 }
 
 static void ow_codegen_emit_ArrayExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ArrayExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakeContainerExpr(
+		codegen, action, &node->elems, &node->location, OW_OPC_MkArr, OW_OPC_MkArrW);
 }
 
 static void ow_codegen_emit_SetExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SetExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakeContainerExpr(
+		codegen, action, &node->elems, &node->location, OW_OPC_MkSet, OW_OPC_MkSetW);
 }
 
 static void ow_codegen_emit_MapExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_MapExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	ow_codegen_emit_MakePairContainerExpr(
+		codegen, action, &node->pairs, &node->location, OW_OPC_MkMap, OW_OPC_MkMapW);
 }
 
 static void ow_codegen_emit_CallExpr(
@@ -1010,8 +1062,47 @@ static void ow_codegen_emit_CallExpr(
 static void ow_codegen_emit_SubscriptExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_SubscriptExpr *node) {
-	ow_unused_var(action);
-	ow_codegen_error_throw_not_implemented(codegen, &node->location);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+
+	ow_codegen_emit_node(codegen, ACT_PUSH, (const struct ow_ast_node *)node->obj);
+	if (ow_ast_node_array_size(&node->args) == 1) {
+		ow_codegen_emit_node(
+			codegen, ACT_PUSH, ow_ast_node_array_at(&node->args, 0));
+	} else {
+		const size_t args_cnt = ow_ast_node_array_size(&node->args);
+		if (ow_unlikely(args_cnt > UINT8_MAX))
+			ow_codegen_error_throw(codegen, &node->location, "too many keys");
+		for (size_t i = 0; i < args_cnt; i++) {
+			ow_codegen_emit_node(
+				codegen, ACT_PUSH, ow_ast_node_array_at(&node->args, i));
+		}
+		ow_assembler_append(
+			as, OW_OPC_MkTup, (union ow_operand){.u8 = (uint8_t)args_cnt});
+	}
+
+	enum ow_opcode opcode;
+	if (action == ACT_PUSH || ow_unlikely(action == ACT_EVAL))
+		opcode = OW_OPC_LdElem;
+	else if (action == ACT_RECV)
+		opcode = OW_OPC_StElem;
+	else
+		ow_unreachable();
+	ow_assembler_append(as, opcode, (union ow_operand){.u8 = 0});
+
+	if (ow_unlikely(action == ACT_EVAL))
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+}
+
+static void ow_codegen_emit_LambdaExpr(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_LambdaExpr *node) {
+	assert(action == ACT_EVAL || action == ACT_PUSH);
+	assert(node->func && !node->func->name);
+	ow_codegen_emit_FuncStmt(codegen, ACT_PUSH, node->func);
+	if (ow_unlikely(action == ACT_EVAL)) {
+		struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+		ow_assembler_append(as, OW_OPC_Drop, (union ow_operand){.u8 = 0});
+	}
 }
 
 static void ow_codegen_emit_ExprStmt(
@@ -1037,7 +1128,8 @@ static void ow_codegen_emit_BlockStmt(
 static void ow_codegen_emit_ReturnStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_ReturnStmt *node) {
-	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC))
+	if (ow_unlikely(scope_stack_top(&codegen->scope_stack)->type != SCOPE_FUNC
+			&& node->type != OW_AST_NODE_MagicReturnStmt))
 		ow_codegen_error_throw(codegen, &node->location, "unexpected return statement");
 
 	ow_unused_var(action);
@@ -1053,16 +1145,38 @@ static void ow_codegen_emit_ReturnStmt(
 			if (scope->type != SCOPE_FUNC)
 				break;
 			const size_t index = scope_find_variable(scope, name);
-			if (index >= UINT8_MAX)
+			if (index > UINT8_MAX)
 				break;
 			ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = (uint8_t)index});
 			return;
 		} while (0);
 		ow_codegen_emit_node(codegen, ACT_PUSH, (struct ow_ast_node *)node->ret_val);
-		ow_assembler_append(as, OW_OPC_RetLoc, (union ow_operand){.u8 = UINT8_MAX});
-	} else {
 		ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+	} else {
+		ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 	}
+}
+
+static void ow_codegen_emit_MagicReturnStmt(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_MagicReturnStmt *node) {
+	ow_codegen_emit_ReturnStmt(
+		codegen, action, (const struct ow_ast_ReturnStmt *)node);
+}
+
+static void ow_codegen_emit_ImportStmt(
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_ImportStmt *node) {
+	assert(action == ACT_EVAL);
+	ow_unused_var(action);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	const size_t index = ow_assembler_symbol(
+		as, ow_sharedstr_data(node->mod_name->value),
+		ow_sharedstr_size(node->mod_name->value));
+	if (index > UINT16_MAX)
+		ow_codegen_error_throw(codegen, &node->location, "too many symbols");
+	ow_assembler_append(as, OW_OPC_LdMod, (union ow_operand){.u16 = (uint16_t)index});
+	ow_codegen_emit_Identifier(codegen, ACT_RECV, node->mod_name);
 }
 
 static void ow_codegen_emit_IfElseStmt(
@@ -1154,7 +1268,7 @@ static void ow_codegen_emit_FuncStmt(
 		struct ow_codegen *codegen, enum codegen_action action,
 		const struct ow_ast_FuncStmt *node) {
 	ow_unused_var(action);
-	assert(action == ACT_EVAL);
+	assert(action == ACT_EVAL || action == ACT_PUSH);
 	if (ow_unlikely(ow_ast_node_array_size(&node->args->elems) >= INT8_MAX))
 		ow_codegen_error_throw(codegen, &node->args->location, "too many arguments");
 	struct ow_func_obj *func;
@@ -1171,8 +1285,9 @@ static void ow_codegen_emit_FuncStmt(
 		ow_codegen_emit_BlockStmt(
 			codegen, ACT_EVAL, (const struct ow_ast_BlockStmt *)node);
 		const enum ow_opcode last_opcode = ow_assembler_last(as);
-		if (!(last_opcode == OW_OPC_Ret || last_opcode == OW_OPC_RetLoc))
-			ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+		if (!(last_opcode == OW_OPC_Ret ||
+				last_opcode == OW_OPC_RetNil || last_opcode == OW_OPC_RetLoc))
+			ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 
 		const struct ow_assembler_output_spec as_output_spec = {
 			codegen->module,
@@ -1190,19 +1305,30 @@ static void ow_codegen_emit_FuncStmt(
 		scope_stack_pop(&codegen->scope_stack);
 	}
 
-	{
-		struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
-		const size_t const_index = ow_assembler_constant(
-			as, (struct ow_assembler_constant){
-				.type = OW_AS_CONST_OBJ, .o = ow_object_from(func)});
-		ow_codegen_asm_push_constant(
-			codegen, (const struct ow_ast_node *)node, as, const_index);
+	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
+	const size_t const_index = ow_assembler_constant(
+		as,
+		(struct ow_assembler_constant){
+			.type = OW_AS_CONST_OBJ,
+			.o = ow_object_from(func)
+		}
+	);
+	ow_codegen_asm_push_constant(
+		codegen, (const struct ow_ast_node *)node, as, const_index);
+	if (action == ACT_EVAL) {
+		assert(node->name);
 		ow_codegen_emit_Identifier(codegen, ACT_RECV, node->name);
+	} else if (action == ACT_PUSH) {
+		assert(!node->name);
+		// Used in `ow_codegen_emit_LambdaExpr()`.
+	} else {
+		ow_unreachable();
 	}
 
 #if OW_DEBUG_CODEGEN
 	if (ow_unlikely(codegen->verbose)) {
-		const char *const name = ow_sharedstr_data(node->name->value);
+		const char *const name = node->name ?
+			ow_sharedstr_data(node->name->value) : "<lambda>";
 		verbose_dump_func(node->location.begin.line, name, func);
 	}
 #endif // OW_DEBUG_CODEGEN
@@ -1286,7 +1412,7 @@ static void ow_codegen_emit_Module(
 	_scope_load_module_globals(scope, codegen->module);
 
 	ow_codegen_emit_BlockStmt(codegen, ACT_EVAL, node->code);
-	ow_assembler_append(as, OW_OPC_Ret, (union ow_operand){.u8 = 0});
+	ow_assembler_append(as, OW_OPC_RetNil, (union ow_operand){.u8 = 0});
 
 	ow_unused_var(scope);
 	assert(code_stack_top(&codegen->code_stack) == as);
@@ -1299,8 +1425,7 @@ static void ow_codegen_emit_Module(
 	scope_stack_pop(&codegen->scope_stack);
 
 	ow_objmem_push_ngc(codegen->machine);
-	struct ow_symbol_obj *const func_name =
-		ow_symbol_obj_new(codegen->machine, NULL, 0);
+	struct ow_symbol_obj *const func_name = codegen->machine->common_symbols->anon;
 	ow_module_obj_set_global_y(codegen->module, func_name, ow_object_from(func));
 	ow_objmem_pop_ngc(codegen->machine);
 

@@ -12,4 +12,5 @@ struct ow_native_class_def_ex {
 	const ow_native_func_def_t *methods;
 	void (*finalizer)(struct ow_machine *, struct ow_object *);
 	void (*gc_marker)(struct ow_machine *, struct ow_object *);
+	bool extended;
 };

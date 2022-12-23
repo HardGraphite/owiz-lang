@@ -28,21 +28,22 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
 
 	struct {
 		OW_OBJECT_HEAD
-		struct _ow_class_obj_pub_info pub_info;
+		struct ow_class_obj_pub_info pub_info;
 	} fake_class_class;
 	fake_class_class.pub_info.basic_field_count =
 		OW_BICLS_CLASS_DEF_EX_NAME(class_).data_size / OW_OBJECT_FIELD_SIZE;
+	fake_class_class.pub_info.has_extra_fields = false;
 	bic->class_ = (struct ow_class_obj *)&fake_class_class;
 	bic->class_ = ow_class_obj_new(om);
 	ow_object_from(bic->class_)->_class = bic->class_;
-	((struct _ow_class_obj_pub_info *)_ow_class_obj_pub_info(bic->class_))
+	((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->class_))
 		->basic_field_count = fake_class_class.pub_info.basic_field_count;
 
 	bic->object = ow_class_obj_new(om);
 #define ELEM(NAME) { \
 		struct ow_class_obj *const cls = ow_class_obj_new(om); \
-		struct _ow_class_obj_pub_info *const cls_pub_info = \
-			(struct _ow_class_obj_pub_info *)_ow_class_obj_pub_info(cls); \
+		struct ow_class_obj_pub_info *const cls_pub_info = \
+			(struct ow_class_obj_pub_info *)ow_class_obj_pub_info(cls); \
 		const struct ow_native_class_def_ex *const cls_def = \
 			&OW_BICLS_CLASS_DEF_EX_NAME(NAME); \
 		cls_pub_info->basic_field_count = \
@@ -67,13 +68,25 @@ void _ow_builtin_classes_setup(
 		struct ow_machine *om, struct ow_builtin_classes *bic) {
 	ow_objmem_push_ngc(om);
 
+#define MARK_EXTENDED(NAME) \
+	do { \
+		assert(OW_BICLS_CLASS_DEF_EX_NAME(NAME).extended); \
+		((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic-> NAME)) \
+			->has_extra_fields = true; \
+	} while (false) \
+// ^^^ MARK_EXTENDED() ^^^
+	MARK_EXTENDED(string);
+	MARK_EXTENDED(symbol);
+	MARK_EXTENDED(tuple);
+#undef MARK_EXTENDED // MARK_EXTENDED
+
 #define ELEM(NAME) \
 	ow_class_obj_load_native_def_ex( \
 		om, bic-> NAME, bic->object, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
 	OW_BICLS_LIST0
 	OW_BICLS_LIST
 #undef ELEM
-	((struct _ow_class_obj_pub_info *)_ow_class_obj_pub_info(bic->object))
+	((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->object))
 		->super_class = NULL;
 
 	ow_objmem_pop_ngc(om);

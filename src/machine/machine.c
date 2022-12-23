@@ -10,10 +10,17 @@
 #include "invoke.h"
 #include "modmgr.h"
 #include "symbols.h"
+#include "sysparam.h"
 #include <objects/classes.h>
 #include <objects/memory.h>
 #include <objects/symbolobj.h>
 #include <utilities/malloc.h>
+
+static size_t stack_size(void) {
+	const size_t n_min = 64;
+	const size_t n = ow_sysparam.stack_size;
+	return n > n_min ? n : n_min;
+}
 
 struct ow_machine *ow_machine_new(void) {
 	struct ow_machine *const om = ow_malloc(sizeof(struct ow_machine));
@@ -30,10 +37,14 @@ struct ow_machine *ow_machine_new(void) {
 	om->module_manager = ow_module_manager_new(om);
 	om->common_symbols = ow_common_symbols_new(om);
 	om->globals = ow_machine_globals_new(om);
-	ow_callstack_init(&om->callstack, 500); // TODO: Configurable stack size.
+	ow_callstack_init(&om->callstack, stack_size());
+
+	if (ow_unlikely(ow_sysparam.verbose_memory))
+		ow_objmem_context_verbose(om->objmem_context, true);
 
 	int status;
-	status = ow_machine_run(om, om->globals->module_base, &(struct ow_object *){NULL});
+	status = ow_machine_run(
+		om, om->globals->module_base, false, &(struct ow_object *){NULL});
 	ow_unused_var(status);
 	assert(!status);
 
@@ -66,6 +77,39 @@ void ow_machine_del(struct ow_machine *om) {
 	ow_callstack_fini(&om->callstack);
 
 	ow_free(om);
+}
+
+void ow_machine_setjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb) {
+	jb->sp = om->callstack.regs.sp;
+	jb->fp = om->callstack.regs.fp;
+	jb->fi = om->callstack.frame_info_list.current;
+}
+
+bool ow_machine_longjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb) {
+	if (!(
+		jb->sp && jb->fp && jb->fi &&
+		(struct ow_object **)jb->sp <= om->callstack.regs.sp &&
+		(struct ow_object **)jb->fp <= om->callstack.regs.fp &&
+		(struct ow_object **)jb->sp >= (struct ow_object **)jb->fp - 1
+	)) {
+		return false;
+	}
+	for (struct ow_callstack_frame_info *fi =
+			om->callstack.frame_info_list.current; ; fi = fi->_next) {
+		if (!fi)
+			return false;
+		if (fi == jb->fi)
+			break;
+	}
+
+	om->callstack.regs.sp = jb->sp;
+	om->callstack.regs.fp = jb->fp;
+	while (om->callstack.frame_info_list.current != jb->fi) {
+		assert(om->callstack.frame_info_list.current);
+		ow_callstack_frame_info_list_leave(&om->callstack.frame_info_list);
+	}
+
+	return true;
 }
 
 void _om_machine_gc_marker(struct ow_machine *om) {

@@ -427,6 +427,14 @@ static void ow_ast_SubscriptExpr_fini(struct ow_ast_SubscriptExpr *node) {
 	ow_ast_CallLikeExpr_fini((struct ow_ast_CallLikeExpr *)node);
 }
 
+static void ow_ast_LambdaExpr_init(struct ow_ast_LambdaExpr *node) {
+	node->func = NULL;
+}
+
+static void ow_ast_LambdaExpr_fini(struct ow_ast_LambdaExpr *node) {
+	if (ow_likely(node->func)) ow_ast_node_del((struct ow_ast_node *)node->func);
+}
+
 static void ow_ast_ExprStmt_init(struct ow_ast_ExprStmt *node) {
 	node->expr = NULL;
 }
@@ -449,6 +457,22 @@ static void ow_ast_ReturnStmt_init(struct ow_ast_ReturnStmt *node) {
 
 static void ow_ast_ReturnStmt_fini(struct ow_ast_ReturnStmt *node) {
 	if (ow_likely(node->ret_val)) ow_ast_node_del((struct ow_ast_node *)node->ret_val);
+}
+
+static void ow_ast_MagicReturnStmt_init(struct ow_ast_MagicReturnStmt *node) {
+	ow_ast_ReturnStmt_init((struct ow_ast_ReturnStmt *)node);
+}
+
+static void ow_ast_MagicReturnStmt_fini(struct ow_ast_MagicReturnStmt *node) {
+	ow_ast_ReturnStmt_fini((struct ow_ast_ReturnStmt *)node);
+}
+
+static void ow_ast_ImportStmt_init(struct ow_ast_ImportStmt *node) {
+	node->mod_name = NULL;
+}
+
+static void ow_ast_ImportStmt_fini(struct ow_ast_ImportStmt *node) {
+	if (ow_likely(node->mod_name)) ow_ast_node_del((struct ow_ast_node *)node->mod_name);
 }
 
 static void ow_ast_IfElseStmt_init(struct ow_ast_IfElseStmt *node) {

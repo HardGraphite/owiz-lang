@@ -18,7 +18,11 @@ struct ow_symbol_obj;
 	ELEM(inv , "~"  ) \
 	ELEM(cmp , "<=>") \
 	ELEM(call, "()" ) \
+	ELEM(get_elem, "[]") \
+	ELEM(set_elem, "[]=") \
 	ELEM(anon, ""   ) \
+	ELEM(main, "main") \
+	ELEM(hash, "__hash__") \
 	ELEM(find_attr, "__find_attr__") \
 	ELEM(find_meth, "__find_meth__") \
 // ^^^ OW_COMSYM_LIST ^^^

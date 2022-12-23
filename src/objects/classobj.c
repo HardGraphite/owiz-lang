@@ -1,6 +1,7 @@
 #include "classobj.h"
 
 #include <assert.h>
+#include <string.h>
 
 #include "cfuncobj.h"
 #include "classes.h"
@@ -18,7 +19,7 @@
 
 struct ow_class_obj {
 	OW_OBJECT_HEAD
-	struct _ow_class_obj_pub_info pub_info;
+	struct ow_class_obj_pub_info pub_info;
 	struct ow_hashmap attrs_and_methods_map; // { name, (field_index + 1) or (-1 - method_index) }
 	struct ow_hashmap statics_map; // { name, static_member_object }
 	struct ow_array methods;
@@ -26,16 +27,12 @@ struct ow_class_obj {
 };
 
 static void ow_class_obj_init(struct ow_class_obj *self) {
-	self->pub_info.basic_field_count = 0;
-	self->pub_info.super_class = 0;
-	self->pub_info.class_name = 0;
-	self->pub_info.finalizer = NULL;
-	self->pub_info.gc_marker = NULL;
+	memset(&self->pub_info, 0, sizeof self->pub_info);
 	ow_hashmap_init(&self->attrs_and_methods_map, 0);
 	ow_hashmap_init(&self->statics_map, 0);
 	ow_array_init(&self->methods, 0);
 	self->finalizer2 = NULL;
-	assert(_ow_class_obj_pub_info(self) == &self->pub_info);
+	assert(ow_class_obj_pub_info(self) == &self->pub_info);
 }
 
 void _ow_class_obj_fini(struct ow_class_obj *self) {
@@ -158,6 +155,7 @@ void ow_class_obj_load_native_def(
 	self->pub_info.basic_field_count =
 		self->pub_info.native_field_count +
 		ow_hashmap_size(&self->attrs_and_methods_map) - ow_array_size(&self->methods);
+	self->pub_info.has_extra_fields = false;
 
 	if (ow_unlikely(self->methods._cap - self->methods._len > self->methods._len / 8))
 		ow_array_shrink(&self->methods);
@@ -167,12 +165,13 @@ void ow_class_obj_load_native_def(
 }
 
 void ow_class_obj_load_native_def_ex(
-	struct ow_machine *om, struct ow_class_obj *self,
-	struct ow_class_obj *super,	const struct ow_native_class_def_ex *def,
-	struct ow_module_obj *func_mod) {
+		struct ow_machine *om, struct ow_class_obj *self,
+		struct ow_class_obj *super,	const struct ow_native_class_def_ex *def,
+		struct ow_module_obj *func_mod) {
 	ow_class_obj_load_native_def(
 		om, self, super, (const struct ow_native_class_def *)def, func_mod);
 	self->finalizer2 = NULL;
+	self->pub_info.has_extra_fields = def->extended;
 	self->pub_info.finalizer = def->finalizer;
 	self->pub_info.gc_marker = def->gc_marker;
 }
@@ -261,4 +260,5 @@ OW_BICLS_CLASS_DEF_EX(class_) = {
 	.methods   = class_methods,
 	.finalizer = ow_class_obj_finalizer,
 	.gc_marker = ow_class_obj_gc_marker,
+	.extended  = false,
 };

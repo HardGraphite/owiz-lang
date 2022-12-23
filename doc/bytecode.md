@@ -105,16 +105,24 @@ Instructions with i16/u16 operand:
 | `JmpWhenW`   | `0x43` | i16: O  | `cond -> .`         | Jump if top value is true.                  |
 | `JmpUnls`    | `0x44` | i8: O   | `cond -> .`         | Jump if top value is false.                 |
 | `JmpUnlsW`   | `0x45` | i16: O  | `cond -> .`         | Jump if top value is false.                 |
-| `_46`        | `0x46` | 0       |                     | *(reserved)*                                |
-| `_47`        | `0x47` | 0       |                     | *(reserved)*                                |
-| `Ret`        | `0x48` | 0       |                     | Return nil.                                 |
-| `RetLoc`     | `0x49` | u8: I   | `v -> .` / `. -> .` | Return local variable or top value (I=255). |
+| `LdMod`      | `0x46` | u16: YI | `. -> mod`          | import module by name                       |
+| `Ret`        | `0x47` | 0       |                     | Return top value.                           |
+| `RetNil`     | `0x48` | 0       |                     | Return nil.                                 |
+| `RetLoc`     | `0x49` | u8: I   | `v -> .` / `. -> .` | Return local variable.                      |
 | `Call`       | `0x4a` | u8: C   | `fn,a... -> [ret]`  | Call a function.                            |
 | `_4b`        | `0x4b` | 0       |                     | *(reserved)*                                |
 | `_4c`        | `0x4c` | 0       |                     | *(reserved)*                                |
 | `_4d`        | `0x4d` | 0       |                     | *(reserved)*                                |
 | `PrepMethY`  | `0x4e` | u8: I   | `obj -> meth,obj`   | Load method by symbol and push object.      |
 | `PrepMethYW` | `0x4f` | u16: I  | `obj -> meth,obj`   | Load method by symbol and push object.      |
+| `MkArr`      | `0x50` | u8: N   | `e1,e2,... -> arr`  | Make an array.                              |
+| `MkArrW`     | `0x51` | u16: N  | `e1,e2,... -> arr`  | Make an array.                              |
+| `MkTup`      | `0x52` | u8: N   | `e1,e2,... -> tup`  | Make a tuple.                               |
+| `MkTupW`     | `0x53` | u16: N  | `e1,e2,... -> tup`  | Make a tuple.                               |
+| `MkSet`      | `0x54` | u8: N   | `e1,e2,... -> set`  | Make a set.                                 |
+| `MkSetW`     | `0x55` | u16: N  | `e1,e2,... -> set`  | Make a set.                                 |
+| `MkMap`      | `0x56` | u8: N   | `k1,v1,... -> map`  | Make a map.                                 |
+| `MkMapW`     | `0x57` | u16: N  | `k1,v2,... -> map`  | Make a map.                                 |
 
 Meaning of operand column:
 

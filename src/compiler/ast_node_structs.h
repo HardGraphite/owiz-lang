@@ -299,6 +299,11 @@ struct ow_ast_SubscriptExpr {
 	struct ow_ast_node_array args;
 };
 
+struct ow_ast_LambdaExpr {
+	OW_AST_NODE_HEAD
+	struct ow_ast_FuncStmt *func;
+};
+
 struct ow_ast_ExprStmt {
 	OW_AST_NODE_HEAD
 	struct ow_ast_Expr *expr;
@@ -312,6 +317,16 @@ struct ow_ast_BlockStmt {
 struct ow_ast_ReturnStmt {
 	OW_AST_NODE_HEAD
 	struct ow_ast_Expr *ret_val /*optional*/;
+};
+
+struct ow_ast_MagicReturnStmt {
+	OW_AST_NODE_HEAD
+	struct ow_ast_Expr *ret_val /*optional*/;
+};
+
+struct ow_ast_ImportStmt {
+	OW_AST_NODE_HEAD
+	struct ow_ast_Identifier *mod_name;
 };
 
 struct ow_ast_IfElseStmt {

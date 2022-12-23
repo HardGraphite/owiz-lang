@@ -7,6 +7,7 @@
 #	define ow_noinline        __attribute__((noinline))
 #	define ow_nodiscard       __attribute__((warn_unused_result))
 #	define ow_fallthrough     __attribute__((fallthrough))
+#	define ow_unused_func     __attribute__((unused))
 #elif defined _MSC_VER
 #	define ow_likely(EXPR)    (EXPR)
 #	define ow_unlikely(EXPR)  (EXPR)
@@ -14,6 +15,7 @@
 #	define ow_noinline        __declspec(noinline)
 #	define ow_nodiscard       _Check_return_
 #	define ow_fallthrough
+#	define ow_unused_func
 #else
 #	define ow_likely(EXPR)    (EXPR)
 #	define ow_unlikely(EXPR)  (EXPR)
@@ -21,6 +23,7 @@
 #	define ow_noinline
 #	define ow_nodiscard
 #	define ow_fallthrough
+#	define ow_unused_func
 #endif
 
 #define ow_static_inline      static inline

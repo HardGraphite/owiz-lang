@@ -35,12 +35,13 @@ ow_static_inline size_t ow_ast_node_array_size(const struct ow_ast_node_array *a
 
 // Get node by index.
 ow_static_inline struct ow_ast_node *ow_ast_node_array_at(
-		struct ow_ast_node_array *arr, size_t index) {
+		const struct ow_ast_node_array *arr, size_t index) {
 	return ow_array_at(&arr->_data, index);
 }
 
 // View last node.
-ow_static_inline struct ow_ast_node *ow_ast_node_array_last(struct ow_ast_node_array *arr) {
+ow_static_inline struct ow_ast_node *ow_ast_node_array_last(
+		const struct ow_ast_node_array *arr) {
 	return ow_array_at(&arr->_data, ow_array_size(&arr->_data) - 1);
 }
 
@@ -94,13 +95,13 @@ ow_static_inline size_t ow_ast_nodepair_array_size(
 
 // Get node by index.
 ow_static_inline struct ow_ast_nodepair_array_elem ow_ast_nodepair_array_at(
-		struct ow_ast_nodepair_array *arr, size_t index) {
+		const struct ow_ast_nodepair_array *arr, size_t index) {
 	return ow_xarray_at(&arr->_data, struct ow_ast_nodepair_array_elem, index);
 }
 
 // View last node.
 ow_static_inline struct ow_ast_nodepair_array_elem ow_ast_nodepair_array_last(
-		struct ow_ast_nodepair_array *arr) {
+		const struct ow_ast_nodepair_array *arr) {
 	const size_t index = ow_xarray_size(&arr->_data) - 1;
 	return ow_xarray_at(&arr->_data, struct ow_ast_nodepair_array_elem, index);
 }

@@ -76,6 +76,7 @@
 	ELEM(KW_SELF    , "self"    ) \
 	ELEM(KW_END     , "end"     ) \
 	ELEM(KW_RETURN  , "return"  ) \
+	ELEM(KW_IMPORT  , "import"  ) \
 	ELEM(KW_IF      , "if"      ) \
 	ELEM(KW_ELIF    , "elif"    ) \
 	ELEM(KW_ELSE    , "else"    ) \
@@ -225,4 +226,11 @@ ow_static_inline void ow_token_assign_string(
 	ow_token_fini(tok);
 	tok->_type = tp;
 	tok->_data.s = ow_sharedstr_ref(val);
+}
+
+/// Move token value to another.
+ow_static_inline void ow_token_move(
+		struct ow_token *dest, struct ow_token *src) {
+	*dest = *src;
+	src->_type = OW_TOK_END;
 }

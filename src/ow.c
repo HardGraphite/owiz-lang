@@ -1,16 +1,22 @@
 #include <assert.h>
+#include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <ow.h>
-#include <machine/version.h>
 #include <utilities/attributes.h>
+#include <utilities/platform.h>
 #include <utilities/unreachable.h>
 
-#ifdef _WIN32
+#if _IS_WINDOWS_
+#	include <io.h>
 #	include <Windows.h>
-#endif // _WIN32
+#elif _IS_POSIX_
+#	include <sys/ioctl.h>
+#	include <unistd.h>
+#endif
 
 #ifdef __GNUC__
 #	define static_cold_func __attribute__((cold)) __attribute__((noinline)) static
@@ -42,6 +48,33 @@ static char **win32_strarr_wide_to_utf8(
 }
 
 #endif // _WIN32
+
+static bool stdin_is_tty(void) {
+#if defined(_POSIX_VERSION)
+	return isatty(STDIN_FILENO);
+#elif defined(_WIN32)
+	return _isatty(_fileno(stdin));
+#else
+	return true;
+#endif
+}
+
+static size_t stdout_win_width(void) {
+	const unsigned int default_value = 80;
+#if defined(_POSIX_VERSION)
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1)
+		return default_value;
+	return w.ws_col;
+#elif defined(_WIN32)
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+		return default_value;
+	return (size_t)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+#else
+	return default_value;
+#endif
+}
 
 /***** ***** ***** ***** ******  Argument Parser ****** ***** ***** ***** *****/
 
@@ -215,7 +248,7 @@ static_cold_func void argparse_help(const argparse_program_t *prog) {
 	}
 
 	puts("Options:");
-	const size_t left_width = 24, right_width = 80 - left_width;
+	const size_t left_width = 24, right_width = stdout_win_width() - 1 - left_width;
 	for (const argparse_option_t *opt = prog->opts; ; opt++) {
 		if (!opt->short_name && !opt->long_name) {
 			if (opt->argument)
@@ -334,6 +367,7 @@ struct ow_args {
 #endif // _MSC_VER
 
 static_cold_func void print_program_help(void);
+static_cold_func void print_detailed_version(void);
 
 static_cold_func ow_noreturn int opt_help(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
@@ -345,7 +379,7 @@ static_cold_func ow_noreturn int opt_help(
 static_cold_func ow_noreturn int opt_version(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(ctx), ow_unused_var(opt), ow_unused_var(arg);
-	puts(OW_VERSION_STRING);
+	puts(ow_sysconf(OW_SC_VERSION_STR).s);
 	cleanup_mom_and_exit(EXIT_SUCCESS);
 }
 
@@ -353,11 +387,10 @@ static_cold_func int opt_repl(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
 	struct ow_args *const args = ctx;
-	assert(!args->file);
-	if (args->code) {
+	if (args->code || args->file) {
 		fprintf(stderr,
-			"%s: mutually exclusive options: `%s' and `%s'\n",
-			args->prog, "-i/--repl", "-e/--eval");
+			"%s: mutually exclusive options: `%s', `%s' and `%s'\n",
+			args->prog, "-i/--repl", "-e/--eval", "-r/--run");
 		cleanup_mom_and_exit(EXIT_FAILURE);
 	}
 	args->repl = true;
@@ -368,14 +401,63 @@ static_cold_func int opt_eval(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
 	struct ow_args *const args = ctx;
-	assert(!args->file);
-	if (args->repl) {
+	if (args->file || args->repl) {
 		fprintf(stderr,
-			"%s: mutually exclusive options: `%s' and `%s'\n",
-			args->prog, "-e/--eval", "-i/--repl");
+			"%s: mutually exclusive options: `%s', `%s' and `%s'\n",
+			args->prog, "-e/--eval", "-i/--repl", "-r/--run");
 		cleanup_mom_and_exit(EXIT_FAILURE);
 	}
 	args->code = arg;
+	return 0;
+}
+
+static_cold_func int opt_run(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(opt), ow_unused_var(arg);
+	struct ow_args *const args = ctx;
+	if (args->code || args->repl) {
+		fprintf(stderr,
+			"%s: mutually exclusive options: `%s', `%s' and `%s'\n",
+			args->prog, "-r/--run", "-e/--eval", "-i/--repl");
+		cleanup_mom_and_exit(EXIT_FAILURE);
+	}
+	args->file = arg;
+	return 0;
+}
+
+static_cold_func int opt_path(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(ctx), ow_unused_var(opt);
+	prepare_mom();
+	ow_syscmd(main_om, OW_CMD_ADDPATH, arg);
+	return 0;
+}
+
+static_cold_func int opt_verbose(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(opt);
+	if (ow_sysctl(OW_CTL_VERBOSE, arg, (size_t)-1) == OW_ERR_FAIL) {
+		if (toupper(arg[0]) == 'V' && arg[1] == '\0') {
+			print_detailed_version();
+			cleanup_mom_and_exit(EXIT_SUCCESS);
+		}
+		struct ow_args *const args = ctx;
+		fprintf(stderr, "%s: invalid verbose target: `%s'\n", args->prog, arg);
+		cleanup_mom_and_exit(EXIT_FAILURE);
+	}
+	return 0;
+}
+
+static_cold_func int opt_stack_size(
+		void *ctx, const argparse_option_t *opt, const char *arg) {
+	ow_unused_var(opt);
+	const long long n = atoll(arg);
+	if (n <= 0) {
+		struct ow_args *const args = ctx;
+		fprintf(stderr, "%s: invalid stack size: `%s'\n", args->prog, arg);
+		cleanup_mom_and_exit(EXIT_FAILURE);
+	}
+	ow_sysctl(OW_CTL_STACKSIZE, &n, sizeof n);
 	return 0;
 }
 
@@ -383,11 +465,8 @@ static_cold_func int opt_file_or_arg(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt), ow_unused_var(arg);
 	struct ow_args *const args = ctx;
+	ow_unused_var(arg), ow_unused_var(args);
 	assert(!args->argc && !args->argv);
-	assert(!args->file);
-	if (args->repl || args->code)
-		return 1;
-	args->file = arg;
 	return 1;
 }
 
@@ -397,19 +476,38 @@ static_cold_func int opt_file_or_arg(
 
 #pragma pack(push, 1)
 
+static const char opt_version_help[] =
+	"Print version information and exit. Use `-vV' to print more details.";
+static const char opt_repl_help[] =
+	"Run REPL (interactive mode). "
+	"This option will be automatically enabled if neither `-e' nor "
+	"MODULE/FILE/- is given and stdin is connected to a terminal.";
+static const char opt_run_help[] =
+	"Run the module or file. "
+	"`:MODULE' is a module name with prefix `:'; `FILE' is the path to a file; "
+	"`-' represents stdin. "
+	"This option will be automatically used if neither `-i' nor `-e' is specified "
+	"and there are reset command-line arguments.";
+static const char opt_verbose_help[] =
+	"Enable or disable verbose output for memory (M), lexer (L), parser (P), "
+	"code generator (C) or detailed version information (V).";
+
 static const argparse_option_t options[] = {
 	{'h', "help"   , NULL   , "Print help message and exit.", opt_help        },
-	{'V', "version", NULL   , "Print version info and exit.", opt_version     },
-	{'i', "repl"   , NULL   , "Run REPL (interactive mode). "
-	"Default enabled if neither `-i' nor FILE is given."    , opt_repl        },
+	{'V', "version", NULL   , opt_version_help              , opt_version     },
+	{'i', "repl"   , NULL   , opt_repl_help                 , opt_repl        },
 	{'e', "eval"   , "CODE" , "Evaluate the given CODE."    , opt_eval        },
+	{'r', "run"    , ":MODULE|FILE|-", opt_run_help         , opt_run         },
+	{'P', "path"   , "PATH" , "Add a module search path."   , opt_path        },
+	{'v', "verbose", "[!]M|L|P|C|V", opt_verbose_help       , opt_verbose     },
+	{0  , "stack-size", "N" , "Set stack size (object count).", opt_stack_size},
 	{0  , NULL     , "..."  , NULL                          , opt_file_or_arg },
 	{0  , NULL     , NULL   , NULL                          , NULL            },
 };
 
 static const argparse_program_t program = {
 	.name = "ow",
-	.usage= "[OPTION...] [FILE|-] [ARG...]",
+	.usage= "[OPTION...] [:MODULE|FILE|-] [ARG...]",
 	.help = "the OW programming language",
 	.opts = options,
 };
@@ -454,18 +552,30 @@ static void parse_args(int argc, char *argv[], struct ow_args *args) {
 		// See opt_file_or_arg().
 		assert(!args->argc && !args->argv);
 		int index = ARGPARSE_GETINDEX(status);
-		if (args->file && args->file == argv[index])
-			index++;
+		if (!(args->repl || args->code || args->file))
+			args->file = argv[index++];
 		assert(index <= argc);
 		args->argc = (size_t)(argc - index);
 		args->argv = argv + index;
 	}
-	if (!args->file && !args->code && !args->repl)
-		args->repl = true;
+	if (!args->file && !args->code && !args->repl) {
+		if (stdin_is_tty())
+			args->repl = true;
+		else
+			args->file = "-"; // stdin
+	}
 }
 
 static_cold_func void print_program_help(void) {
 	argparse_help(&program);
+}
+
+static_cold_func void print_detailed_version(void) {
+	printf("%s version %s\n\n", "ow", ow_sysconf(OW_SC_VERSION_STR).s);
+	printf("%-16s: %s\n", "Platform", ow_sysconf(OW_SC_PLATFORM).s);
+	printf("%-16s: %s\n", "Compiler", ow_sysconf(OW_SC_COMPILER).s);
+	printf("%-16s: %s\n", "Build time", ow_sysconf(OW_SC_BUILDTIME).s);
+	printf("%-16s: %s\n", "Build type", ow_sysconf(OW_SC_DEBUG).i ? "debug" : "release");
 }
 
 /// Parse environment variables.
@@ -494,14 +604,19 @@ static int ow_main(int argc, char *argv[]) {
 
 	prepare_mom();
 
+	ow_syscmd(main_om, OW_CMD_ADDPATH, ".");
+
 	if (args.repl) {
 		status = ow_make_module(main_om, "repl", NULL, OW_MKMOD_LOAD);
 	} else {
+		const char *name = "__main__";
 		const char *src;
 		int flags;
 		if (args.file) {
 			if (args.file[0] == '-' && args.file[1] == '\0') // "-", stdin
 				src = NULL, flags = OW_MKMOD_STDIN;
+			else if (args.file[0] == ':' && args.file[1] != '\0') // ":MODULE"
+				name = args.file + 1, src = NULL, flags = OW_MKMOD_LOAD;
 			else
 				src = args.file, flags = OW_MKMOD_FILE;
 		} else if (args.code) {
@@ -509,14 +624,14 @@ static int ow_main(int argc, char *argv[]) {
 		} else {
 			ow_unreachable();
 		}
-		status = ow_make_module(main_om, "__main__", src, flags);
+		status = ow_make_module(main_om, name, src, flags);
 	}
 	if (status != 0) {
 		assert(status == OW_ERR_FAIL);
 		print_top_exception_and_exit();
 	}
 
-	status = ow_invoke(main_om, 0, OW_IVK_MODULE | OW_IVK_NORETVAL);
+	status = ow_invoke(main_om, 0, OW_IVK_MODULE | (OW_IVK_NORETVAL | OW_IVK_MODMAIN));
 	if (status != 0) {
 		assert(status == OW_ERR_FAIL);
 		print_top_exception_and_exit();

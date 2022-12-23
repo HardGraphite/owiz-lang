@@ -4,11 +4,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#if OW_DEBUG_MEMORY
-#	include <stdio.h>
-#	include <time.h>
-#endif // OW_DEBUG_MEMORY
-
 #include "classobj.h"
 #include "natives.h"
 #include "object.h"
@@ -16,6 +11,13 @@
 #include "smallint.h"
 #include <machine/machine.h>
 #include <utilities/malloc.h>
+
+#include <config/options.h>
+
+#if OW_DEBUG_MEMORY
+#	include <stdio.h>
+#	include <time.h>
+#endif // OW_DEBUG_MEMORY
 
 #define DEFAULT_GC_THRESHOLD (sizeof(void *) * 1024 * 1024 / 4)
 #define DEFAULT_ALLOCATE_MAX (sizeof(void *) * 8 * 1024 * 1024)
@@ -171,8 +173,10 @@ bool ow_objmem_remove_gc_root(struct ow_machine *om, void *root) {
 }
 
 struct ow_object *ow_objmem_allocate(
-		struct ow_machine *om, struct ow_class_obj *obj_class, size_t extra_field_count) {
+		struct ow_machine *om, struct ow_class_obj *obj_class,
+		size_t extra_field_count) {
 	struct ow_objmem_context *const ctx = om->objmem_context;
+	struct ow_object *obj;
 
 	if (ow_unlikely(ctx->allocated_size >= ctx->gc_threshold)) {
 		ow_objmem_gc(om, 0);
@@ -180,20 +184,31 @@ struct ow_object *ow_objmem_allocate(
 			abort(); // Out of memory.
 	}
 
-	const size_t obj_field_count =
-		_ow_class_obj_pub_info(obj_class)->basic_field_count + extra_field_count;
-	const size_t obj_size = OW_OBJECT_SIZE + obj_field_count * sizeof(void *);
-	struct ow_object *const obj = ow_malloc(obj_size);
-	ctx->allocated_size += obj_size;
+#define OBJ_ALLOC(OBJ_FLD_CNT) \
+	do { \
+		const size_t obj_size = OW_OBJECT_SIZE + (OBJ_FLD_CNT) * sizeof(void *); \
+		obj = ow_malloc(obj_size); \
+		ctx->allocated_size += obj_size; \
+		static_assert(sizeof obj->_meta == sizeof(uint64_t), ""); \
+		*(uint64_t *)&obj->_meta = UINT64_C(0); \
+	} while (false) \
+// ^^^ OBJ_ALLOC() ^^^
 
-	static_assert(sizeof obj->_meta == sizeof(uint64_t), "");
-	*(uint64_t *)&obj->_meta = 0;
-	if (ow_unlikely(extra_field_count)) {
+	if (ow_likely(!ow_class_obj_pub_info(obj_class)->has_extra_fields)) {
+		const size_t obj_field_count = ow_class_obj_attribute_count(obj_class);
+		assert(!extra_field_count);
+		OBJ_ALLOC(obj_field_count);
+	} else {
+		const size_t obj_field_count =
+			ow_class_obj_attribute_count(obj_class) + extra_field_count;
+		OBJ_ALLOC(obj_field_count);
 		ow_object_meta_set_flag(&obj->_meta, OW_OBJMETA_FLAG_EXTENDED);
 		ow_object_set_field(obj, 0, (void *)(uintptr_t)obj_field_count);
 	}
-	obj->_class = obj_class;
 
+#undef OBJ_ALLOC
+
+	obj->_class = obj_class;
 	object_linked_list_add(&ctx->allocated_objects, obj);
 
 	assert(!ow_smallint_check(obj));
@@ -205,11 +220,11 @@ ow_forceinline static size_t delete_obj(struct ow_machine *om, struct ow_object 
 	if (ow_unlikely(ow_object_meta_get_flag(&obj->_meta, OW_OBJMETA_FLAG_EXTENDED)))
 		obj_field_count = (uintptr_t)ow_object_get_field(obj, 0);
 	else
-		obj_field_count = _ow_class_obj_pub_info(obj->_class)->basic_field_count;
+		obj_field_count = ow_class_obj_pub_info(obj->_class)->basic_field_count;
 	const size_t obj_size = OW_OBJECT_SIZE + obj_field_count * sizeof(void *);
 
 	void (*const finalizer)(struct ow_machine *,struct ow_object *) =
-		_ow_class_obj_pub_info(obj->_class)->finalizer;
+	ow_class_obj_pub_info(obj->_class)->finalizer;
 	if (ow_unlikely(finalizer))
 		finalizer(om, obj);
 	ow_free(obj);
@@ -290,8 +305,8 @@ void _ow_objmem_object_gc_mark_children_obj(
 	struct ow_class_obj *const obj_class = ow_object_class(obj);
 	ow_objmem_object_gc_marker(om, ow_object_from(obj_class));
 
-	const struct _ow_class_obj_pub_info *const info =
-		_ow_class_obj_pub_info(obj_class);
+	const struct ow_class_obj_pub_info *const info =
+		ow_class_obj_pub_info(obj_class);
 
 	size_t field_index;
 	if (ow_unlikely(info->native_field_count)) {

@@ -2,8 +2,6 @@
 
 #include <assert.h>
 #include <limits.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "globals.h"
@@ -11,6 +9,8 @@
 #include "symbols.h"
 #include <bytecode/opcode.h>
 #include <bytecode/operand.h>
+#include <machine/modmgr.h>
+#include <objects/arrayobj.h>
 #include <objects/cfuncobj.h>
 #include <objects/classes.h>
 #include <objects/classobj.h>
@@ -18,36 +18,17 @@
 #include <objects/floatobj.h>
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
+#include <objects/mapobj.h>
 #include <objects/memory.h>
 #include <objects/moduleobj.h>
 #include <objects/object.h>
+#include <objects/setobj.h>
 #include <objects/smallint.h>
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
+#include <objects/tupleobj.h>
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
-
-/// Format an error.
-#ifdef __GNUC__
-__attribute__((cold))
-#endif // __GNUC__
-ow_noinline ow_nodiscard static struct ow_exception_obj *invoke_impl_make_error(
-		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
-	va_list ap;
-	char buf[64];
-	va_start(ap, fmt);
-	const int n = vsnprintf(buf, sizeof buf, fmt, ap);
-	va_end(ap);
-	assert(n >= 0);
-
-	ow_objmem_push_ngc(om);
-	struct ow_object *const msg_o =
-		ow_object_from(ow_string_obj_new(om, buf, (size_t)n));
-	struct ow_exception_obj *const exc_o = ow_exception_new(om, exc_type, msg_o);
-	ow_objmem_pop_ngc(om);
-
-	return exc_o;
-}
 
 /// Check number of arguments. If there is no error, return NULL.
 ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_argc(
@@ -57,13 +38,13 @@ ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_ar
 	if (ow_likely(expected_argc >= 0)) {
 		if (ow_likely((unsigned int)argc == (unsigned int)expected_argc))
 			return NULL;
-		return invoke_impl_make_error(om, NULL, "too %s arguments",
+		return ow_exception_format(om, NULL, "too %s arguments",
 			(unsigned int)argc < (unsigned int)expected_argc ? "few" : "many");
 	} else {
 		const unsigned int argc_min = (unsigned int)OW_NATIVE_FUNC_VARIADIC_ARGC(argc);
 		if (ow_likely((unsigned int)argc >= argc_min))
 			return NULL;
-		return invoke_impl_make_error(om, NULL, "too few arguments");
+		return ow_exception_format(om, NULL, "too few arguments");
 	}
 }
 
@@ -79,9 +60,9 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_attribute(
 		struct ow_object *argv[2] = {obj, ow_object_from(name)};
 		return ow_machine_call(om, find_attr, 2, argv, result);
 	}
-	*result = ow_object_from(invoke_impl_make_error(
+	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not attribute `%s'",
-		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+		ow_symbol_obj_data(ow_class_obj_name(obj_class)),
 		ow_symbol_obj_data(name)));
 	return -1;
 }
@@ -98,9 +79,9 @@ ow_nodiscard ow_noinline static int invoke_impl_do_find_method(
 		struct ow_object *argv[2] = {obj, ow_object_from(name)};
 		return ow_machine_call(om, find_meth, 2, argv, result);
 	}
-	*result = ow_object_from(invoke_impl_make_error(
+	*result = ow_object_from(ow_exception_format(
 		om, NULL, "`%s' object has not method `%s'",
-		ow_symbol_obj_data(_ow_class_obj_pub_info(obj_class)->class_name),
+		ow_symbol_obj_data(ow_class_obj_name(obj_class)),
 		ow_symbol_obj_data(name)));
 	return -1;
 }
@@ -252,10 +233,8 @@ static int invoke_impl(
 
 		OP_BEGIN(LdFlt)
 			OPERAND(i8, operand.i8)
-			STACK_COMMIT();
 			*++stack.sp =
 				ow_object_from(ow_float_obj_new(machine, (double)operand.i8));
-			STACK_ASSERT_NC();
 		OP_END
 
 #define IMPL_BIN_OP(OPERATOR, METH_NAME) \
@@ -336,7 +315,7 @@ static int invoke_impl(
 	struct ow_object *const val = stack.sp[0]; \
 	if (ow_smallint_check(val)) { \
 		const ow_smallint_t res = OPERATOR ow_smallint_from_ptr(val); \
-		*--stack.sp = ow_int_obj_or_smallint(machine, res); \
+		*stack.sp = ow_int_obj_or_smallint(machine, res); \
 	} else { \
 		*++stack.sp = val; \
 		STACK_COMMIT(); \
@@ -434,7 +413,7 @@ static int invoke_impl(
 			goto raise_exc; \
 		struct ow_object *const cmp_res_o = *stack.sp; \
 		if (ow_unlikely(!ow_smallint_check(cmp_res_o))) { \
-			*stack.sp = ow_object_from(invoke_impl_make_error( \
+			*stack.sp = ow_object_from(ow_exception_format( \
 				machine, NULL, "wrong type of comparison result")); \
 			goto raise_exc; \
 		} \
@@ -688,11 +667,36 @@ static int invoke_impl(
 		OP_END
 
 		OP_BEGIN(LdElem)
-			goto err_not_implemented;
+			NO_OPERAND()
+			struct ow_object *const obj = stack.sp[-1];
+			stack.sp++;
+			stack.sp[0] = stack.sp[-1];
+			stack.sp[-1] = obj;
+			STACK_COMMIT();
+			const bool ok = invoke_impl_get_method_y(
+				machine, obj, common_symbols->get_elem, stack.sp - 2);
+			STACK_ASSERT_NC();
+			if (ow_unlikely(!ok)) {
+				stack.sp -= 2;
+				goto raise_exc;
+			}
+			DO_CALL(2);
 		OP_END
 
 		OP_BEGIN(StElem)
-			goto err_not_implemented;
+			NO_OPERAND()
+			struct ow_object *const obj = stack.sp[-1];
+			struct ow_object *const elem = stack.sp[-2];
+			*++stack.sp = elem;
+			STACK_COMMIT();
+			const bool ok = invoke_impl_get_method_y(
+				machine, obj, common_symbols->set_elem, stack.sp - 3);
+			STACK_ASSERT_NC();
+			if (ow_unlikely(!ok)) {
+				stack.sp -= 3;
+				goto raise_exc;
+			}
+			DO_CALL(3);
 		OP_END
 
 		OP_BEGIN(Jmp)
@@ -749,9 +753,34 @@ static int invoke_impl(
 				goto err_cond_is_not_bool;
 		OP_END
 
+		OP_BEGIN(LdMod)
+			OPERAND(u16, operand.index)
+			struct ow_symbol_obj *sym =
+				ow_func_obj_get_symbol(current_func_obj, operand.index);
+			if (ow_unlikely(!sym))
+				goto err_bad_operand;
+			const char *const sym_str = ow_symbol_obj_data(sym);
+			struct ow_exception_obj *exc_o;
+			struct ow_module_obj *const mod_o =
+				ow_module_manager_load(machine->module_manager, sym_str, 0, &exc_o);
+			if (ow_unlikely(!mod_o)) {
+				*++stack.sp = ow_object_from(exc_o);
+				goto raise_exc;
+			}
+			*++stack.sp = ow_object_from(mod_o);
+			const int status = ow_machine_run(
+				machine, mod_o, false, (struct ow_object **)&exc_o);
+			if (ow_unlikely(status == -1)) {
+				*++stack.sp = ow_object_from(exc_o);
+				goto raise_exc;
+			}
+			assert(status == 0);
+		OP_END
+
 		OP_BEGIN(Ret)
 			NO_OPERAND()
-			operand.pointer = machine_globals->value_nil; // Return value.
+			operand.pointer = *stack.sp;
+			// Return value is stored in `operand.pointer`.
 		op_Ret_2:;
 			ip = current_frame->prev_ip;
 			stack.fp = current_frame->prev_fp;
@@ -780,14 +809,17 @@ static int invoke_impl(
 			current_module = current_func_obj->module;
 		OP_END
 
+		OP_BEGIN(RetNil)
+			NO_OPERAND()
+			operand.pointer = machine_globals->value_nil;
+			goto op_Ret_2;
+		OP_END
+
 		OP_BEGIN(RetLoc)
 			OPERAND(u8, operand.index)
-			if (operand.index == UINT8_MAX)
-				operand.pointer = machine_globals->value_nil;
-			else if (ow_likely(stack.fp + operand.index < stack.sp))
-				operand.pointer = stack.fp[operand.index];
-			else
+			if (ow_unlikely(stack.fp + operand.index > stack.sp))
 				goto err_bad_operand;
+			operand.pointer = stack.fp[operand.index];
 			goto op_Ret_2;
 		OP_END
 
@@ -835,11 +867,11 @@ static int invoke_impl(
 					*++stack.sp = operand.pointer;
 					goto raise_exc;
 				}
-				stack.sp++; // Return value.
 				STACK_COMMIT();
 				const int status = cfunc_obj->code(machine);
 				STACK_UPDATE();
-				struct ow_object *const ret_val = *stack.fp;
+				struct ow_object *const ret_val =
+					status ? *stack.sp : machine_globals->value_nil;
 				assert(current_frame->prev_ip == ip);
 				stack.fp = current_frame->prev_fp;
 				if (current_frame->not_ret_val || ow_unlikely(!ip)) {
@@ -852,10 +884,10 @@ static int invoke_impl(
 				if (ow_unlikely(!ip)) {
 					STACK_COMMIT();
 					*_res_out = ret_val;
-					return status;
+					return status >= 0 ? 0 : -1;
 				}
 				current_frame = frame_info_list->current;
-				if (ow_unlikely(status)) {
+				if (ow_unlikely(status < 0)) {
 					*++stack.sp = ret_val; // Exception.
 					goto raise_exc;
 				}
@@ -908,6 +940,90 @@ static int invoke_impl(
 			goto op_PrepMethY_1;
 		OP_END
 
+		OP_BEGIN(MkArr)
+			OPERAND(u8, operand.count)
+		op_MkArr_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			STACK_COMMIT();
+			struct ow_array_obj *const obj =
+				ow_array_obj_new(machine, data, operand.count);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkArrW)
+			OPERAND(u16, operand.count)
+			goto op_MkArr_1;
+		OP_END
+
+		OP_BEGIN(MkTup)
+			OPERAND(u8, operand.count)
+		op_MkTup_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			STACK_COMMIT();
+			struct ow_tuple_obj *const obj =
+				ow_tuple_obj_new(machine, data, operand.count);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkTupW)
+			OPERAND(u16, operand.count)
+			goto op_MkTup_1;
+		OP_END
+
+		OP_BEGIN(MkSet)
+			OPERAND(u8, operand.count)
+		op_MkSet_1:;
+			struct ow_object **data = stack.sp - operand.count + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			*++stack.sp = machine_globals->value_nil;
+			STACK_COMMIT();
+			struct ow_set_obj *const obj = ow_set_obj_new(machine);
+			STACK_ASSERT_NC();
+			*stack.sp = ow_object_from(obj);
+			for (size_t i = 0; i < operand.index; i++)
+				ow_set_obj_insert(machine, obj, data[i]);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkSetW)
+			OPERAND(u16, operand.count)
+			goto op_MkSet_1;
+		OP_END
+
+		OP_BEGIN(MkMap)
+			OPERAND(u8, operand.count)
+		op_MkMap_1:;
+			struct ow_object **data = stack.sp - operand.count * 2 + 1;
+			if (ow_unlikely(data < stack.fp))
+				goto err_bad_operand;
+			*++stack.sp = machine_globals->value_nil;
+			STACK_COMMIT();
+			struct ow_map_obj *const obj = ow_map_obj_new(machine);
+			STACK_ASSERT_NC();
+			*stack.sp = ow_object_from(obj);
+			for (size_t i = 0; i < operand.index; i++)
+				ow_map_obj_set(machine, obj, data[i], data[i + 1]);
+			STACK_ASSERT_NC();
+			*data = ow_object_from(obj);
+			stack.sp = data;
+		OP_END
+
+		OP_BEGIN(MkMapW)
+			OPERAND(u16, operand.count)
+			goto op_MkMap_1;
+		OP_END
+
 #undef OP_BEGIN
 #undef OP_END
 #undef OPERAND
@@ -915,13 +1031,13 @@ static int invoke_impl(
 
 		default:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
-				machine, NULL, "unrecognized opcode `%02x' at %p", *ip, ip));
+			*++stack.sp = ow_object_from(ow_exception_format(
+				machine, NULL, "unrecognized opcode `%#04x' at %p", *ip, ip));
 			goto raise_exc;
 
 		err_not_implemented:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL,
 				"instruction `%s' has not been implemented",
 				ow_opcode_name((enum ow_opcode)*ip)));
@@ -929,7 +1045,7 @@ static int invoke_impl(
 
 		err_bad_operand:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL,
 				"illegal operand for instruction `%s' at %p",
 				ow_opcode_name((enum ow_opcode)*ip), ip));
@@ -937,7 +1053,7 @@ static int invoke_impl(
 
 		err_cond_is_not_bool:
 			ip--;
-			*++stack.sp = ow_object_from(invoke_impl_make_error(
+			*++stack.sp = ow_object_from(ow_exception_format(
 				machine, NULL, "condition value is not a boolean object"));
 			goto raise_exc;
 
@@ -946,7 +1062,7 @@ static int invoke_impl(
 			if (ow_unlikely(ow_smallint_check(operand.pointer) ||
 					!ow_class_obj_is_base(builtin_classes->exception,
 						ow_object_class(operand.pointer)))) {
-				operand.pointer = ow_object_from(invoke_impl_make_error(
+				operand.pointer = ow_object_from(ow_exception_format(
 					machine, NULL, "raise a non-exception object"));
 				*stack.sp = operand.pointer;
 			}
@@ -1002,6 +1118,38 @@ int ow_machine_call(
 	return ow_machine_invoke(om, argc, res_out);
 }
 
+int ow_machine_call_method(
+		struct ow_machine *om, struct ow_symbol_obj *method_name,
+		int argc, struct ow_object *argv[], struct ow_object **res_out) {
+	assert(argc > 0);
+	assert(argv || om->callstack.regs.sp > om->callstack.regs.fp);
+	struct ow_object *const obj = argv ? argv[0] : om->callstack.regs.sp[1 - argc];
+	struct ow_class_obj *const obj_class =
+		ow_unlikely(ow_smallint_check(obj)) ?
+			om->builtin_classes->int_ : ow_object_class(obj);
+	const size_t index = ow_class_obj_find_method(obj_class, method_name);
+	struct ow_object *method;
+	if (ow_likely(index != (size_t)-1)) {
+		method = ow_class_obj_get_method(obj_class, index);
+	} else {
+		ow_objmem_push_ngc(om);
+		const bool ok = invoke_impl_do_find_method(
+			om, obj, obj_class, method_name, &method);
+		ow_objmem_pop_ngc(om);
+		if (ow_unlikely(!ok)) {
+			ow_object_from(ow_exception_format(
+				om, NULL, "`%s' object has not method `%s'",
+				ow_symbol_obj_data(ow_class_obj_name(obj_class)),
+				ow_symbol_obj_data(ow_object_cast(method_name, struct ow_symbol_obj))));
+			return -1;
+		}
+	}
+	if (argv)
+		return ow_machine_call(om, method, argc, argv, res_out);
+	om->callstack.regs.sp[-argc] = method;
+	return ow_machine_invoke(om, argc, res_out);
+}
+
 int ow_machine_call_native(
 		struct ow_machine *om,
 		struct ow_module_obj *mod, int (*func)(struct ow_machine *),
@@ -1017,17 +1165,36 @@ int ow_machine_call_native(
 }
 
 int ow_machine_run(
-		struct ow_machine *om,
-		struct ow_module_obj *module, struct ow_object **res_out) {
-	struct ow_object *const init_func =
-		ow_module_obj_get_global_y(module, om->common_symbols->anon);
-
+		struct ow_machine *om, struct ow_module_obj *module,
+		bool call_main, struct ow_object **res_out) {
 	struct ow_object *const nil = om->globals->value_nil;
-	if (!init_func || init_func == nil) {
+	struct ow_symbol_obj *const sym_anon = om->common_symbols->anon;
+	struct ow_symbol_obj *const sym_main = om->common_symbols->main;
+
+	struct ow_object *const init_func =
+		ow_module_obj_get_global_y(module, sym_anon);
+	if (init_func && init_func != nil) {
+		ow_callstack_push(om->callstack, init_func);
+		const int status = ow_machine_invoke(om, 0, res_out);
+		if (ow_unlikely(status))
+			return status;
+		ow_module_obj_set_global_y(module, sym_anon, nil);
+		if (!call_main)
+			return 0;
+	} else {
+		if (!call_main) {
+			*res_out = nil;
+			return 0;
+		}
+	}
+
+	struct ow_object *const main_func =
+		ow_module_obj_get_global_y(module, sym_main);
+	if (main_func && main_func != nil) {
+		ow_callstack_push(om->callstack, main_func);
+		return ow_machine_invoke(om, 0, res_out);
+	} else {
 		*res_out = nil;
 		return 0;
 	}
-
-	ow_callstack_push(om->callstack, init_func);
-	return ow_machine_invoke(om, 0, res_out);
 }

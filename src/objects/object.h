@@ -54,3 +54,16 @@ ow_static_forceinline void ow_object_set_field(
 /// Convert from `struct ow_object *` to other object struct pointer.
 #define ow_object_cast(obj_ptr, type) \
 	((type *)(obj_ptr))
+
+/// Template of hash map functions for hash maps that use objects as keys,
+/// whose `context` field shall be filled with current ow_machine struct.
+extern const struct ow_hashmap_funcs _ow_object_hashmap_funcs_tmpl;
+
+/// Initializer for a `struct ow_hashmap_funcs` for hash maps that use objects as keys.
+#define OW_OBJECT_HASHMAP_FUNCS_INIT(OM_PTR) \
+	{ \
+		.key_equal = _ow_object_hashmap_funcs_tmpl.key_equal, \
+		.key_hash = _ow_object_hashmap_funcs_tmpl.key_hash, \
+		.context = (OM_PTR), \
+	} \
+// ^^^ OW_OBJECT_HASHMAP_FUNCS_INIT ^^^

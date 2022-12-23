@@ -33,4 +33,8 @@ Set `OW_PACK` to `ON` to set up configurations
 so that command `cpack` can be used to generate a package.
 By default, `OW_PACK` is `OFF`.
 
+By modifying `OW_EMBEDDED_MODULES` and `OW_DYNAMIC_MODULES`,
+you can decide which modules are built into the runtime
+and which modules are built as standalone files.
+
 Use `ccmake` or `cmake-gui` to view and adjust more options.

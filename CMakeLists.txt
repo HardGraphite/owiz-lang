@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.18)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 option(OW_DEVELOPING "Set up the build system for developing." OFF)
 
-include("cmake/version.cmake")
+include(version)
 
 project(
 	ow-lang
 	VERSION ${OW_VERSION_NUMBER}
 	DESCRIPTION "The OW programming language"
-	LANGUAGES C
+	LANGUAGES C CXX
 )
 
 option(OW_BUILD_IPO     "Enable inter-procedural optimization."              ON)
@@ -23,9 +25,13 @@ option(OW_PACK_HEADER   "Include header files when installing."              ON)
 option(OW_PACK_RELA_RPATH  "Use relative RPATH when installing."             ON)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
 	set(CMAKE_BUILD_TYPE "Release")
@@ -63,9 +69,12 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC") # MSVC
 	add_compile_definitions(_CRT_SECURE_NO_WARNINGS) # Use "unsafe" functions.
 else() # GCC, Clang, ...
 	add_compile_options(
-		-Wall -Wextra -Wpedantic -pipe
+		-Wall -Wextra -Wpedantic -pipe -pthread
 		$<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>
 		$<$<COMPILE_LANGUAGE:C>:-Werror=return-type>
+	)
+	add_link_options(
+		-pthread
 	)
 endif()
 
