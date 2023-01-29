@@ -178,7 +178,7 @@ const struct ow_hashmap_funcs ow_symbol_obj_hashmap_funcs = {
 };
 
 static const struct ow_native_func_def symbol_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(symbol) = {

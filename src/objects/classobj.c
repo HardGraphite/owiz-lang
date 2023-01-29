@@ -143,7 +143,7 @@ void ow_class_obj_load_native_def(
 		const ow_native_func_def_t method_def = def->methods[i];
 		struct ow_cfunc_obj *const func_obj = ow_cfunc_obj_new(
 			om, func_mod, method_def.name, method_def.func,
-			(struct ow_func_spec){method_def.argc, 0});
+			&(struct ow_func_spec){method_def.argc, method_def.oarg, 0});
 		struct ow_symbol_obj *const name_obj =
 			ow_symbol_obj_new(om, method_def.name, (size_t)-1);
 		ow_class_obj_set_method_y(self, name_obj, ow_object_from(func_obj));
@@ -251,7 +251,7 @@ void ow_class_obj_set_static(
 }
 
 static const struct ow_native_func_def class_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(class_) = {

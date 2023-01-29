@@ -338,7 +338,7 @@ size_t ow_string_obj_length(const struct ow_string_obj *self) {
 }
 
 static const struct ow_native_func_def string_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(string) = {

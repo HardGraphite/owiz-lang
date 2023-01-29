@@ -126,7 +126,7 @@ void ow_module_obj_load_native_def(
 		const ow_native_func_def_t func_def = def->functions[i];
 		struct ow_cfunc_obj *const func_obj = ow_cfunc_obj_new(
 			om, self, func_def.name, func_def.func,
-			(struct ow_func_spec){func_def.argc, 0});
+			&(struct ow_func_spec){func_def.argc, func_def.oarg, 0});
 		struct ow_symbol_obj *const name_obj =
 			ow_symbol_obj_new(om, func_def.name, (size_t)-1);
 		ow_module_obj_set_global_y(self, name_obj, ow_object_from(func_obj));
@@ -223,7 +223,7 @@ void ow_module_obj_keep_dynlib(struct ow_module_obj *self, void *lib_handle) {
 }
 
 static const struct ow_native_func_def module_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(module) = {

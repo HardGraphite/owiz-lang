@@ -153,7 +153,7 @@ void ow_exception_obj_print(
 }
 
 static const struct ow_native_func_def exception_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(exception) = {

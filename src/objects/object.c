@@ -75,7 +75,7 @@ const struct ow_hashmap_funcs _ow_object_hashmap_funcs_tmpl = {
 };
 
 static const struct ow_native_func_def object_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(object) = {

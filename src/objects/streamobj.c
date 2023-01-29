@@ -132,7 +132,7 @@ int ow_stream_obj_use_stream(
 }
 
 static const struct ow_native_func_def stream_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(stream) = {
@@ -155,7 +155,7 @@ struct ow_file_obj *ow_file_obj_new(
 }
 
 static const struct ow_native_func_def file_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(file) = {
@@ -176,7 +176,7 @@ struct ow_string_stream_obj *ow_string_stream_obj_new(struct ow_machine *om) {
 }
 
 static const struct ow_native_func_def string_stream_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(string_stream) = {

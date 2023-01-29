@@ -31,7 +31,7 @@ struct ow_func_obj *ow_func_obj_new(
 	struct ow_object *constants[], size_t constant_count,
 	struct ow_symbol_obj *symbols[], size_t symbol_count,
 	unsigned char *code, size_t code_size,
-	struct ow_func_spec spec);
+	const struct ow_func_spec *spec);
 /// Get constant by index. If the index is out of range, return NULL.
 struct ow_object *ow_func_obj_get_constant(struct ow_func_obj *self, size_t index);
 /// Get symbols by index. If the index is out of range, return NULL.

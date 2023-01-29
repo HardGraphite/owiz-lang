@@ -27,9 +27,9 @@ static int func_add_path(struct ow_machine *om) {
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"path", func_path, 0},
-	{"add_path", func_add_path, 1},
-	{NULL, NULL, 0},
+	{"path", func_path, 0, 0},
+	{"add_path", func_add_path, 1, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(sys) = {

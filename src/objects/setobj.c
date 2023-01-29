@@ -77,7 +77,7 @@ int ow_set_obj_foreach(
 }
 
 static const struct ow_native_func_def set_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(set) = {

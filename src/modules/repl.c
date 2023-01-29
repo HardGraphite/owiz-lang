@@ -324,14 +324,14 @@ static int initializer(struct ow_machine *om) {
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"prompt"      , func_prompt      , 1},
-	{"read"        , func_read        , 0},
-	{"eval"        , func_eval        , 1},
-	{"print_result", func_print_result, 1},
-	{"loop"        , func_loop        , 0},
-	{"main"        , func_main        , 0},
-	{""            , initializer      , 0},
-	{NULL, NULL, 0},
+	{"prompt"      , func_prompt      , 1, 0},
+	{"read"        , func_read        , 0, 0},
+	{"eval"        , func_eval        , 1, 0},
+	{"print_result", func_print_result, 1, 0},
+	{"loop"        , func_loop        , 0, 0},
+	{"main"        , func_main        , 0, 0},
+	{""            , initializer      , 0, 0},
+	{NULL          , NULL             , 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(repl) = {

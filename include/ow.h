@@ -75,6 +75,7 @@ typedef struct ow_native_func_def {
 	const char      *name; ///< Name of the function.
 	ow_native_func_t func; ///< Pointer to the native function.
 	int              argc; ///< Number of arguments. See `OW_NATIVE_FUNC_VARIADIC_ARGC()` for variadic.
+	unsigned int     oarg; ///< Number of optional arguments.
 } ow_native_func_def_t;
 
 /**

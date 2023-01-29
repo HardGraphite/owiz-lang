@@ -1420,7 +1420,7 @@ static void ow_codegen_emit_Module(
 
 	struct ow_func_obj *const func = code_stack_make_func_and_pop(
 		&codegen->code_stack, &(struct ow_assembler_output_spec){
-			codegen->module, (struct ow_func_spec){0, 0}});
+			codegen->module, (struct ow_func_spec){0, 0, 0}});
 	_scope_update_module_globals(scope, codegen->machine, codegen->module);
 	scope_stack_pop(&codegen->scope_stack);
 

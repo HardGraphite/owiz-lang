@@ -130,11 +130,11 @@ static int initializer(struct ow_machine *om) {
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"readline", func_readline, 1},
-	{"add_history", func_add_history, 1},
-	{"set_completion_entry", func_set_completion_entry, 1},
-	{"", initializer, 0},
-	{NULL, NULL, 0},
+	{"readline", func_readline, 1, 0},
+	{"add_history", func_add_history, 1, 0},
+	{"set_completion_entry", func_set_completion_entry, 1, 0},
+	{"", initializer, 0, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(readline) = {

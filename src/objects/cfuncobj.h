@@ -19,4 +19,4 @@ struct ow_cfunc_obj {
 /// Create a cfunc object.
 struct ow_cfunc_obj *ow_cfunc_obj_new(
 	struct ow_machine *om, struct ow_module_obj *module,
-	const char *name, ow_native_func_t code, struct ow_func_spec spec);
+	const char *name, ow_native_func_t code, const struct ow_func_spec *spec);
