@@ -50,7 +50,7 @@ static void _add_default_paths(struct ow_module_manager *mm) {
 		ow_free(s);
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
-			mm, ow_path_join(ow_path_parent(exe_path), "../lib/ow"));
+			mm, ow_path_join(ow_path_parent(exe_path), "../lib/owiz"));
 #endif
 	}
 
@@ -60,7 +60,7 @@ static void _add_default_paths(struct ow_module_manager *mm) {
 		// TODO: Add user's local library path.
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
-			mm, ow_path_join(home_path, ".local/lib/ow"));
+			mm, ow_path_join(home_path, ".local/lib/owiz"));
 #endif
 	}
 }

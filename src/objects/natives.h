@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ow.h>
+#include <owiz.h>
 
 struct ow_machine;
 struct ow_module_obj;

@@ -1,4 +1,4 @@
-# Ow Grammar
+# OWIZ Grammar
 
 ## Comments
 

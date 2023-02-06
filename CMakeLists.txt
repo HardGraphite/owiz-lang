@@ -7,9 +7,9 @@ option(OW_DEVELOPING "Set up the build system for developing." OFF)
 include(version)
 
 project(
-	ow-lang
+	owiz-lang
 	VERSION ${OW_VERSION_NUMBER}
-	DESCRIPTION "The OW programming language"
+	DESCRIPTION "The OWIZ programming language"
 	LANGUAGES C CXX
 )
 

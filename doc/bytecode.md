@@ -1,4 +1,4 @@
-# Wo Bytecode
+# OWIZ Bytecode
 
 ## Binary Format
 

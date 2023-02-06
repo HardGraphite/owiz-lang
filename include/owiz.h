@@ -1,5 +1,9 @@
-#ifndef OW_H
-#define OW_H
+/*
+ * Owiz language runtime public APIs.
+ */
+
+#ifndef OWIZ_H
+#define OWIZ_H
 
 #include <limits.h>
 #include <stdbool.h>
@@ -52,7 +56,7 @@ extern "C" {
 #define OW_ERR_NIMPL    (-128) ///< Error code: not implemented.
 
 /**
- * @brief Context of an OW instance.
+ * @brief Context of an OWIZ instance.
  */
 typedef struct ow_machine ow_machine_t;
 
@@ -62,7 +66,7 @@ typedef struct ow_machine ow_machine_t;
 typedef struct ow_jmpbuf { void *_data[4]; } ow_jmpbuf_t [1];
 
 /**
- * @brief Native function that can be called by OW.
+ * @brief Native function that can be called by OWIZ.
  * @details To return object, push the object and return `1`; to return `nil`,
  * return `0`; to raise exception, push the exception object and return `-1`.
  */
@@ -145,7 +149,7 @@ OW_API union ow_sysconf_result ow_sysconf(int name) OW_NOEXCEPT;
 OW_API int ow_sysctl(int name, const void *val, size_t val_sz) OW_NOEXCEPT;
 
 /**
- * @brief Create an OW instance.
+ * @brief Create an OWIZ instance.
  *
  * @return Return the newly created instance.
  *
@@ -154,7 +158,7 @@ OW_API int ow_sysctl(int name, const void *val, size_t val_sz) OW_NOEXCEPT;
 OW_API OW_NODISCARD ow_machine_t *ow_create(void) OW_NOEXCEPT;
 
 /**
- * @brief Destroy an OW instance created using `ow_create()`.
+ * @brief Destroy an OWIZ instance created using `ow_create()`.
  *
  * @param om pointer to the instance to destroy
  */
@@ -178,7 +182,7 @@ OW_API void ow_setjmp(ow_machine_t *om, ow_jmpbuf_t env) OW_NOEXCEPT;
  * @note Unlike `longjmp()` function from C standard library, this function
  * does not handle jumps in native environment.
  *
- * @warning DO NOT jump to another OW instance or jump to a function call that has exited.
+ * @warning DO NOT jump to another OWIZ instance or jump to a function call that has exited.
  */
 OW_API int ow_longjmp(ow_machine_t *om, ow_jmpbuf_t env) OW_NOEXCEPT;
 
@@ -626,4 +630,4 @@ OW_API int ow_syscmd(ow_machine_t *om, int name, ...) OW_NOEXCEPT;
 
 #undef  OW_NOEXCEPT
 
-#endif /* OW_H */
+#endif /* OWIZ_H */

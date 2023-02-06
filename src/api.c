@@ -2,7 +2,7 @@
 #	error "`OW_EXPORT_API` is not true"
 #endif // !OW_EXPORT_API
 
-#include <ow.h>
+#include <owiz.h>
 
 #include <assert.h>
 #include <ctype.h>

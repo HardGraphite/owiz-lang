@@ -1,6 +1,6 @@
-# The OW programming language
+# The OWIZ programming language
 
-*OW* is a dynamic object-oriented programming language.
+*OWIZ* is a dynamic object-oriented programming language.
 
 > IT IS JUST A TOY!
 

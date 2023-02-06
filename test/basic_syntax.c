@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include <ow.h>
+#include <owiz.h>
 #include "test_util.h"
 
 // Execute the given source string and return whether succeeded.

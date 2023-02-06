@@ -15,7 +15,7 @@ set(OW_BUILD_COMPILER_NAME "${CMAKE_C_COMPILER_ID}")
 set(OW_BUILD_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
 
 ## Collect source files.
-set(ow_main_src "ow.c")
+set(ow_main_src "start.c")
 set(ow_src "api.c")
 foreach(sub_dir IN ITEMS
 		"bytecode"
@@ -39,7 +39,7 @@ if(OW_BUILD_SHARED)
 	target_link_libraries(ow_exe_shared PRIVATE ow_lib_shared)
 	set_target_properties(
 		ow_exe_shared ow_lib_shared PROPERTIES
-		OUTPUT_NAME "ow"
+		OUTPUT_NAME "owiz"
 		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_shared_dir}
 		LIBRARY_OUTPUT_DIRECTORY ${ow_out_shared_dir}
 		RUNTIME_OUTPUT_DIRECTORY ${ow_out_shared_dir}
@@ -57,7 +57,7 @@ if(OW_BUILD_STATIC)
 	target_link_libraries(ow_exe_static PRIVATE ow_lib_static)
 	set_target_properties(
 		ow_exe_static ow_lib_static PROPERTIES
-		OUTPUT_NAME "ow"
+		OUTPUT_NAME "owiz"
 		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_static_dir}
 		LIBRARY_OUTPUT_DIRECTORY ${ow_out_static_dir}
 		RUNTIME_OUTPUT_DIRECTORY ${ow_out_static_dir}
@@ -242,7 +242,7 @@ if(ow_exe_targets AND ow_lib_targets)
 		set(ow_install_exe_dir ${CMAKE_INSTALL_BINDIR})
 		set(ow_install_lib_dir ${CMAKE_INSTALL_LIBDIR})
 		set(ow_install_inc_dir ${CMAKE_INSTALL_INCLUDEDIR})
-		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/ow")
+		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/owiz")
 	endif()
 	if(OW_BUILD_SHARED AND OW_PACK_RELA_RPATH AND UNIX)
 		set_target_properties(ow_exe_shared PROPERTIES INSTALL_RPATH

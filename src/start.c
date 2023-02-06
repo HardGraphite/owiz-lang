@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <ow.h>
+#include <owiz.h>
 #include <utilities/attributes.h>
 #include <utilities/platform.h>
 #include <utilities/unreachable.h>
@@ -506,9 +506,9 @@ static const argparse_option_t options[] = {
 };
 
 static const argparse_program_t program = {
-	.name = "ow",
+	.name = "owiz",
 	.usage= "[OPTION...] [:MODULE|FILE|-] [ARG...]",
-	.help = "the OW programming language",
+	.help = "the OWIZ programming language",
 	.opts = options,
 };
 
