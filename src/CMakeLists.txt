@@ -7,6 +7,10 @@ option(OW_BUILD_BYTECODE_DUMP_COMMENT "Print operand comment in `ow_bytecode_dum
 include(FindReadline)
 set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
 
+if(WIN32)
+	include(wintools)
+endif()
+
 set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
 set(OW_FILENAME_EXTENSION_SRC ".ow" ) # Source code.
 set(OW_FILENAME_EXTENSION_BTC ".owc") # Bytecode.
@@ -46,6 +50,8 @@ if(OW_BUILD_SHARED)
 	)
 	if(WIN32)
 		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+		ow_win_target_add_rc(ow_lib_shared)
+		ow_win_target_add_rc(ow_exe_shared)
 	endif()
 	list(APPEND ow_exe_targets ow_exe_shared)
 	list(APPEND ow_lib_targets ow_lib_shared)
@@ -65,6 +71,8 @@ if(OW_BUILD_STATIC)
 	set_target_properties(ow_exe_static PROPERTIES ENABLE_EXPORTS TRUE)
 	if(WIN32)
 		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+		ow_win_target_add_rc(ow_lib_static)
+		ow_win_target_add_rc(ow_exe_static)
 	endif()
 	list(APPEND ow_exe_targets ow_exe_static)
 	list(APPEND ow_lib_targets ow_lib_static)
