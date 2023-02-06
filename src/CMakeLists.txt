@@ -206,6 +206,7 @@ if(OW_DOC_SOURCE OR OW_DOC_HEADER)
 		message(FATAL_ERROR "Cannot find doxygen.")
 	endif()
 
+	set(DOXYGEN_PROJECT_LOGO "${CMAKE_SOURCE_DIR}/doc/logo.svg")
 	set(DOXYGEN_FILE_PATTERNS "*.h")
 	set(DOXYGEN_EXCLUDE_PATTERNS ".*;*/compiler/ast_node_*.h")
 	set(DOXYGEN_EXCLUDE_SYMBOLS "_*;ELEM")
