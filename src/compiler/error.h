@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "location.h"
+#include <utilities/attributes.h>
 
 /// Error info reported by a compiler.
 struct ow_syntax_error {
@@ -20,10 +21,12 @@ void ow_syntax_error_copy(
 /// Clear error data.
 void ow_syntax_error_clear(struct ow_syntax_error *error);
 /// Set location and message.
+ow_printf_fn_attrs(3, 4)
 void ow_syntax_error_format(
 	struct ow_syntax_error *error, const struct ow_source_range *loc,
-	const char *msg_fmt, ...);
+	ow_printf_fn_arg_fmtstr const char *msg_fmt, ...);
 /// Similar to `ow_syntax_error_format()`, but use `va_list`.
+ow_printf_fn_attrs(3, 0)
 void ow_syntax_error_vformat(
 	struct ow_syntax_error *error, const struct ow_source_range *loc,
-	const char *msg_fmt, va_list args);
+	ow_printf_fn_arg_fmtstr const char *msg_fmt, va_list args);

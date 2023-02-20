@@ -320,7 +320,7 @@ OW_API int ow_make_module(
 			ow_stream_open_file(OW_PATH_FROM_STR(src), OW_STREAM_OPEN_READ);
 		if (ow_unlikely(!stream)) {
 			*om->callstack.regs.sp = ow_object_from(
-				ow_exception_format(om, NULL, "cannot open file `%s'", src));
+				ow_exception_format(om, NULL, "cannot open file `%s'", (const char *)src));
 			return OW_ERR_FAIL;
 		}
 		const int status = _compile_module_from_stream(om, src, stream, flags);

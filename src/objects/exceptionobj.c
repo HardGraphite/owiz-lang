@@ -63,8 +63,10 @@ struct ow_exception_obj *ow_exception_new(
 	return obj;
 }
 
+ow_printf_fn_attrs(3, 4)
 struct ow_exception_obj *ow_exception_format(
-		struct ow_machine *om, struct ow_class_obj *exc_type, const char *fmt, ...) {
+		struct ow_machine *om, struct ow_class_obj *exc_type,
+		ow_printf_fn_arg_fmtstr const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	struct ow_exception_obj *const exc_o =
@@ -73,9 +75,10 @@ struct ow_exception_obj *ow_exception_format(
 	return exc_o;
 }
 
+ow_printf_fn_attrs(3, 0)
 struct ow_exception_obj *ow_exception_vformat(
 		struct ow_machine *om, struct ow_class_obj *exc_type,
-		const char *fmt, va_list data) {
+		ow_printf_fn_arg_fmtstr const char *fmt, va_list data) {
 	char msg_buf[256];
 	const int n = vsnprintf(msg_buf, sizeof msg_buf, fmt, data);
 	if (ow_unlikely(n <= 0))

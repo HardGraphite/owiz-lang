@@ -19,10 +19,12 @@
 ow_pragma_message("virtual memory APIs are unknown for this platform")
 #endif
 
+ow_malloc_fn_attrs(1, size)
 void *ow_mem_allocate(size_t size) {
 	return malloc(size);
 }
 
+ow_realloc_fn_attrs(2, size)
 void *ow_mem_reallocate(void *ptr, size_t size) {
 	return realloc(ptr, size);
 }
@@ -31,6 +33,7 @@ void ow_mem_deallocate(void *ptr) {
 	free(ptr);
 }
 
+ow_malloc_fn_attrs(1, size)
 void *ow_mem_allocate_virtual(size_t size) {
 #if _IS_POSIX_
 	const int prot  = PROT_READ | PROT_WRITE;
