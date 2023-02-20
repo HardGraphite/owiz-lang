@@ -52,7 +52,7 @@ struct ow_module_obj {
 	struct ow_hashmap globals_map; // { name, index + 1 }
 	struct ow_array globals;
 	struct ow_symbol_obj *name; // Optional.
-	int (*finalizer)(ow_machine_t *);
+	int (*finalizer)(struct ow_machine *);
 	struct module_dynlib_list dynlib_list;
 };
 
@@ -115,7 +115,7 @@ void ow_module_obj_load_native_def(
 	assert(!ow_hashmap_size(&self->globals_map) && !ow_array_size(&self->globals));
 
 	size_t func_count = 0;
-	for (const ow_native_func_def_t *p = def->functions; p->func; p++)
+	for (const struct ow_native_func_def *p = def->functions; p->func; p++)
 		func_count++;
 	ow_hashmap_reserve(&self->globals_map, func_count);
 	ow_array_reserve(&self->globals, func_count);
@@ -123,7 +123,7 @@ void ow_module_obj_load_native_def(
 	ow_objmem_push_ngc(om);
 
 	for (size_t i = 0; i < func_count; i++) {
-		const ow_native_func_def_t func_def = def->functions[i];
+		const struct ow_native_func_def func_def = def->functions[i];
 		struct ow_cfunc_obj *const func_obj = ow_cfunc_obj_new(
 			om, self, func_def.name, func_def.func,
 			&(struct ow_func_spec){func_def.argc, func_def.oarg, 0});

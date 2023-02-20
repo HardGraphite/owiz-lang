@@ -83,7 +83,7 @@ endif()
 foreach(tgt IN LISTS ow_lib_targets)
 	target_compile_definitions(
 		${tgt} PRIVATE
-		"OW_EXPORT_API=1"
+		"OWIZ_EXPORT_API=1"
 	)
 endforeach()
 

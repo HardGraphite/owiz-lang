@@ -114,7 +114,7 @@ void ow_class_obj_load_native_def(
 	const size_t field_count =
 		ow_round_up_to(OW_OBJECT_FIELD_SIZE, def->data_size) / OW_OBJECT_FIELD_SIZE;
 	size_t method_count = 0;
-	for (const ow_native_func_def_t *p = def->methods; p->func; p++)
+	for (const struct ow_native_func_def *p = def->methods; p->func; p++)
 		method_count++;
 
 	size_t total_field_count = field_count;
@@ -140,7 +140,7 @@ void ow_class_obj_load_native_def(
 	ow_objmem_push_ngc(om);
 
 	for (size_t i = 0; i < method_count; i++) {
-		const ow_native_func_def_t method_def = def->methods[i];
+		const struct ow_native_func_def method_def = def->methods[i];
 		struct ow_cfunc_obj *const func_obj = ow_cfunc_obj_new(
 			om, func_mod, method_def.name, method_def.func,
 			&(struct ow_func_spec){method_def.argc, method_def.oarg, 0});

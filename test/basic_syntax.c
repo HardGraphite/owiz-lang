@@ -6,67 +6,67 @@
 
 // Execute the given source string and return whether succeeded.
 // If no exception was thrown, push the result on stack.
-static bool eval(ow_machine_t *om, const char *src) {
-	if (ow_make_module(om, "", src, OW_MKMOD_STRING | OW_MKMOD_RETLAST) ||
-			ow_invoke(om, 0, OW_IVK_MODULE)) {
-		ow_read_exception(om, 0, OW_RDEXC_MSG | OW_RDEXC_BT | OW_RDEXC_PRINT);
-		ow_drop(om, 1);
+static bool eval(owiz_machine_t *om, const char *src) {
+	if (owiz_make_module(om, "", src, OWIZ_MKMOD_STRING | OWIZ_MKMOD_RETLAST) ||
+			owiz_invoke(om, 0, OWIZ_IVK_MODULE)) {
+		owiz_read_exception(om, 0, OWIZ_RDEXC_MSG | OWIZ_RDEXC_BT | OWIZ_RDEXC_PRINT);
+		owiz_drop(om, 1);
 		return false;
 	}
 	return true;
 }
 
 // Compile the given source string and return whether succeeded.
-static bool check(ow_machine_t *om, const char *src) {
-	if (ow_make_module(om, "", src, OW_MKMOD_STRING)) {
-		ow_read_exception(om, 0, OW_RDEXC_MSG | OW_RDEXC_BT | OW_RDEXC_PRINT);
-		ow_drop(om, 1);
+static bool check(owiz_machine_t *om, const char *src) {
+	if (owiz_make_module(om, "", src, OWIZ_MKMOD_STRING)) {
+		owiz_read_exception(om, 0, OWIZ_RDEXC_MSG | OWIZ_RDEXC_BT | OWIZ_RDEXC_PRINT);
+		owiz_drop(om, 1);
 		return false;
 	}
 	return true;
 }
 
-static bool eval_and_cmp_int(ow_machine_t *om, const char *expr, intmax_t val) {
+static bool eval_and_cmp_int(owiz_machine_t *om, const char *expr, intmax_t val) {
 	if (!eval(om, expr))
 		return false;
 	intmax_t ret;
-	if (ow_read_int(om, 0, &ret))
+	if (owiz_read_int(om, 0, &ret))
 		return false;
-	ow_drop(om, 1);
+	owiz_drop(om, 1);
 	return val == ret;
 }
 
-static bool eval_and_cmp_flt(ow_machine_t *om, const char *expr, double val) {
+static bool eval_and_cmp_flt(owiz_machine_t *om, const char *expr, double val) {
 	if (!eval(om, expr))
 		return false;
 	double ret;
-	if (ow_read_float(om, 0, &ret))
+	if (owiz_read_float(om, 0, &ret))
 		return false;
-	ow_drop(om, 1);
+	owiz_drop(om, 1);
 	return val == ret;
 }
 
-static bool eval_and_cmp_str(ow_machine_t *om, const char *expr, const char *val) {
+static bool eval_and_cmp_str(owiz_machine_t *om, const char *expr, const char *val) {
 	if (!eval(om, expr))
 		return false;
 	const char *ret;
-	if (ow_read_string(om, 0, &ret, NULL))
+	if (owiz_read_string(om, 0, &ret, NULL))
 		return false;
-	ow_drop(om, 1);
+	owiz_drop(om, 1);
 	return strcmp(val, ret) == 0;
 }
 
-static bool eval_and_cmp_sym(ow_machine_t *om, const char *expr, const char *val) {
+static bool eval_and_cmp_sym(owiz_machine_t *om, const char *expr, const char *val) {
 	if (!eval(om, expr))
 		return false;
 	const char *ret;
-	if (ow_read_symbol(om, 0, &ret, NULL))
+	if (owiz_read_symbol(om, 0, &ret, NULL))
 		return false;
-	ow_drop(om, 1);
+	owiz_drop(om, 1);
 	return strcmp(val, ret) == 0;
 }
 
-static void test_literals(ow_machine_t *om) {
+static void test_literals(owiz_machine_t *om) {
 	// integer - dec
 	TEST_ASSERT(eval_and_cmp_int(om, "0", 0));
 	TEST_ASSERT(eval_and_cmp_int(om, "1234", 1234));
@@ -102,7 +102,7 @@ static void test_literals(ow_machine_t *om) {
 	TEST_ASSERT(eval_and_cmp_sym(om, "`symbol", "symbol"));
 }
 
-static void test_expressions(ow_machine_t *om) {
+static void test_expressions(owiz_machine_t *om) {
 	TEST_ASSERT(eval_and_cmp_int(om, "1 + 2 * 3", 7));
 	TEST_ASSERT(eval_and_cmp_int(om, "(1+2)*3", 9));
 	TEST_ASSERT(eval_and_cmp_int(om, "(((1)+(2))*(3))", 9));
@@ -142,7 +142,7 @@ static void test_expressions(ow_machine_t *om) {
 	TEST_ASSERT(eval_and_cmp_int(om, "f=func(a,b) if a<b; return a; end; return b; end; f(-1,1)", -1));
 }
 
-static void test_statements(ow_machine_t *om) {
+static void test_statements(owiz_machine_t *om) {
 	// return statement
 	TEST_ASSERT(check(om, "func foo(); return; end"));
 	TEST_ASSERT(eval_and_cmp_int(om, "func foo(); return 1; end; foo()", 1));
@@ -156,9 +156,9 @@ static void test_statements(ow_machine_t *om) {
 }
 
 int main(void) {
-	ow_machine_t *const om = ow_create();
+	owiz_machine_t *const om = owiz_create();
 	test_literals(om);
 	test_expressions(om);
 	test_statements(om);
-	ow_destroy(om);
+	owiz_destroy(om);
 }

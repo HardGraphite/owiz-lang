@@ -327,20 +327,20 @@ static_cold_func void argparse_help(const argparse_program_t *prog) {
 
 /***** ***** ***** ****** ******  Main Instance ****** ****** ***** ***** *****/
 
-static ow_machine_t *main_om = NULL;
+static owiz_machine_t *main_om = NULL;
 
 /// Make sure `main_om` has been initialized.
 static void prepare_mom(void) {
 	if (ow_likely(main_om))
 		return;
-	main_om = ow_create();
+	main_om = owiz_create();
 }
 
 /// Make sure `main_om` has been finalized.
 static_cold_func void cleanup_mom(void) {
 	if (!main_om)
 		return;
-	ow_destroy(main_om);
+	owiz_destroy(main_om);
 	main_om = NULL;
 }
 
@@ -379,7 +379,7 @@ static_cold_func ow_noreturn int opt_help(
 static_cold_func ow_noreturn int opt_version(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(ctx), ow_unused_var(opt), ow_unused_var(arg);
-	puts(ow_sysconf(OW_SC_VERSION_STR).s);
+	puts(owiz_sysconf(OWIZ_SC_VERSION_STR).s);
 	cleanup_mom_and_exit(EXIT_SUCCESS);
 }
 
@@ -429,14 +429,14 @@ static_cold_func int opt_path(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(ctx), ow_unused_var(opt);
 	prepare_mom();
-	ow_syscmd(main_om, OW_CMD_ADDPATH, arg);
+	owiz_syscmd(main_om, OWIZ_CMD_ADDPATH, arg);
 	return 0;
 }
 
 static_cold_func int opt_verbose(
 		void *ctx, const argparse_option_t *opt, const char *arg) {
 	ow_unused_var(opt);
-	if (ow_sysctl(OW_CTL_VERBOSE, arg, (size_t)-1) == OW_ERR_FAIL) {
+	if (owiz_sysctl(OWIZ_CTL_VERBOSE, arg, (size_t)-1) == OWIZ_ERR_FAIL) {
 		if (toupper(arg[0]) == 'V' && arg[1] == '\0') {
 			print_detailed_version();
 			cleanup_mom_and_exit(EXIT_SUCCESS);
@@ -457,7 +457,7 @@ static_cold_func int opt_stack_size(
 		fprintf(stderr, "%s: invalid stack size: `%s'\n", args->prog, arg);
 		cleanup_mom_and_exit(EXIT_FAILURE);
 	}
-	ow_sysctl(OW_CTL_STACKSIZE, &n, sizeof n);
+	owiz_sysctl(OWIZ_CTL_STACKSIZE, &n, sizeof n);
 	return 0;
 }
 
@@ -571,11 +571,11 @@ static_cold_func void print_program_help(void) {
 }
 
 static_cold_func void print_detailed_version(void) {
-	printf("%s version %s\n\n", "ow", ow_sysconf(OW_SC_VERSION_STR).s);
-	printf("%-16s: %s\n", "Platform", ow_sysconf(OW_SC_PLATFORM).s);
-	printf("%-16s: %s\n", "Compiler", ow_sysconf(OW_SC_COMPILER).s);
-	printf("%-16s: %s\n", "Build time", ow_sysconf(OW_SC_BUILDTIME).s);
-	printf("%-16s: %s\n", "Build type", ow_sysconf(OW_SC_DEBUG).i ? "debug" : "release");
+	printf("%s version %s\n\n", "ow", owiz_sysconf(OWIZ_SC_VERSION_STR).s);
+	printf("%-16s: %s\n", "Platform", owiz_sysconf(OWIZ_SC_PLATFORM).s);
+	printf("%-16s: %s\n", "Compiler", owiz_sysconf(OWIZ_SC_COMPILER).s);
+	printf("%-16s: %s\n", "Build time", owiz_sysconf(OWIZ_SC_BUILDTIME).s);
+	printf("%-16s: %s\n", "Build type", owiz_sysconf(OWIZ_SC_DEBUG).i ? "debug" : "release");
 }
 
 /// Parse environment variables.
@@ -586,8 +586,8 @@ static void parse_environ(struct ow_args *args) {
 /***** ***** ***** ***** ***** the Main Function ****** ***** ***** ***** *****/
 
 static_cold_func ow_noreturn void print_top_exception_and_exit(void) {
-	const int flags = (OW_RDEXC_MSG | OW_RDEXC_BT) | OW_RDEXC_PRINT;
-	const int status = ow_read_exception(main_om, 0, flags);
+	const int flags = (OWIZ_RDEXC_MSG | OWIZ_RDEXC_BT) | OWIZ_RDEXC_PRINT;
+	const int status = owiz_read_exception(main_om, 0, flags);
 	ow_unused_var(status);
 	assert(status == 0);
 	cleanup_mom_and_exit(EXIT_FAILURE);
@@ -604,36 +604,37 @@ static int ow_main(int argc, char *argv[]) {
 
 	prepare_mom();
 
-	ow_syscmd(main_om, OW_CMD_ADDPATH, ".");
+	owiz_syscmd(main_om, OWIZ_CMD_ADDPATH, ".");
 
 	if (args.repl) {
-		status = ow_make_module(main_om, "repl", NULL, OW_MKMOD_LOAD);
+		status = owiz_make_module(main_om, "repl", NULL, OWIZ_MKMOD_LOAD);
 	} else {
 		const char *name = "__main__";
 		const char *src;
 		int flags;
 		if (args.file) {
 			if (args.file[0] == '-' && args.file[1] == '\0') // "-", stdin
-				src = NULL, flags = OW_MKMOD_STDIN;
+				src = NULL, flags = OWIZ_MKMOD_STDIN;
 			else if (args.file[0] == ':' && args.file[1] != '\0') // ":MODULE"
-				name = args.file + 1, src = NULL, flags = OW_MKMOD_LOAD;
+				name = args.file + 1, src = NULL, flags = OWIZ_MKMOD_LOAD;
 			else
-				src = args.file, flags = OW_MKMOD_FILE;
+				src = args.file, flags = OWIZ_MKMOD_FILE;
 		} else if (args.code) {
-			src = args.code, flags = OW_MKMOD_STRING;
+			src = args.code, flags = OWIZ_MKMOD_STRING;
 		} else {
 			ow_unreachable();
 		}
-		status = ow_make_module(main_om, name, src, flags);
+		status = owiz_make_module(main_om, name, src, flags);
 	}
 	if (status != 0) {
-		assert(status == OW_ERR_FAIL);
+		assert(status == OWIZ_ERR_FAIL);
 		print_top_exception_and_exit();
 	}
 
-	status = ow_invoke(main_om, 0, OW_IVK_MODULE | (OW_IVK_NORETVAL | OW_IVK_MODMAIN));
+	status = owiz_invoke(
+		main_om, 0, OWIZ_IVK_MODULE | (OWIZ_IVK_NORETVAL | OWIZ_IVK_MODMAIN));
 	if (status != 0) {
-		assert(status == OW_ERR_FAIL);
+		assert(status == OWIZ_ERR_FAIL);
 		print_top_exception_and_exit();
 	}
 
