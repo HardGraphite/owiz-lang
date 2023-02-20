@@ -3,7 +3,7 @@
 #include <objects/memory.h>
 #include <objects/object.h>
 #include <objects/symbolobj.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #pragma pack(push, 1)
 
@@ -16,7 +16,7 @@ static const char *const sym_strings[] = {
 #pragma pack(pop)
 
 struct ow_common_symbols *ow_common_symbols_new(struct ow_machine *om) {
-	struct ow_common_symbols *const cs = malloc(sizeof(struct ow_common_symbols));
+	struct ow_common_symbols *const cs = ow_malloc(sizeof(struct ow_common_symbols));
 	ow_objmem_push_ngc(om);
 	for (size_t i = 0; i < sizeof *cs / sizeof(struct ow_symbol_obj *); i++)
 		((struct ow_symbol_obj **)cs)[i] = ow_symbol_obj_new(om, sym_strings[i], (size_t)-1);

@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct ow_stream {
 	OW_STREAM_HEAD

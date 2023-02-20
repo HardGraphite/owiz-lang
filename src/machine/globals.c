@@ -8,7 +8,7 @@
 #include <objects/memory.h>
 #include <objects/nilobj.h>
 #include <objects/object.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct ow_machine_globals *ow_machine_globals_new(struct ow_machine *om) {
 	struct ow_machine_globals *const mg = ow_malloc(sizeof(struct ow_machine_globals));

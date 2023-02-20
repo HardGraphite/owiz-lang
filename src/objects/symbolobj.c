@@ -13,7 +13,7 @@
 #include <utilities/array.h>
 #include <utilities/hash.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/round.h>
 
 struct ow_symbol_pool {

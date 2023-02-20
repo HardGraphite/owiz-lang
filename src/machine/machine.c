@@ -14,7 +14,7 @@
 #include <objects/classes.h>
 #include <objects/memory.h>
 #include <objects/symbolobj.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 static size_t stack_size(void) {
 	const size_t n_min = 64;

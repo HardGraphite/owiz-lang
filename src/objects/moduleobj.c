@@ -13,7 +13,7 @@
 #include <utilities/array.h>
 #include <utilities/dynlib.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct module_dynlib_list_node {
 	ow_dynlib_t *lib_handle;

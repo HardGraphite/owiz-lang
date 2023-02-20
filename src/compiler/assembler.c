@@ -15,7 +15,7 @@
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/array.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 

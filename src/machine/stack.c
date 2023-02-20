@@ -4,7 +4,7 @@
 
 #include <objects/memory.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #define CALLSTACK_MIN 64
 

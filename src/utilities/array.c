@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #define OW_ARRAY_ELEM_SZ sizeof(void *)
 

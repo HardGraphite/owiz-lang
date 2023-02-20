@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 

@@ -14,7 +14,7 @@
 #include <utilities/attributes.h>
 #include <utilities/hash.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unicode.h>

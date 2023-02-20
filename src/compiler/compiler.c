@@ -5,7 +5,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include <machine/sysparam.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/unreachable.h>
 
 enum last_error_source {

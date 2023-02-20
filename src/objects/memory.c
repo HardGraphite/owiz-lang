@@ -10,7 +10,7 @@
 #include "object_util.h"
 #include "smallint.h"
 #include <machine/machine.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #include <config/options.h>
 

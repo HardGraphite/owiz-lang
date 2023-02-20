@@ -10,7 +10,7 @@
 #endif
 
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 ow_nodiscard char *ow_strdup(const char *s) {
 	const size_t n = strlen(s) + 1;

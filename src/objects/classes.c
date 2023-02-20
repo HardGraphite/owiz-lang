@@ -7,7 +7,7 @@
 #include "object.h"
 #include <machine/machine.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #define ELEM(NAME) \
 	extern OW_BICLS_CLASS_DEF_EX(NAME) ;

@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct _ow_hashmap_node {
 	struct _ow_hashmap_node *next_node; // nullable

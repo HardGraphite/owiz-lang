@@ -11,7 +11,7 @@
 #include "object_util.h"
 #include <machine/machine.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct ow_func_obj_constants {
 	size_t size;

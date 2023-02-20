@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 volatile struct ow_sysparam ow_sysparam = {
 	.verbose_memory   = false,

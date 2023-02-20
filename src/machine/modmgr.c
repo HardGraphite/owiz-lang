@@ -18,7 +18,7 @@
 #include <utilities/dynlib.h>
 #include <utilities/filesystem.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/process.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
