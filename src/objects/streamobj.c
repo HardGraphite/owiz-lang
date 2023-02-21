@@ -16,26 +16,17 @@ struct stream_obj_stream {
 	struct ow_stream_obj *object;
 };
 
-static const struct ow_stream_operations sos_operations;
+static struct stream_obj_stream *sos_init(
+	struct stream_obj_stream *, struct ow_machine *, struct ow_stream_obj *);
+
+static void sos_fini(struct stream_obj_stream *stream) {
+	ow_objmem_remove_gc_root(stream->machine, stream);
+}
 
 static void sos_gc_marker(struct ow_machine *om, void *_sos) {
 	struct stream_obj_stream *const stream = _sos;
 	assert(stream->machine == om);
 	ow_objmem_object_gc_marker(om, ow_object_from(stream));
-}
-
-static struct stream_obj_stream *sos_init(
-		struct stream_obj_stream *stream, struct ow_machine *om, struct ow_stream_obj *obj) {
-	stream->_ops = &sos_operations;
-	stream->_open_flags = OW_STREAM_OPEN_READ | OW_STREAM_OPEN_WRITE;
-	stream->machine = om;
-	stream->object = obj;
-	ow_objmem_add_gc_root(om, stream, sos_gc_marker);
-	return stream;
-}
-
-static void sos_fini(struct stream_obj_stream *stream) {
-	ow_objmem_remove_gc_root(stream->machine, stream);
 }
 
 static bool sos_eof(const struct stream_obj_stream *stream) {
@@ -108,6 +99,16 @@ static const struct ow_stream_operations sos_operations = {
 	.putc  = (sop_putc_t) sos_putc ,
 	.puts  = (sop_puts_t) sos_puts ,
 };
+
+static struct stream_obj_stream *sos_init(
+	struct stream_obj_stream *stream, struct ow_machine *om, struct ow_stream_obj *obj) {
+	stream->_ops = &sos_operations;
+	stream->_open_flags = OW_STREAM_OPEN_READ | OW_STREAM_OPEN_WRITE;
+	stream->machine = om;
+	stream->object = obj;
+	ow_objmem_add_gc_root(om, stream, sos_gc_marker);
+	return stream;
+}
 
 int ow_stream_obj_use_stream(
 		struct ow_machine *om, struct ow_stream_obj *self,

@@ -7,11 +7,11 @@
 ## How to build
 
 [*CMake*](https://cmake.org/) is used as the build system.
-Run the following shell scripts to build *OW* in subdirectory "`build-release`":
+Run the following shell scripts to build *OWIZ* in subdirectory "`build-dir`":
 
 ```shell
-mkdir "build-release"
-cd "build-release"
+mkdir "build-dir"
+cd "build-dir"
 cmake ..
 cmake --build .
 ```

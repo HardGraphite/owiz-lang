@@ -571,7 +571,7 @@ static_cold_func void print_program_help(void) {
 }
 
 static_cold_func void print_detailed_version(void) {
-	printf("%s version %s\n\n", "ow", owiz_sysconf(OWIZ_SC_VERSION_STR).s);
+	printf("%s version %s\n\n", "OWIZ", owiz_sysconf(OWIZ_SC_VERSION_STR).s);
 	printf("%-16s: %s\n", "Platform", owiz_sysconf(OWIZ_SC_PLATFORM).s);
 	printf("%-16s: %s\n", "Compiler", owiz_sysconf(OWIZ_SC_COMPILER).s);
 	printf("%-16s: %s\n", "Build time", owiz_sysconf(OWIZ_SC_BUILDTIME).s);

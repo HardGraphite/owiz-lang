@@ -93,7 +93,7 @@ static struct ow_func_obj *code_stack_make_func_and_pop(
 	ow_array_drop(&stack->assemblers);
 	ow_assembler_clear(as);
 	ow_array_append(&stack->free_assemblers, as);
-	return  res;
+	return res;
 }
 
 /// Get current assembler.
@@ -682,8 +682,8 @@ static void ow_codegen_emit_BitXorExpr(
 }
 
 ow_noinline static void ow_codegen_emit_EqlOpExpr(
-	struct ow_codegen *codegen, enum codegen_action action,
-	const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const enum ow_ast_node_type lhs_type = node->lhs->type;
@@ -822,7 +822,7 @@ static void ow_codegen_emit_GeExpr(
 
 ow_noinline static void ow_codegen_emit_logical_BinOpExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
-		const struct ow_ast_BinOpExpr *node, bool which /* true=Or, false = And */) {
+		const struct ow_ast_BinOpExpr *node, bool which /* true=Or, false=And */) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const int lbl_end = ow_assembler_prepare_label(as);
