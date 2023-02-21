@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
@@ -42,7 +42,7 @@ struct ow_ast_Module *ow_ast_get_module(const struct ow_ast *ast) {
 
 #include "ast_node_dump.h"
 
-void ow_ast_dump(const struct ow_ast *ast, struct ow_iostream *out) {
+void ow_ast_dump(const struct ow_ast *ast, struct ow_stream *out) {
 	if (ast->_module)
 		ow_ast_Module_dump(ast->_module, 0, out);
 }

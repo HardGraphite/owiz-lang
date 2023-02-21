@@ -18,7 +18,7 @@
 #include <utilities/dynlib.h>
 #include <utilities/filesystem.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/process.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
@@ -50,7 +50,7 @@ static void _add_default_paths(struct ow_module_manager *mm) {
 		ow_free(s);
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
-			mm, ow_path_join(ow_path_parent(exe_path), "../lib/ow"));
+			mm, ow_path_join(ow_path_parent(exe_path), "../lib/owiz"));
 #endif
 	}
 
@@ -60,7 +60,7 @@ static void _add_default_paths(struct ow_module_manager *mm) {
 		// TODO: Add user's local library path.
 #elif _IS_POSIX_
 		ow_module_manager_add_path(
-			mm, ow_path_join(home_path, ".local/lib/ow"));
+			mm, ow_path_join(home_path, ".local/lib/owiz"));
 #endif
 	}
 }
@@ -267,7 +267,8 @@ static bool _load_module_from_dynlib(
 static bool _load_module_from_source(
 		struct ow_module_manager *mm, const ow_path_char_t *file_path,
 		struct ow_exception_obj **exc) {
-	struct ow_istream *const file_stream = ow_istream_open(file_path);
+	struct ow_stream *const file_stream =
+		ow_stream_open_file(file_path, OW_STREAM_OPEN_READ);
 	if (!file_stream) {
 		if (exc) {
 			*exc = ow_exception_format(
@@ -305,7 +306,7 @@ static bool _load_module_from_source(
 
 	ow_sharedstr_unref(file_name_ss);
 	ow_compiler_del(compiler);
-	ow_istream_close(file_stream);
+	ow_stream_close(file_stream);
 	return ok;
 }
 

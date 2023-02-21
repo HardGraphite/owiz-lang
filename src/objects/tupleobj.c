@@ -331,7 +331,7 @@ struct ow_object *ow_tuple_obj_get(const struct ow_tuple_obj *self, size_t index
 }
 
 static const struct ow_native_func_def tuple_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(tuple) = {

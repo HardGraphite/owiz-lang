@@ -30,18 +30,20 @@ void ow_syntax_error_clear(struct ow_syntax_error *error) {
 	}
 }
 
+ow_printf_fn_attrs(3, 4)
 void ow_syntax_error_format(
 		struct ow_syntax_error *error, const struct ow_source_range *loc,
-		const char *msg_fmt, ...) {
+		ow_printf_fn_arg_fmtstr const char *msg_fmt, ...) {
 	va_list ap;
 	va_start(ap, msg_fmt);
 	ow_syntax_error_vformat(error, loc, msg_fmt, ap);
 	va_end(ap);
 }
 
+ow_printf_fn_attrs(3, 0)
 void ow_syntax_error_vformat(
 		struct ow_syntax_error *error, const struct ow_source_range *loc,
-		const char *msg_fmt, va_list args) {
+		ow_printf_fn_arg_fmtstr const char *msg_fmt, va_list args) {
 	error->location = *loc;
 	if (ow_unlikely(error->location.begin.line > error->location.end.line))
 		error->location.begin.line = error->location.end.line;

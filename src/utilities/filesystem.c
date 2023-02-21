@@ -12,7 +12,7 @@
 #endif
 
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/pragmas.h>
 
 #if _IS_POSIX_

@@ -9,7 +9,7 @@
 #include "token.h"
 #include <utilities/array.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
@@ -1543,14 +1543,14 @@ static struct ow_ast_Module *ow_parser_parse_impl(struct ow_parser *parser) {
 
 ow_noinline static void ow_parser_dump_ast(const struct ow_ast *ast) {
 	fputs("[AST] vvv\n", stderr);
-	ow_ast_dump(ast, ow_iostream_stderr());
+	ow_ast_dump(ast, ow_stream_stderr());
 	fputs("[AST] ^^^\n", stderr);
 }
 
 #endif // OW_DEBUG_PARSER
 
 bool ow_parser_parse(struct ow_parser *parser,
-		struct ow_istream *stream, struct ow_sharedstr *file_name, int flags,
+		struct ow_stream *stream, struct ow_sharedstr *file_name, int flags,
 		struct ow_ast *ast) {
 	ow_unused_var(flags);
 

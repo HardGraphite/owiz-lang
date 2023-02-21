@@ -41,8 +41,8 @@ static int func_print(struct ow_machine *om) {
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"print", func_print, 1},
-	{NULL, NULL, 0},
+	{"print", func_print, 1, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(base) = {

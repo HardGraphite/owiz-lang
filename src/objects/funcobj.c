@@ -11,7 +11,7 @@
 #include "object_util.h"
 #include <machine/machine.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 struct ow_func_obj_constants {
 	size_t size;
@@ -55,13 +55,13 @@ struct ow_func_obj *ow_func_obj_new(
 		struct ow_object *constants[], size_t constant_count,
 		struct ow_symbol_obj *symbols[], size_t symbol_count,
 		unsigned char *code, size_t code_size,
-		struct ow_func_spec spec) {
+		const struct ow_func_spec *spec) {
 	struct ow_func_obj *const obj = ow_object_cast(
 		ow_objmem_allocate(
 			om, om->builtin_classes->func,
 			(ow_round_up_to(sizeof(void *), code_size) / sizeof(void *))),
 		struct ow_func_obj);
-	obj->func_spec = spec;
+	obj->func_spec = *spec;
 	obj->module = mod;
 	if (constant_count) {
 		const size_t n_bytes = constant_count * sizeof(void *);
@@ -104,7 +104,7 @@ const unsigned char *ow_func_obj_code(
 }
 
 static const struct ow_native_func_def func_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(func) = {

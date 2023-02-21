@@ -23,7 +23,7 @@ struct ow_bool_obj *_ow_bool_obj_new(struct ow_machine *om, bool x) {
 }
 
 static const struct ow_native_func_def bool_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(bool_) = {

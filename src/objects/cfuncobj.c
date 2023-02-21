@@ -17,11 +17,11 @@ static void ow_cfunc_obj_gc_marker(struct ow_machine *om, struct ow_object *obj)
 
 struct ow_cfunc_obj *ow_cfunc_obj_new(
 		struct ow_machine *om, struct ow_module_obj *module,
-		const char *name, ow_native_func_t code, struct ow_func_spec spec) {
+		const char *name, ow_native_func_t code, const struct ow_func_spec *spec) {
 	struct ow_cfunc_obj *const obj = ow_object_cast(
 		ow_objmem_allocate(om, om->builtin_classes->cfunc, 0),
 		struct ow_cfunc_obj);
-	obj->func_spec = spec;
+	obj->func_spec = *spec;
 	obj->module = module;
 	obj->name = name;
 	obj->code = code;
@@ -29,7 +29,7 @@ struct ow_cfunc_obj *ow_cfunc_obj_new(
 }
 
 static const struct ow_native_func_def cfunc_methods[] = {
-	{NULL, NULL, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(cfunc) = {

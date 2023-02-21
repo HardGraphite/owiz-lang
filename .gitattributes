@@ -6,4 +6,6 @@
 *.py    diff=python
 *.md    diff=markdown
 
+*.ico   binary
+
 .*      export-ignore

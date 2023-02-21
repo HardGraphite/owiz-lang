@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <owiz.h>
 #include <config/options.h>
 
 #if OW_LIB_READLINE_USE_LIBEDIT
@@ -29,19 +30,19 @@ thread_local static struct ow_machine *completion_om;
 static char *completion_entry_function(const char *text, int state) {
 	struct ow_machine *const om = completion_om;
 	assert(om);
-	if (ow_load_global(om, "rl_completion_entry_function") != 0)
+	if (owiz_load_global(om, "rl_completion_entry_function") != 0)
 		return NULL;
-	if (ow_read_nil(om, 0) == 0)
+	if (owiz_read_nil(om, 0) == 0)
 		return NULL;
-	ow_push_string(om, text, (size_t)-1);
-	ow_push_int(om, state);
-	if (ow_invoke(om, 2, 0) != 0)
+	owiz_push_string(om, text, (size_t)-1);
+	owiz_push_int(om, state);
+	if (owiz_invoke(om, 2, 0) != 0)
 		return NULL;
 	size_t str_sz;
-	if (ow_read_string(om, -1, NULL, &str_sz) != 0)
+	if (owiz_read_string(om, -1, NULL, &str_sz) != 0)
 		return NULL;
 	char *str = malloc(str_sz + 1);
-	if (ow_read_string_to(om, -1, str, str_sz + 1) != 0) {
+	if (owiz_read_string_to(om, -1, str, str_sz + 1) != 0) {
 		free(str);
 		return NULL;
 	}
@@ -59,12 +60,12 @@ ow_noreturn static void signal_handler(int sig) {
 //# readline(prompt :: String|Nil) :: String|Nil
 static int func_readline(struct ow_machine *om) {
 	const char *prompt = NULL;
-	if (ow_read_args(om, OW_RDARG_IGNIL | OW_RDARG_MKEXC,
-			"s", &prompt, NULL) == OW_ERR_FAIL)
+	if (owiz_read_args(om, OWIZ_RDARG_IGNIL | OWIZ_RDARG_MKEXC,
+			"s", &prompt, NULL) == OWIZ_ERR_FAIL)
 		return -1;
 
-	ow_jmpbuf_t om_jmpbuf;
-	ow_setjmp(om, om_jmpbuf);
+	owiz_jmpbuf_t om_jmpbuf;
+	owiz_setjmp(om, om_jmpbuf);
 	rl_compentry_func_t *const orig_completion_entry_function =
 		rl_completion_entry_function;
 	rl_completion_func_t *const orig_attempted_completion_function =
@@ -78,7 +79,7 @@ static int func_readline(struct ow_machine *om) {
 	if (sigsetjmp(sig_jmp_buf, 1) == 0) {
 		char *const str = readline(prompt);
 		if (str) {
-			ow_push_string(om, str, (size_t)-1);
+			owiz_push_string(om, str, (size_t)-1);
 			free(str);
 			status = 1;
 		} else {
@@ -91,9 +92,9 @@ static int func_readline(struct ow_machine *om) {
 		fputc('\n', rl_outstream);
 		rl_on_new_line();
 		rl_redisplay();
-		status = ow_longjmp(om, om_jmpbuf);
+		status = owiz_longjmp(om, om_jmpbuf);
 		assert(status == 0);
-		status = ow_make_exception(om, 0, "SIGINT");
+		status = owiz_make_exception(om, 0, "SIGINT");
 		assert(status == 0);
 		status = -1;
 	}
@@ -109,7 +110,7 @@ static int func_readline(struct ow_machine *om) {
 //# add_history(line :: String)
 static int func_add_history(struct ow_machine *om) {
 	const char *line;
-	if (ow_read_args(om, OW_RDARG_MKEXC, "s", &line, NULL) == OW_ERR_FAIL)
+	if (owiz_read_args(om, OWIZ_RDARG_MKEXC, "s", &line, NULL) == OWIZ_ERR_FAIL)
 		return -1;
 	add_history(line);
 	return 0;
@@ -118,23 +119,23 @@ static int func_add_history(struct ow_machine *om) {
 //# set_completion_entry(func :: Callable[[String, Int], String|Nil] | Nil)
 //# Set or remove completion entry function.
 static int func_set_completion_entry(struct ow_machine *om) {
-	ow_load_local(om, -1);
-	ow_store_global(om, "rl_completion_entry_function");
+	owiz_load_local(om, -1);
+	owiz_store_global(om, "rl_completion_entry_function");
 	return 0;
 }
 
 static int initializer(struct ow_machine *om) {
-	ow_push_string(om, rl_readline_name, (size_t)-1);
-	ow_store_global(om, "name");
+	owiz_push_string(om, rl_readline_name, (size_t)-1);
+	owiz_store_global(om, "name");
 	return 0;
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"readline", func_readline, 1},
-	{"add_history", func_add_history, 1},
-	{"set_completion_entry", func_set_completion_entry, 1},
-	{"", initializer, 0},
-	{NULL, NULL, 0},
+	{"readline", func_readline, 1, 0},
+	{"add_history", func_add_history, 1, 0},
+	{"set_completion_entry", func_set_completion_entry, 1, 0},
+	{"", initializer, 0, 0},
+	{NULL, NULL, 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(readline) = {

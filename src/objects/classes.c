@@ -7,12 +7,13 @@
 #include "object.h"
 #include <machine/machine.h>
 #include <utilities/attributes.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 
 #define ELEM(NAME) \
 	extern OW_BICLS_CLASS_DEF_EX(NAME) ;
 OW_BICLS_LIST0
 OW_BICLS_LIST
+OW_BICLS_STREAM_LIST
 #undef ELEM
 
 extern const struct ow_class_obj __wo_fake_class_class;
@@ -51,11 +52,13 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
 		bic-> NAME = cls; \
 	}
 	OW_BICLS_LIST
+	OW_BICLS_STREAM_LIST
 #undef ELEM
 
 #define ELEM(NAME) assert(ow_object_from(bic-> NAME )->_class == bic->class_);
 	OW_BICLS_LIST0
 	OW_BICLS_LIST
+	OW_BICLS_STREAM_LIST
 #undef ELEM
 
 	assert(om->builtin_classes == bic);
@@ -88,6 +91,12 @@ void _ow_builtin_classes_setup(
 #undef ELEM
 	((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->object))
 		->super_class = NULL;
+
+#define ELEM(NAME) \
+	ow_class_obj_load_native_def_ex( \
+		om, bic-> NAME, bic->stream, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
+	OW_BICLS_STREAM_LIST
+#undef ELEM
 
 	ow_objmem_pop_ngc(om);
 }

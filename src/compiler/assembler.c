@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <machine/machine.h>
@@ -15,7 +16,7 @@
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/array.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
@@ -371,7 +372,7 @@ struct ow_func_obj *ow_assembler_output(
 		as->machine, spec->module,
 		(struct ow_object **)ow_array_data(&as->constants), ow_array_size(&as->constants),
 		(struct ow_symbol_obj **)ow_array_data(&as->symbols), ow_array_size(&as->symbols),
-		code_seq, code_seq_len, spec->func_spec
+		code_seq, code_seq_len, &spec->func_spec
 	);
 
 	ow_free(code_seq);

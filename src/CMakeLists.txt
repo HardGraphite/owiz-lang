@@ -7,6 +7,10 @@ option(OW_BUILD_BYTECODE_DUMP_COMMENT "Print operand comment in `ow_bytecode_dum
 include(FindReadline)
 set(OW_LIB_READLINE_USE_LIBEDIT ${LibReadline_IS_LibEdit})
 
+if(WIN32)
+	include(wintools)
+endif()
+
 set(ow_conf_header_dir "${CMAKE_CURRENT_BINARY_DIR}/config")
 set(OW_FILENAME_EXTENSION_SRC ".ow" ) # Source code.
 set(OW_FILENAME_EXTENSION_BTC ".owc") # Bytecode.
@@ -15,7 +19,7 @@ set(OW_BUILD_COMPILER_NAME "${CMAKE_C_COMPILER_ID}")
 set(OW_BUILD_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
 
 ## Collect source files.
-set(ow_main_src "ow.c")
+set(ow_main_src "start.c")
 set(ow_src "api.c")
 foreach(sub_dir IN ITEMS
 		"bytecode"
@@ -39,13 +43,15 @@ if(OW_BUILD_SHARED)
 	target_link_libraries(ow_exe_shared PRIVATE ow_lib_shared)
 	set_target_properties(
 		ow_exe_shared ow_lib_shared PROPERTIES
-		OUTPUT_NAME "ow"
+		OUTPUT_NAME "owiz"
 		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_shared_dir}
 		LIBRARY_OUTPUT_DIRECTORY ${ow_out_shared_dir}
 		RUNTIME_OUTPUT_DIRECTORY ${ow_out_shared_dir}
 	)
 	if(WIN32)
 		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+		ow_win_target_add_rc(ow_lib_shared)
+		ow_win_target_add_rc(ow_exe_shared)
 	endif()
 	list(APPEND ow_exe_targets ow_exe_shared)
 	list(APPEND ow_lib_targets ow_lib_shared)
@@ -57,7 +63,7 @@ if(OW_BUILD_STATIC)
 	target_link_libraries(ow_exe_static PRIVATE ow_lib_static)
 	set_target_properties(
 		ow_exe_static ow_lib_static PROPERTIES
-		OUTPUT_NAME "ow"
+		OUTPUT_NAME "owiz"
 		ARCHIVE_OUTPUT_DIRECTORY ${ow_out_static_dir}
 		LIBRARY_OUTPUT_DIRECTORY ${ow_out_static_dir}
 		RUNTIME_OUTPUT_DIRECTORY ${ow_out_static_dir}
@@ -65,6 +71,8 @@ if(OW_BUILD_STATIC)
 	set_target_properties(ow_exe_static PROPERTIES ENABLE_EXPORTS TRUE)
 	if(WIN32)
 		set_target_properties(ow_lib_shared PROPERTIES PREFIX "lib")
+		ow_win_target_add_rc(ow_lib_static)
+		ow_win_target_add_rc(ow_exe_static)
 	endif()
 	list(APPEND ow_exe_targets ow_exe_static)
 	list(APPEND ow_lib_targets ow_lib_static)
@@ -75,7 +83,7 @@ endif()
 foreach(tgt IN LISTS ow_lib_targets)
 	target_compile_definitions(
 		${tgt} PRIVATE
-		"OW_EXPORT_API=1"
+		"OWIZ_EXPORT_API=1"
 	)
 endforeach()
 
@@ -206,6 +214,7 @@ if(OW_DOC_SOURCE OR OW_DOC_HEADER)
 		message(FATAL_ERROR "Cannot find doxygen.")
 	endif()
 
+	set(DOXYGEN_PROJECT_LOGO "${CMAKE_SOURCE_DIR}/doc/logo.svg")
 	set(DOXYGEN_FILE_PATTERNS "*.h")
 	set(DOXYGEN_EXCLUDE_PATTERNS ".*;*/compiler/ast_node_*.h")
 	set(DOXYGEN_EXCLUDE_SYMBOLS "_*;ELEM")
@@ -242,7 +251,7 @@ if(ow_exe_targets AND ow_lib_targets)
 		set(ow_install_exe_dir ${CMAKE_INSTALL_BINDIR})
 		set(ow_install_lib_dir ${CMAKE_INSTALL_LIBDIR})
 		set(ow_install_inc_dir ${CMAKE_INSTALL_INCLUDEDIR})
-		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/ow")
+		set(ow_install_mod_dir "${CMAKE_INSTALL_LIBDIR}/owiz")
 	endif()
 	if(OW_BUILD_SHARED AND OW_PACK_RELA_RPATH AND UNIX)
 		set_target_properties(ow_exe_shared PROPERTIES INSTALL_RPATH

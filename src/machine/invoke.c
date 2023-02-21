@@ -24,28 +24,31 @@
 #include <objects/object.h>
 #include <objects/setobj.h>
 #include <objects/smallint.h>
-#include <objects/stringobj.h>
 #include <objects/symbolobj.h>
 #include <objects/tupleobj.h>
 #include <utilities/attributes.h>
 #include <utilities/unreachable.h>
 
-/// Check number of arguments. If there is no error, return NULL.
-ow_nodiscard ow_forceinline static struct ow_exception_obj *invoke_impl_check_argc(
+/// Adjust argc (push nils).
+ow_forceinline static void invoke_impl_argc_adjust(
+		struct ow_machine *om, size_t orig_argc, size_t expected_argc) {
+	assert(expected_argc > orig_argc);
+	struct ow_object *const nil = om->globals->value_nil;
+	for (size_t i = 0, n = expected_argc - orig_argc; i < n; i++)
+		*++om->callstack.regs.sp = nil;
+}
+
+/// Make argc error exception.
+ow_nodiscard ow_noinline static struct ow_exception_obj *invoke_impl_argc_err(
 		struct ow_machine *om, const struct ow_func_spec *func_spec, size_t argc) {
-	assert(argc <= INT_MAX);
-	const int expected_argc = func_spec->arg_cnt;
-	if (ow_likely(expected_argc >= 0)) {
-		if (ow_likely((unsigned int)argc == (unsigned int)expected_argc))
-			return NULL;
-		return ow_exception_format(om, NULL, "too %s arguments",
-			(unsigned int)argc < (unsigned int)expected_argc ? "few" : "many");
-	} else {
-		const unsigned int argc_min = (unsigned int)OW_NATIVE_FUNC_VARIADIC_ARGC(argc);
-		if (ow_likely((unsigned int)argc >= argc_min))
-			return NULL;
-		return ow_exception_format(om, NULL, "too few arguments");
-	}
+	int expected_argc = func_spec->arg_cnt;
+	if (expected_argc < 0)
+		expected_argc = OW_NATIVE_FUNC_VARIADIC_ARGC(expected_argc);
+	return ow_exception_format(
+		om, NULL, "too %s argument%c",
+		(unsigned int)argc < (unsigned int)expected_argc ? "few" : "many",
+		argc > 1 ? 's' : '\0'
+	);
 }
 
 /// Try to call `__find_attr__()` to get attribute.
@@ -826,7 +829,7 @@ static int invoke_impl(
 		OP_BEGIN(Call)
 			OPERAND(u8, operand.u8)
 		op_Call_1:;
-			const size_t arg_count = operand.u8 & 0x7f;
+			size_t arg_count = operand.u8 & 0x7f;
 			const bool no_ret_val  = operand.u8 & 0x80;
 
 			struct ow_callstack_frame_info_list *const frame_info_list =
@@ -839,6 +842,39 @@ static int invoke_impl(
 			current_frame->prev_ip = ip;
 			stack.fp = stack.sp + 1;
 
+/// Check number of arguments. If the number does not match,
+/// adjust arguments if possible, otherwise raise an exception.
+#define OP_CALL_CHECK_ARGC(_func_spec, _actual_argc) \
+	do { \
+		assert((_actual_argc) <= INT_MAX); \
+		const int _func_spec_argc = (_func_spec)->arg_cnt; \
+		if (ow_likely(_func_spec_argc >= 0)) { \
+			const size_t expected_argc = (size_t)_func_spec_argc; \
+			if (ow_likely((_actual_argc) == expected_argc)) \
+				break; \
+			if ((_actual_argc) < expected_argc && \
+					(_actual_argc) + (_func_spec)->oarg_cnt >= expected_argc) { \
+				(_actual_argc) = expected_argc; \
+				invoke_impl_argc_adjust(machine, (_actual_argc), expected_argc); \
+				break; \
+			} \
+		} else { \
+			const size_t expected_argc_min = \
+				(size_t)(unsigned int)OW_NATIVE_FUNC_VARIADIC_ARGC(_func_spec_argc); \
+			if (ow_likely((_actual_argc) >= expected_argc_min)) \
+				break; \
+			if ((_actual_argc) + (size_t)(_func_spec)->oarg_cnt >= expected_argc_min) { \
+				(_actual_argc) = expected_argc_min; \
+				invoke_impl_argc_adjust(machine, (_actual_argc), expected_argc_min); \
+				break; \
+			} \
+		} \
+		*++stack.sp = ow_object_from( \
+			invoke_impl_argc_err(machine, (_func_spec), (_actual_argc))); \
+		goto raise_exc; \
+	} while (false) \
+// ^^^ OP_CALL_CHECK_ARGC() ^^^
+
 			struct ow_object *const callable_obj = *(stack.sp - arg_count);
 			struct ow_class_obj *callable_obj_class;
 			if (ow_unlikely(ow_smallint_check(callable_obj))) {
@@ -849,24 +885,14 @@ static int invoke_impl(
 			if (callable_obj_class == builtin_classes->func) {
 				struct ow_func_obj *const func_obj =
 					ow_object_cast(callable_obj, struct ow_func_obj);
-				operand.pointer = invoke_impl_check_argc(
-					machine, &func_obj->func_spec, arg_count);
-				if (ow_unlikely(operand.pointer)) {
-					*++stack.sp = operand.pointer;
-					goto raise_exc;
-				}
+				OP_CALL_CHECK_ARGC(&func_obj->func_spec, arg_count);
 				ip = func_obj->code;
 				current_func_obj = func_obj;
 				current_module = func_obj->module;
 			} else if (callable_obj_class == builtin_classes->cfunc) {
 				struct ow_cfunc_obj *const cfunc_obj =
 					ow_object_cast(callable_obj, struct ow_cfunc_obj);
-				operand.pointer = invoke_impl_check_argc(
-					machine, &cfunc_obj->func_spec, arg_count);
-				if (ow_unlikely(operand.pointer)) {
-					*++stack.sp = operand.pointer;
-					goto raise_exc;
-				}
+				OP_CALL_CHECK_ARGC(&cfunc_obj->func_spec, arg_count);
 				STACK_COMMIT();
 				const int status = cfunc_obj->code(machine);
 				STACK_UPDATE();
@@ -903,6 +929,9 @@ static int invoke_impl(
 				}
 				goto op_Call_1;
 			}
+
+#undef OP_CALL_CHECK_ARGC
+
 		OP_END
 
 		OP_BEGIN(PrepMethY)
@@ -1157,7 +1186,7 @@ int ow_machine_call_native(
 	if (argc > (UINT8_MAX >> 1))
 		argc = UINT8_MAX >> 1;
 	struct ow_cfunc_obj *const func_obj =
-		ow_cfunc_obj_new(om, mod, "", func, (struct ow_func_spec){0, (uint8_t)argc});
+		ow_cfunc_obj_new(om, mod, "", func, &(struct ow_func_spec){0, (uint8_t)argc, 0});
 	ow_callstack_push(om->callstack, ow_object_from(func_obj));
 	for (int i = 0; i < argc; i++)
 		ow_callstack_push(om->callstack, argv[i]);

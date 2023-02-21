@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <owiz.h>
 #include <utilities/thread.h> // thread_local
 
 #ifndef sigsetjmp
@@ -23,31 +24,31 @@
 //# Get prompt string. `type`: `0` = result, `1` = input, `2` = continued input.
 static int func_prompt(struct ow_machine *om) {
 	intmax_t type;
-	if (ow_read_int(om, -1, &type) != 0)
+	if (owiz_read_int(om, -1, &type) != 0)
 		return 0;
 	if (type == 0) {
-		if (ow_load_global(om, "__PSR") != 0) {
-			ow_push_string(om, DEFAULT_PSR, (size_t)-1);
-			ow_dup(om, 1);
-			ow_store_global(om, "__PSR");
+		if (owiz_load_global(om, "__PSR") != 0) {
+			owiz_push_string(om, DEFAULT_PSR, (size_t)-1);
+			owiz_dup(om, 1);
+			owiz_store_global(om, "__PSR");
 		}
 	} else if (type == 1) {
 		intmax_t count;
-		if (ow_load_global(om, "count") != 0 || ow_read_int(om, 0, &count) != 0)
+		if (owiz_load_global(om, "count") != 0 || owiz_read_int(om, 0, &count) != 0)
 			count = 0;
-		ow_push_int(om, count + 1);
-		ow_store_global(om, "count");
+		owiz_push_int(om, count + 1);
+		owiz_store_global(om, "count");
 
-		if (ow_load_global(om, "__PS1") != 0) {
-			ow_push_string(om, DEFAULT_PS1, (size_t)-1);
-			ow_dup(om, 1);
-			ow_store_global(om, "__PS1");
+		if (owiz_load_global(om, "__PS1") != 0) {
+			owiz_push_string(om, DEFAULT_PS1, (size_t)-1);
+			owiz_dup(om, 1);
+			owiz_store_global(om, "__PS1");
 		}
 	} else if (type == 2) {
-		if (ow_load_global(om, "__PS2") != 0) {
-			ow_push_string(om, DEFAULT_PS2, (size_t)-1);
-			ow_dup(om, 1);
-			ow_store_global(om, "__PS2");
+		if (owiz_load_global(om, "__PS2") != 0) {
+			owiz_push_string(om, DEFAULT_PS2, (size_t)-1);
+			owiz_dup(om, 1);
+			owiz_store_global(om, "__PS2");
 		}
 	} else {
 		return 0;
@@ -103,9 +104,9 @@ static enum readline_status simple_readline(
 	enum readline_status status = RL_OK;
 
 	const char *prompt_string;
-	if (ow_read_string(om, 0, &prompt_string, NULL) < 0)
+	if (owiz_read_string(om, 0, &prompt_string, NULL) < 0)
 		prompt_string = NULL;
-	ow_drop(om, 1);
+	owiz_drop(om, 1);
 	if (prompt_string) {
 		fputs(prompt_string, stdout);
 		fflush(stdout);
@@ -139,34 +140,34 @@ cleanup:
 /// Pop top value as prompt string and read line with readline module.
 static enum readline_status librl_readline(
 		struct ow_machine *om, struct code_buffer *code) {
-	const int prompt_index = ow_drop(om, 0);
-	if (ow_load_global(om, "readline") != 0)
+	const int prompt_index = owiz_drop(om, 0);
+	if (owiz_load_global(om, "readline") != 0)
 		return RL_NA;
-	if (ow_load_attribute(om, 0, "readline") != 0) {
-		ow_drop(om, 1);
+	if (owiz_load_attribute(om, 0, "readline") != 0) {
+		owiz_drop(om, 1);
 		return RL_NA;
 	}
-	ow_load_local(om, prompt_index);
-	const int status = ow_invoke(om, 1, 0);
+	owiz_load_local(om, prompt_index);
+	const int status = owiz_invoke(om, 1, 0);
 	if (status != 0) {
-		if (status == OW_ERR_FAIL) {
+		if (status == OWIZ_ERR_FAIL) {
 			const char *msg;
-			ow_read_exception(om, 0, OW_RDEXC_MSG | OW_RDEXC_TOBUF, &msg, NULL);
+			owiz_read_exception(om, 0, OWIZ_RDEXC_MSG | OWIZ_RDEXC_TOBUF, &msg, NULL);
 			if (strstr(msg, "SIGINT"))
 				return RL_ABORT;
 		}
-		ow_drop(om, 1);
+		owiz_drop(om, 1);
 		return RL_NA;
 	}
 
 	const char *line;
-	if (ow_read_string(om, 0, &line, NULL) != 0)
+	if (owiz_read_string(om, 0, &line, NULL) != 0)
 		line = NULL;
 	if (!line)
 		return RL_EOF;
-	if (ow_load_attribute(om, prompt_index + 1, "add_history") == 0) {
-		ow_swap(om);
-		ow_invoke(om, 1, OW_IVK_NORETVAL);
+	if (owiz_load_attribute(om, prompt_index + 1, "add_history") == 0) {
+		owiz_swap(om);
+		owiz_invoke(om, 1, OWIZ_IVK_NORETVAL);
 	}
 	code_buffer_append(code, line, strlen(line));
 	return RL_OK;
@@ -180,13 +181,13 @@ static int func_read(struct ow_machine *om) {
 
 	for (int line_num = 1; ; line_num++) {
 		do {
-			if (ow_load_global(om, "prompt") == 0) {
-				ow_push_int(om, line_num > 1 ? 2 : 1);
-				if (ow_invoke(om, 1, 0) == 0)
+			if (owiz_load_global(om, "prompt") == 0) {
+				owiz_push_int(om, line_num > 1 ? 2 : 1);
+				if (owiz_invoke(om, 1, 0) == 0)
 					break;
-				ow_drop(om, 1);
+				owiz_drop(om, 1);
 			}
-			ow_push_nil(om);
+			owiz_push_nil(om);
 		} while (false);
 
 		enum readline_status rl_status;
@@ -215,7 +216,7 @@ static int func_read(struct ow_machine *om) {
 		break;
 	}
 
-	ow_push_string(om, code.string, code.length);
+	owiz_push_string(om, code.string, code.length);
 	code_buffer_fini(&code);
 	return 1;
 }
@@ -224,21 +225,21 @@ static int func_read(struct ow_machine *om) {
 //# Compile and run code. Return the return-value.
 static int func_eval(struct ow_machine *om) {
 	const char *code;
-	if (ow_read_string(om, -1, &code, NULL) != 0 || code[0] == '\0')
+	if (owiz_read_string(om, -1, &code, NULL) != 0 || code[0] == '\0')
 		return 0;
-	if (ow_load_global(om, "repl_top") != 0) {
-		ow_make_module(om, "repl_top", NULL, OW_MKMOD_EMPTY);
-		ow_dup(om, 1);
-		ow_store_global(om, "repl_top");
+	if (owiz_load_global(om, "repl_top") != 0) {
+		owiz_make_module(om, "repl_top", NULL, OWIZ_MKMOD_EMPTY);
+		owiz_dup(om, 1);
+		owiz_store_global(om, "repl_top");
 	}
-	if (ow_make_module(
+	if (owiz_make_module(
 			om, NULL, code,
-			OW_MKMOD_STRING | OW_MKMOD_INCR | OW_MKMOD_RETLAST) != 0) {
-		ow_read_exception(om, 0, OW_RDEXC_MSG | OW_RDEXC_PRINT);
+			OWIZ_MKMOD_STRING | OWIZ_MKMOD_INCR | OWIZ_MKMOD_RETLAST) != 0) {
+		owiz_read_exception(om, 0, OWIZ_RDEXC_MSG | OWIZ_RDEXC_PRINT);
 		return 0;
 	}
-	if (ow_invoke(om, 0, OW_IVK_MODULE) != 0) {
-		ow_read_exception(om, 0, (OW_RDEXC_MSG | OW_RDEXC_BT) | OW_RDEXC_PRINT);
+	if (owiz_invoke(om, 0, OWIZ_IVK_MODULE) != 0) {
+		owiz_read_exception(om, 0, (OWIZ_RDEXC_MSG | OWIZ_RDEXC_BT) | OWIZ_RDEXC_PRINT);
 		return 0;
 	}
 	return 1;
@@ -247,22 +248,22 @@ static int func_eval(struct ow_machine *om) {
 //# print_result(res :: Object)
 //# Print eval result.
 static int func_print_result(struct ow_machine *om) {
-	if (ow_read_nil(om, 0) == 0)
+	if (owiz_read_nil(om, 0) == 0)
 		return 0;
 
-	if (ow_load_global(om, "prompt") == 0) {
+	if (owiz_load_global(om, "prompt") == 0) {
 		const char *prompt;
-		ow_push_int(om, 0);
-		if (ow_invoke(om, 1, 0) != 0)
+		owiz_push_int(om, 0);
+		if (owiz_invoke(om, 1, 0) != 0)
 			return -1;
-		if (ow_read_string(om, 0, &prompt, NULL) == 0) {
+		if (owiz_read_string(om, 0, &prompt, NULL) == 0) {
 			fputs(prompt, stdout);
-			ow_drop(om, 1);
+			owiz_drop(om, 1);
 		}
 	}
-	if (ow_load_global(om, "print") == 0) {
-		ow_load_local(om, -1);
-		if (ow_invoke(om, 1, 0) != 0)
+	if (owiz_load_global(om, "print") == 0) {
+		owiz_load_local(om, -1);
+		if (owiz_invoke(om, 1, 0) != 0)
 			return -1;
 	}
 	fputc('\n', stdout);
@@ -273,28 +274,28 @@ static int func_print_result(struct ow_machine *om) {
 //# Start read-eval-print loop.
 static int func_loop(struct ow_machine *om) {
 	while (true) {
-		assert(ow_drop(om, 0) == 0);
+		assert(owiz_drop(om, 0) == 0);
 
-		if (ow_load_global(om, "read") != 0)
+		if (owiz_load_global(om, "read") != 0)
 			goto func_not_found;
-		if (ow_invoke(om, 0, 0) != 0)
+		if (owiz_invoke(om, 0, 0) != 0)
 			goto raise_exc;
-		if (ow_read_nil(om, 0) == 0)
+		if (owiz_read_nil(om, 0) == 0)
 			goto quit_loop;
 
-		if (ow_load_global(om, "eval") != 0)
+		if (owiz_load_global(om, "eval") != 0)
 			goto func_not_found;
-		ow_swap(om);
-		if (ow_invoke(om, 1, 0) != 0) {
-			ow_read_exception(om, 0, (OW_RDEXC_MSG | OW_RDEXC_BT) | OW_RDEXC_PRINT);
-			ow_drop(om, 1);
+		owiz_swap(om);
+		if (owiz_invoke(om, 1, 0) != 0) {
+			owiz_read_exception(om, 0, (OWIZ_RDEXC_MSG | OWIZ_RDEXC_BT) | OWIZ_RDEXC_PRINT);
+			owiz_drop(om, 1);
 			continue;
 		}
 
-		if (ow_load_global(om, "print_result") != 0)
+		if (owiz_load_global(om, "print_result") != 0)
 			goto func_not_found;
-		ow_swap(om);
-		if (ow_invoke(om, 1, OW_IVK_NORETVAL) != 0)
+		owiz_swap(om);
+		if (owiz_invoke(om, 1, OWIZ_IVK_NORETVAL) != 0)
 			goto raise_exc;
 	}
 
@@ -307,31 +308,31 @@ quit_loop:
 }
 
 static int func_main(struct ow_machine *om) {
-	ow_load_global(om, "loop");
-	return ow_invoke(om, 0, OW_IVK_NORETVAL);
+	owiz_load_global(om, "loop");
+	return owiz_invoke(om, 0, OWIZ_IVK_NORETVAL);
 }
 
 static int initializer(struct ow_machine *om) {
-	ow_push_int(om, 0);
-	ow_store_global(om, "count");
-	if (ow_make_module(om, "readline", NULL, OW_MKMOD_LOAD) == 0) {
-		ow_dup(om, 1);
-		ow_store_global(om, "readline");
-		ow_invoke(om, 0, OW_IVK_MODULE | OW_IVK_NORETVAL);
+	owiz_push_int(om, 0);
+	owiz_store_global(om, "count");
+	if (owiz_make_module(om, "readline", NULL, OWIZ_MKMOD_LOAD) == 0) {
+		owiz_dup(om, 1);
+		owiz_store_global(om, "readline");
+		owiz_invoke(om, 0, OWIZ_IVK_MODULE | OWIZ_IVK_NORETVAL);
 	}
 	// TODO: Set completion entry function.
 	return 0;
 }
 
 static const struct ow_native_func_def functions[] = {
-	{"prompt"      , func_prompt      , 1},
-	{"read"        , func_read        , 0},
-	{"eval"        , func_eval        , 1},
-	{"print_result", func_print_result, 1},
-	{"loop"        , func_loop        , 0},
-	{"main"        , func_main        , 0},
-	{""            , initializer      , 0},
-	{NULL, NULL, 0},
+	{"prompt"      , func_prompt      , 1, 0},
+	{"read"        , func_read        , 0, 0},
+	{"eval"        , func_eval        , 1, 0},
+	{"print_result", func_print_result, 1, 0},
+	{"loop"        , func_loop        , 0, 0},
+	{"main"        , func_main        , 0, 0},
+	{""            , initializer      , 0, 0},
+	{NULL          , NULL             , 0, 0},
 };
 
 OW_BIMOD_MODULE_DEF(repl) = {

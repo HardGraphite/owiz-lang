@@ -15,7 +15,7 @@
 #include <utilities/array.h>
 #include <utilities/hash.h>
 #include <utilities/hashmap.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
@@ -32,7 +32,7 @@
 static void verbose_dump_func(
 		unsigned int line, const char *name, struct ow_func_obj *func) {
 	fprintf(stderr, "[CODEGEN] %s (line %u) vvv\n", name, line);
-	ow_bytecode_dump(func->code, 0, func->code_size, func, 0, (size_t)-1, ow_iostream_stderr());
+	ow_bytecode_dump(func->code, 0, func->code_size, func, 0, (size_t)-1, ow_stream_stderr());
 	fputs("[CODEGEN] ^^^\n", stderr);
 }
 
@@ -93,7 +93,7 @@ static struct ow_func_obj *code_stack_make_func_and_pop(
 	ow_array_drop(&stack->assemblers);
 	ow_assembler_clear(as);
 	ow_array_append(&stack->free_assemblers, as);
-	return  res;
+	return res;
 }
 
 /// Get current assembler.
@@ -682,8 +682,8 @@ static void ow_codegen_emit_BitXorExpr(
 }
 
 ow_noinline static void ow_codegen_emit_EqlOpExpr(
-	struct ow_codegen *codegen, enum codegen_action action,
-	const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
+		struct ow_codegen *codegen, enum codegen_action action,
+		const struct ow_ast_BinOpExpr *node, enum ow_opcode opcode) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const enum ow_ast_node_type lhs_type = node->lhs->type;
@@ -822,7 +822,7 @@ static void ow_codegen_emit_GeExpr(
 
 ow_noinline static void ow_codegen_emit_logical_BinOpExpr(
 		struct ow_codegen *codegen, enum codegen_action action,
-		const struct ow_ast_BinOpExpr *node, bool which /* true=Or, false = And */) {
+		const struct ow_ast_BinOpExpr *node, bool which /* true=Or, false=And */) {
 	assert(action == ACT_PUSH || action == ACT_EVAL);
 	struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
 	const int lbl_end = ow_assembler_prepare_label(as);
@@ -1420,7 +1420,7 @@ static void ow_codegen_emit_Module(
 
 	struct ow_func_obj *const func = code_stack_make_func_and_pop(
 		&codegen->code_stack, &(struct ow_assembler_output_spec){
-			codegen->module, (struct ow_func_spec){0, 0}});
+			codegen->module, (struct ow_func_spec){0, 0, 0}});
 	_scope_update_module_globals(scope, codegen->machine, codegen->module);
 	scope_stack_pop(&codegen->scope_stack);
 

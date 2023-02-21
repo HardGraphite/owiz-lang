@@ -64,7 +64,7 @@ int ow_bytecode_disassemble(
 }
 
 struct dump_walker_arg {
-	struct ow_iostream *out;
+	struct ow_stream *out;
 	struct ow_func_obj *func;
 	size_t offset_off;
 	size_t mark_off;
@@ -129,7 +129,7 @@ static int dump_walker(
 
 	assert(p < p_end);
 	*p++ = '\n';
-	ow_iostream_write(arg->out, buffer, (size_t)(p - buffer));
+	ow_stream_write(arg->out, buffer, (size_t)(p - buffer));
 
 	return 0;
 }
@@ -137,7 +137,7 @@ static int dump_walker(
 void ow_bytecode_dump(
 		const unsigned char *code, size_t offset, size_t length,
 		struct ow_func_obj *func, size_t offset_off,
-		size_t mark_off, struct ow_iostream *out) {
+		size_t mark_off, struct ow_stream *out) {
 	ow_bytecode_disassemble(
 		code, offset, length, dump_walker,
 		&(struct dump_walker_arg){out, func, offset_off, mark_off});

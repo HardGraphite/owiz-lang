@@ -5,7 +5,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include <machine/sysparam.h>
-#include <utilities/malloc.h>
+#include <utilities/memalloc.h>
 #include <utilities/unreachable.h>
 
 enum last_error_source {
@@ -76,7 +76,7 @@ static void modify_ast_return_last_expr(struct ow_ast *ast) {
 
 bool ow_compiler_compile(
 		struct ow_compiler *compiler,
-		struct ow_istream *stream, struct ow_sharedstr *file_name,
+		struct ow_stream *stream, struct ow_sharedstr *file_name,
 		int flags, struct ow_module_obj *module) {
 	struct ow_ast ast;
 	ow_ast_init(&ast);
