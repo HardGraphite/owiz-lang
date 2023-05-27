@@ -101,6 +101,7 @@ FILE_NAME_GLOB = [
     ('CMake', '*.cmake'),
     ('CMake', 'CMakeLists.txt'),
     ('INI', '*.ini'),
+    ('Owiz', '*.ow'),
 ]
 
 
@@ -114,6 +115,8 @@ __c_lc_meta = LineCounterMeta(
     '//', ('/*', '*/'), re.compile(r'"(?:\\.|[^"\\])*"'))
 __py_lc_meta = LineCounterMeta(
     '#', None, re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''))
+__ow_lc_meta = LineCounterMeta(
+    '#', None, re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''))
 
 LINE_COUNTER_META = {
     'C': __c_lc_meta,
@@ -122,6 +125,7 @@ LINE_COUNTER_META = {
     'Python': __py_lc_meta,
     'CMake': LineCounterMeta('#', None, None),
     'INI': LineCounterMeta(';', None, None),
+    'Owiz': __ow_lc_meta,
 }
 
 

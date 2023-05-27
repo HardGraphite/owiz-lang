@@ -11,38 +11,38 @@
 #include <stdint.h>
 
 #if defined(_WIN32) || defined(__CYGWIN__)
-#	if OWIZ_EXPORT_API
-#		define OWIZ_API __declspec(dllexport)
-#	else
-#		define OWIZ_API __declspec(dllimport)
-#	endif
+#    if OWIZ_EXPORT_API
+#        define OWIZ_API __declspec(dllexport)
+#    else
+#        define OWIZ_API __declspec(dllimport)
+#    endif
 #elif (__GNUC__ + 0 >= 4) || defined(__clang__)
-#	if OWIZ_EXPORT_API
-#		define OWIZ_API __attribute__((used, visibility("default")))
-#	else
-#		define OWIZ_API
-#	endif
+#    if OWIZ_EXPORT_API
+#        define OWIZ_API __attribute__((used, visibility("default")))
+#    else
+#        define OWIZ_API
+#    endif
 #else
-#	define OWIZ_API
+#    define OWIZ_API
 #endif
 
 #if (defined(__cplusplus) && __cplusplus >= 201603L) /* C++17 */ \
-		|| (defined(__STDC_VERSION__) && __STDC_VERSION__ > 201710L) /* C23 */
-#	define OWIZ_NODISCARD [[nodiscard]]
+        || (defined(__STDC_VERSION__) && __STDC_VERSION__ > 201710L) /* C23 */
+#    define OWIZ_NODISCARD [[nodiscard]]
 #elif defined(__GNUC__)
-#	define OWIZ_NODISCARD __attribute__((warn_unused_result))
+#    define OWIZ_NODISCARD __attribute__((warn_unused_result))
 #elif defined(_MSC_VER)
-#	define OWIZ_NODISCARD _Check_return_
+#    define OWIZ_NODISCARD _Check_return_
 #else
-#	define OWIZ_NODISCARD
+#    define OWIZ_NODISCARD
 #endif
 
 #if !defined(__cplusplus) /* C */
-#	define OWIZ_NOEXCEPT
+#    define OWIZ_NOEXCEPT
 #elif __cplusplus >= 201103L /* >= C++11 */
-#	define OWIZ_NOEXCEPT noexcept
+#    define OWIZ_NOEXCEPT noexcept
 #else /* < C++11 */
-#	define OWIZ_NOEXCEPT throw()
+#    define OWIZ_NOEXCEPT throw()
 #endif /* __cplusplus */
 
 #ifdef __cplusplus
@@ -76,10 +76,10 @@ typedef int (*owiz_native_func_t)(owiz_machine_t *) OWIZ_NOEXCEPT;
  * @brief Pair of name string and function pointer.
  */
 typedef struct owiz_native_func_def {
-	const char        *name; ///< Name of the function.
-	owiz_native_func_t func; ///< Pointer to the native function.
-	int                argc; ///< Number of arguments. See `OWIZ_NATIVE_FUNC_VARIADIC_ARGC()` for variadic.
-	unsigned int       oarg; ///< Number of optional arguments.
+    const char        *name; ///< Name of the function.
+    owiz_native_func_t func; ///< Pointer to the native function.
+    int                argc; ///< Number of arguments. See `OWIZ_NATIVE_FUNC_VARIADIC_ARGC()` for variadic.
+    unsigned int       oarg; ///< Number of optional arguments.
 } owiz_native_func_def_t;
 
 /**
@@ -94,28 +94,28 @@ typedef struct owiz_native_func_def {
  * @brief Definition of a native class.
  */
 typedef struct owiz_native_class_def {
-	const char                   *name;      ///< Class name. Optional.
-	size_t                        data_size; ///< Object data area size (number of bytes).
-	const owiz_native_func_def_t *methods;   ///< Object methods. A NULL-terminated array.
-	void (*finalizer)(owiz_machine_t *, void *); ///< Object finalizer. Optional.
+    const char                   *name;      ///< Class name. Optional.
+    size_t                        data_size; ///< Object data area size (number of bytes).
+    const owiz_native_func_def_t *methods;   ///< Object methods. A NULL-terminated array.
+    void (*finalizer)(owiz_machine_t *, void *); ///< Object finalizer. Optional.
 } owiz_native_class_def_t;
 
 /**
  * @brief Definition of a native module.
  */
 typedef struct owiz_native_module_def {
-	const char                   *name;      ///< Module name. Optional.
-	const owiz_native_func_def_t *functions; ///< Functions in module. A NULL-terminated array.
-	owiz_native_func_t            finalizer; ///< Module finalizer. Optional.
+    const char                   *name;      ///< Module name. Optional.
+    const owiz_native_func_def_t *functions; ///< Functions in module. A NULL-terminated array.
+    owiz_native_func_t            finalizer; ///< Module finalizer. Optional.
 } owiz_native_module_def_t;
 
 /**
  * @brief Return type of `owiz_sysconf()` function.
  */
 typedef union owiz_sysconf_result {
-	signed int   i;
-	unsigned int u;
-	const char  *s;
+    signed int   i;
+    unsigned int u;
+    const char  *s;
 } owiz_sysconf_result_t;
 
 #define OWIZ_SC_DEBUG           0 ///< Whether compiled with debug code.
@@ -307,7 +307,7 @@ OWIZ_API int owiz_make_exception(owiz_machine_t *om, int type, const char *fmt, 
  * and the module will not be pushed again in this function.
  */
 OWIZ_API int owiz_make_module(
-	owiz_machine_t *om, const char *name, const void *src, int flags) OWIZ_NOEXCEPT;
+    owiz_machine_t *om, const char *name, const void *src, int flags) OWIZ_NOEXCEPT;
 
 /**
  * @brief Push a local variable or argument.
@@ -414,7 +414,7 @@ OWIZ_API int owiz_read_float(owiz_machine_t *om, int index, double *val_p) OWIZ_
  * if the object class mismatches, return `OWIZ_ERR_TYPE`.
  */
 OWIZ_API int owiz_read_symbol(
-	owiz_machine_t *om, int index, const char **str_p, size_t *len_p) OWIZ_NOEXCEPT;
+    owiz_machine_t *om, int index, const char **str_p, size_t *len_p) OWIZ_NOEXCEPT;
 
 /**
  * @brief Read the value of a String object.
@@ -430,7 +430,7 @@ OWIZ_API int owiz_read_symbol(
  * @warning Calling this function may cause extra operation.
  */
 OWIZ_API int owiz_read_string(
-	owiz_machine_t *om, int index, const char **str_p, size_t *len_p) OWIZ_NOEXCEPT;
+    owiz_machine_t *om, int index, const char **str_p, size_t *len_p) OWIZ_NOEXCEPT;
 
 /**
  * @brief Copy contents of a String object to a buffer.
@@ -448,7 +448,7 @@ OWIZ_API int owiz_read_string(
  * but the return value will not change.
  */
 OWIZ_API int owiz_read_string_to(
-	owiz_machine_t *om, int index, char *buf, size_t buf_sz) OWIZ_NOEXCEPT;
+    owiz_machine_t *om, int index, char *buf, size_t buf_sz) OWIZ_NOEXCEPT;
 
 #define OWIZ_RDEXC_MSG    0x01 ///< Get exception data as string.
 #define OWIZ_RDEXC_BT     0x02 ///< Get backtrace.

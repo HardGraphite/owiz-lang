@@ -29,8 +29,8 @@ struct ow_codegen *ow_compiler_codegen(struct ow_compiler *compiler);
 void ow_compiler_clear(struct ow_compiler *compiler);
 /// Do compilation. Return whether successful.
 bool ow_compiler_compile(
-	struct ow_compiler *compiler,
-	struct ow_stream *stream, struct ow_sharedstr *file_name,
-	int flags, struct ow_module_obj *module);
+    struct ow_compiler *compiler,
+    struct ow_stream *stream, struct ow_sharedstr *file_name,
+    int flags, struct ow_module_obj *module);
 /// Get last error.
 struct ow_syntax_error *ow_compiler_error(struct ow_compiler *compiler);

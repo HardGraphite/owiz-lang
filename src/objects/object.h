@@ -12,48 +12,51 @@ struct ow_class_obj;
 
 /// Common head of any object struct.
 #define OW_OBJECT_HEAD \
-	struct ow_object_meta _meta; \
-	struct ow_class_obj *_class; \
+    struct ow_object_meta _meta; \
+    struct ow_class_obj *_class; \
 // ^^^ OW_OBJECT_HEAD ^^^
 
 /// Common head of object structs that has extra fields.
 #define OW_EXTENDED_OBJECT_HEAD \
-	OW_OBJECT_HEAD         \
-	uintptr_t field_count; \
+    OW_OBJECT_HEAD         \
+    uintptr_t field_count; \
 // ^^^ OW_EXTENDED_OBJECT_HEAD ^^^
 
 /// Object.
 struct ow_object {
-	OW_OBJECT_HEAD
-	struct ow_object *_fields[];
+    OW_OBJECT_HEAD
+    struct ow_object *_fields[];
 };
 
 /// Get class of an object.
 ow_static_forceinline struct ow_class_obj *ow_object_class(
-		const struct ow_object *obj) {
-	assert(!ow_smallint_check(obj));
-	return obj->_class;
+    const struct ow_object *obj
+) {
+    assert(!ow_smallint_check(obj));
+    return obj->_class;
 }
 
 /// Get field by index. No bounds checking.
 ow_static_forceinline struct ow_object *ow_object_get_field(
-		const struct ow_object *obj, size_t index) {
-	return obj->_fields[index];
+    const struct ow_object *obj, size_t index
+) {
+    return obj->_fields[index];
 }
 
 /// Set field by index. No bounds checking.
 ow_static_forceinline void ow_object_set_field(
-		struct ow_object *obj, size_t index, struct ow_object *value) {
-	obj->_fields[index] = value;
+    struct ow_object *obj, size_t index, struct ow_object *value
+) {
+    obj->_fields[index] = value;
 }
 
 /// Convert from object struct pointer to `struct ow_object *`.
 #define ow_object_from(obj_ptr) \
-	((struct ow_object *)(obj_ptr))
+    ((struct ow_object *)(obj_ptr))
 
 /// Convert from `struct ow_object *` to other object struct pointer.
 #define ow_object_cast(obj_ptr, type) \
-	((type *)(obj_ptr))
+    ((type *)(obj_ptr))
 
 /// Template of hash map functions for hash maps that use objects as keys,
 /// whose `context` field shall be filled with current ow_machine struct.
@@ -61,9 +64,9 @@ extern const struct ow_hashmap_funcs _ow_object_hashmap_funcs_tmpl;
 
 /// Initializer for a `struct ow_hashmap_funcs` for hash maps that use objects as keys.
 #define OW_OBJECT_HASHMAP_FUNCS_INIT(OM_PTR) \
-	{ \
-		.key_equal = _ow_object_hashmap_funcs_tmpl.key_equal, \
-		.key_hash = _ow_object_hashmap_funcs_tmpl.key_hash, \
-		.context = (OM_PTR), \
-	} \
+    { \
+        .key_equal = _ow_object_hashmap_funcs_tmpl.key_equal, \
+        .key_hash = _ow_object_hashmap_funcs_tmpl.key_hash, \
+        .context = (OM_PTR), \
+    } \
 // ^^^ OW_OBJECT_HASHMAP_FUNCS_INIT ^^^

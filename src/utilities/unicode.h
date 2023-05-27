@@ -40,5 +40,5 @@ size_t ow_u8_strwidth(const ow_char8_t *u8_str, const ow_char8_t *end);
 ow_char8_t *ow_u8_strrmprefix(const ow_char8_t *u8_str, size_t n_chars);
 
 static inline size_t ow_u8_charlen(ow_char8_t u8_first_byte) {
-	return (u8_first_byte & 0x80) == 0 ? 1 : _ow_u8_charlen_mb(u8_first_byte);
+    return (u8_first_byte & 0x80) == 0 ? 1 : _ow_u8_charlen_mb(u8_first_byte);
 }

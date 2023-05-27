@@ -1,10 +1,10 @@
-# The OWIZ programming language
+# The OWIZ Programming Language
 
 *OWIZ* is a dynamic object-oriented programming language.
 
 > IT IS JUST A TOY!
 
-## How to build
+## Building
 
 [*CMake*](https://cmake.org/) is used as the build system.
 Run the following shell scripts to build *OWIZ* in subdirectory "`build-dir`":
@@ -38,3 +38,30 @@ you can decide which modules are built into the runtime
 and which modules are built as standalone files.
 
 Use `ccmake` or `cmake-gui` to view and adjust more options.
+
+## Developing
+
+Set CMake option `OW_DEVELOPING` to `ON` for development.
+Read [coding style](doc/coding_style.md) for style guide.
+
+## Code File Organization
+
+| Directory | Description                                      |
+|-----------|--------------------------------------------------|
+| `cmake`   | CMake utilities.                                 |
+| `doc`     | Design documentations.                           |
+| `include` | C/C++ header files.                              |
+| `src`     | C source files of the runtime.                   |
+| `test`    | Test code.                                       |
+| `tool`    | Executable tools.                                |
+
+| Directory       | Description                                        |
+|-----------------|----------------------------------------------------|
+| `src/bytecode`  | Byte code definitions and utilities.               |
+| `src/compat`    | Compatibility code.                                |
+| `src/compiler`  | Byte code compiler.                                |
+| `src/machine`   | The virtual machine.                               |
+| `src/modules`   | Native modules. Configurable.                      |
+| `src/objects`   | Object basics and built-in types.                  |
+| `src/toplevels` | Entry points to executables and libraries.         |
+| `src/utilities` | Runtime-independent utilities.                     |

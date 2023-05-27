@@ -5,18 +5,18 @@
 struct timespec;
 
 #if _IS_WINDOWS_
-#	include <Windows.h> // !!
-#	define OW_THRD_WINNT 1
+#    include <Windows.h> // !!
+#    define OW_THRD_WINNT 1
 typedef void *ow_thrd_t;
 typedef CRITICAL_SECTION ow_mtx_t;
 #elif _IS_POSIX_
-#	include <pthread.h>
-#	define OW_THRD_POSIX 1
+#    include <pthread.h>
+#    define OW_THRD_POSIX 1
 typedef pthread_t ow_thrd_t;
 typedef pthread_mutex_t ow_mtx_t;
 #elif !defined(__STDC_NO_THREADS__)
-#	include <threads.h>
-#	define OW_THRD_STDC  1
+#    include <threads.h>
+#    define OW_THRD_STDC  1
 typedef thrd_t ow_thrd_t;
 typedef mtx_t ow_mtx_t;
 #else
@@ -25,26 +25,26 @@ typedef long ow_mtx_t;
 #endif
 
 #ifdef _MSC_VER
-#	include <compat/kw_thread_local.h>
+#    include <compat/kw_thread_local.h>
 #endif // _MSC_VER
 #ifndef thread_local
-#	define thread_local _Thread_local
+#    define thread_local _Thread_local
 #endif // thread_local
 
 /// Identifiers for thread states and errors.
 enum {
 #if !OW_THRD_STDC
-	ow_thrd_success = 0,
-	ow_thrd_nomem,
-	ow_thrd_timedout,
-	ow_thrd_busy,
-	ow_thrd_error,
+    ow_thrd_success = 0,
+    ow_thrd_nomem,
+    ow_thrd_timedout,
+    ow_thrd_busy,
+    ow_thrd_error,
 #else // OW_THRD_STDC
-	ow_thrd_success  = thrd_success,
-	ow_thrd_nomem    = thrd_nomem,
-	ow_thrd_timedout = thrd_timedout,
-	ow_thrd_busy     = thrd_busy,
-	ow_thrd_error    = thrd_error,
+    ow_thrd_success  = thrd_success,
+    ow_thrd_nomem    = thrd_nomem,
+    ow_thrd_timedout = thrd_timedout,
+    ow_thrd_busy     = thrd_busy,
+    ow_thrd_error    = thrd_error,
 #endif // !OW_THRD_STDC
 };
 
@@ -71,13 +71,13 @@ int ow_thrd_join(ow_thrd_t thrd, int *res);
 /// When passed to ow_mtx_init(), identifies the type of a mutex to create.
 enum {
 #if !OW_THRD_STDC
-	ow_mtx_plain = 1,
-	ow_mtx_timed = 2,
-	ow_mtx_recursive = 4,
+    ow_mtx_plain = 1,
+    ow_mtx_timed = 2,
+    ow_mtx_recursive = 4,
 #else // OW_THRD_STDC
-	ow_mtx_plain     = mtx_plain,
-	ow_mtx_timed     = mtx_timed,
-	ow_mtx_recursive = mtx_recursive,
+    ow_mtx_plain     = mtx_plain,
+    ow_mtx_timed     = mtx_timed,
+    ow_mtx_recursive = mtx_recursive,
 #endif // !OW_THRD_STDC
 };
 

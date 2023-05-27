@@ -5,8 +5,8 @@ find_library(LibReadline_LIBRARY NAMES readline)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-	LibReadline DEFAULT_MSG
-	LibReadline_INCLUDE_DIR LibReadline_LIBRARY
+    LibReadline DEFAULT_MSG
+    LibReadline_INCLUDE_DIR LibReadline_LIBRARY
 )
 
 if(NOT LibReadline_FOUND)
@@ -18,8 +18,8 @@ find_library(LibReadline_LIBRARY NAMES edit)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-	LibReadline DEFAULT_MSG
-	LibReadline_INCLUDE_DIR LibReadline_LIBRARY
+    LibReadline DEFAULT_MSG
+    LibReadline_INCLUDE_DIR LibReadline_LIBRARY
 )
 
 endif()

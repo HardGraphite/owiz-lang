@@ -26,3 +26,11 @@ __pycache__/
 *.pyc
 *.pyd
 *.pyo
+
+CMakeFiles/
+Testing/
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json

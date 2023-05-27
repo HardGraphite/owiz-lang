@@ -5,12 +5,12 @@
 
 /// Global parameters.
 struct ow_sysparam {
-	bool verbose_memory;
-	bool verbose_lexer;
-	bool verbose_parser;
-	bool verbose_codegen;
-	size_t stack_size; // Number of objects.
-	char *default_paths; // Default module paths.
+    bool verbose_memory;
+    bool verbose_lexer;
+    bool verbose_parser;
+    bool verbose_codegen;
+    size_t stack_size; // Number of objects.
+    char *default_paths; // Default module paths.
 };
 
 /// Global parameters.

@@ -28,9 +28,9 @@ extern const struct ow_hashmap_funcs ow_sharedstr_hashmap_funcs;
 
 /// String with dynamic length.
 struct ow_dynamicstr {
-	char  *_str;
-	size_t _cap;
-	size_t _len;
+    char  *_str;
+    size_t _cap;
+    size_t _len;
 };
 
 /// Initialize a string.

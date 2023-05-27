@@ -6,11 +6,11 @@ struct ow_object;
 
 /// Global data for a context.
 struct ow_machine_globals {
-	struct ow_object *value_nil;
-	struct ow_object *value_true;
-	struct ow_object *value_false;
-	struct ow_module_obj *module_base;
-	struct ow_module_obj *module_sys;
+    struct ow_object *value_nil;
+    struct ow_object *value_true;
+    struct ow_object *value_false;
+    struct ow_module_obj *module_base;
+    struct ow_module_obj *module_sys;
 };
 
 /// Create globals. The modules shall be initialized by the caller.

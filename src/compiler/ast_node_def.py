@@ -12,6 +12,9 @@ import pathlib
 import re
 
 
+C_CODE_INDENT = ' ' * 4
+
+
 @dataclasses.dataclass
 class NodeDef:
     name: str
@@ -63,7 +66,7 @@ def write_list(node_defs: list[NodeDef], conf_file: pathlib.Path, out_file):
             if node.name[0] == '.':
                 continue
             text = f'ELEM({node.name})'
-            puts(f'\t{text: <22}\\')
+            puts(C_CODE_INDENT + f'{text: <22}\\')
         puts('// ^^^ OW_AST_NODE_LIST ^^^')
 
 
@@ -79,7 +82,7 @@ def write_structs(node_defs: list[NodeDef], conf_file: pathlib.Path, out_file):
                 put_members(base_node)
             if node.attr:
                 for attr in node.attr:
-                    puts('\t', attr, ';', sep='')
+                    puts(C_CODE_INDENT, attr, ';', sep='')
 
         puts(f'// Generated from "{conf_file.name}". DO NOT edit.')
 
@@ -87,7 +90,7 @@ def write_structs(node_defs: list[NodeDef], conf_file: pathlib.Path, out_file):
             name = node.name[1:] if node.name[0] == '.' else node.name
             puts()
             puts('struct ow_ast_', name, ' {', sep='')
-            puts('\tOW_AST_NODE_HEAD')
+            puts(C_CODE_INDENT + 'OW_AST_NODE_HEAD')
             put_members(node)
             puts('};')
 
@@ -120,16 +123,16 @@ def write_funcs(node_defs: list[NodeDef], conf_file: pathlib.Path, out_file):
                 node_type , ' *', node_param, ') {', sep='')
             has_code = False
             if node.base:
-                puts('\t', base_func_prefix,
+                puts(C_CODE_INDENT, base_func_prefix,
                     'init((', base_node_type, ' *)', node_param, ');', sep='')
                 has_code = True
             if node.ctor:
                 for s in map(str.strip, conv_code(node.ctor).split(';')):
                     if s:
-                        puts('\t', s, ';', sep='')
+                        puts(C_CODE_INDENT, s, ';', sep='')
                 has_code = True
             if not has_code:
-                puts('\tow_unused_var(', node_param, ');', sep='')
+                puts(C_CODE_INDENT, 'ow_unused_var(', node_param, ');', sep='')
             puts('}')
 
             puts()
@@ -139,14 +142,14 @@ def write_funcs(node_defs: list[NodeDef], conf_file: pathlib.Path, out_file):
             if node.dtor:
                 for s in map(str.strip, conv_code(node.dtor).split(';')):
                     if s:
-                        puts('\t', s, ';', sep='')
+                        puts(C_CODE_INDENT, s, ';', sep='')
                 has_code = True
             if node.base:
-                puts('\t', base_func_prefix,
+                puts(C_CODE_INDENT, base_func_prefix,
                     'fini((', base_node_type, ' *)', node_param, ');', sep='')
                 has_code = True
             if not has_code:
-                puts('\tow_unused_var(', node_param, ');', sep='')
+                puts(C_CODE_INDENT, 'ow_unused_var(', node_param, ');', sep='')
             puts('}')
 
 
