@@ -1451,10 +1451,11 @@ struct _scope_update_module_globals_context {
 };
 
 static int _scope_update_module_globals_walker(
-    void *_ctx, struct ow_sharedstr *name, size_t index) {
+    void *_ctx, struct ow_sharedstr *name, size_t index
+) {
     struct _scope_update_module_globals_context *const ctx = _ctx;
     if (index >= ctx->orig_count)
-        ctx->names[index] = name;
+        ctx->names[index - ctx->orig_count] = name;
     return 0;
 }
 
