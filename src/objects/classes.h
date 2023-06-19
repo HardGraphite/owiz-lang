@@ -44,10 +44,5 @@ struct ow_builtin_classes {
 struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om);
 /// Load data.
 void _ow_builtin_classes_setup(struct ow_machine *om, struct ow_builtin_classes *bic);
-/// Clear all classes.
-void _ow_builtin_classes_cleanup(struct ow_machine *om, struct ow_builtin_classes * bic);
 /// Destroy a `struct ow_builtin_classes`.
-void _ow_builtin_classes_del(
-    struct ow_machine *om, struct ow_builtin_classes * bic, _Bool finalize_classes);
-
-void _ow_builtin_classes_gc_marker(struct ow_machine *om, struct ow_builtin_classes * bic);
+void _ow_builtin_classes_del(struct ow_machine *om, struct ow_builtin_classes * bic);

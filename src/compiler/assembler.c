@@ -12,7 +12,7 @@
 #include <objects/floatobj.h>
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/stringobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/array.h>
@@ -76,13 +76,12 @@ struct ow_assembler {
     struct ow_machine *machine;
 };
 
-static void _as_gc_marker(struct ow_machine *om, void *_as) {
-    struct ow_assembler *const as = _as;
-    assert(om == as->machine);
+static void as_gc_visitor(void *_ptr, int op) {
+    struct ow_assembler *const as = _ptr;
     for (size_t i = 0, n = ow_array_size(&as->constants); i < n; i++)
-        ow_objmem_object_gc_marker(om, ow_array_at(&as->constants, i));
+        ow_objmem_visit_object(ow_array_at(&as->constants, i), op);
     for (size_t i = 0, n = ow_array_size(&as->symbols); i < n; i++)
-        ow_objmem_object_gc_marker(om, ow_array_at(&as->symbols, i));
+        ow_objmem_visit_object(ow_array_at(&as->symbols, i), op);
 }
 
 struct ow_assembler *ow_assembler_new(struct ow_machine *om) {
@@ -92,7 +91,7 @@ struct ow_assembler *ow_assembler_new(struct ow_machine *om) {
     ow_array_init(&as->symbols, 0);
     ow_array_init(&as->labels, 0);
     as->machine = om;
-    ow_objmem_add_gc_root(om, as, _as_gc_marker);
+    ow_objmem_add_gc_root(om, as, as_gc_visitor);
     return as;
 }
 

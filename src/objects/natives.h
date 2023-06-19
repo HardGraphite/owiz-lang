@@ -7,6 +7,8 @@ struct ow_machine;
 struct ow_module_obj;
 struct ow_object;
 
+typedef void (*ow_objmem_obj_fields_visitor_t)(void *, int); // Declared in "objmem.h"
+
 /// Same with `owiz_native_func_t`.
 typedef int (*ow_native_func_t)(struct ow_machine *);
 
@@ -26,7 +28,7 @@ struct ow_native_class_def {
     const char                      *name;
     size_t                           data_size;
     const struct ow_native_func_def *methods;
-    void (*finalizer)(struct ow_machine *, void *);
+    void (*finalizer)(void *);
 };
 
 /// Extended `struct ow_native_class_def`.
@@ -34,8 +36,8 @@ struct ow_native_class_def_ex {
     const char *name;
     size_t data_size;
     const struct ow_native_func_def *methods;
-    void (*finalizer)(struct ow_machine *, struct ow_object *);
-    void (*gc_marker)(struct ow_machine *, struct ow_object *);
+    void (*finalizer)(struct ow_object *);
+    ow_objmem_obj_fields_visitor_t gc_visitor;
     bool extended;
 };
 
@@ -43,5 +45,5 @@ struct ow_native_class_def_ex {
 struct ow_native_module_def {
     const char                      *name;
     const struct ow_native_func_def *functions;
-    ow_native_func_t                 finalizer;
+    void (*finalizer)(void);
 };

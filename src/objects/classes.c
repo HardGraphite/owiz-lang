@@ -2,7 +2,7 @@
 
 #include "classes_util.h"
 #include "classobj.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object.h"
 #include <machine/machine.h>
@@ -16,7 +16,11 @@ OW_BICLS_LIST
 OW_BICLS_STREAM_LIST
 #undef ELEM
 
-extern const struct ow_class_obj __wo_fake_class_class;
+static void ow_builtin_classes_gc_visitor(void *_ptr, int op) {
+    struct ow_builtin_classes * const bic = _ptr;
+    for (size_t i = 0; i < sizeof *bic / sizeof(struct ow_class_obj *); i++)
+        ow_objmem_visit_object(((struct ow_class_obj **)bic)[i], op);
+}
 
 struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
     struct ow_builtin_classes *const bic = ow_malloc(sizeof(struct ow_builtin_classes));
@@ -36,7 +40,7 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
     fake_class_class.pub_info.has_extra_fields = false;
     bic->class_ = (struct ow_class_obj *)&fake_class_class;
     bic->class_ = ow_class_obj_new(om);
-    ow_object_from(bic->class_)->_class = bic->class_;
+    ow_object_meta_store_(CLS, ow_object_from(bic->class_)->_meta, bic->class_); // Set class.
     ((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->class_))
         ->basic_field_count = fake_class_class.pub_info.basic_field_count;
 
@@ -55,7 +59,7 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
     OW_BICLS_STREAM_LIST
 #undef ELEM
 
-#define ELEM(NAME) assert(ow_object_from(bic-> NAME )->_class == bic->class_);
+#define ELEM(NAME) assert(ow_object_class(ow_object_from(bic-> NAME )) == bic->class_);
     OW_BICLS_LIST0
     OW_BICLS_LIST
     OW_BICLS_STREAM_LIST
@@ -63,6 +67,8 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
 
     assert(om->builtin_classes == bic);
     om->builtin_classes = NULL;
+
+    ow_objmem_add_gc_root(om, bic, ow_builtin_classes_gc_visitor);
 
     return bic;
 }
@@ -102,30 +108,9 @@ void _ow_builtin_classes_setup(
     ow_objmem_pop_ngc(om);
 }
 
-void _ow_builtin_classes_cleanup(
-    struct ow_machine *om, struct ow_builtin_classes * bic
-) {
-    for (size_t i = 0; i < sizeof *bic / sizeof(struct ow_class_obj *); i++)
-        ow_class_obj_clear(om, ((struct ow_class_obj **)bic)[i]);
-}
-
 void _ow_builtin_classes_del(
-    struct ow_machine *om, struct ow_builtin_classes * bic,
-    _Bool finalize_classes
-) {
-    ow_unused_var(om);
-
-    if (finalize_classes) {
-        for (size_t i = 0; i < sizeof *bic / sizeof(struct ow_class_obj *); i++)
-            _ow_class_obj_fini(((struct ow_class_obj **)bic)[i]);
-    }
-
-    ow_free(bic);
-}
-
-void _ow_builtin_classes_gc_marker(
     struct ow_machine *om, struct ow_builtin_classes * bic
 ) {
-    for (size_t i = 0; i < sizeof *bic / sizeof(struct ow_class_obj *); i++)
-        ow_objmem_object_gc_marker(om, ow_object_from(((struct ow_class_obj **)bic)[i]));
+    ow_objmem_remove_gc_root(om, bic);
+    ow_free(bic);
 }

@@ -20,6 +20,8 @@ struct ow_array_obj *ow_array_obj_new(
 /// Get the array data.
 ow_static_inline struct ow_array *ow_array_obj_data(struct ow_array_obj *self);
 
+////////////////////////////////////////////////////////////////////////////////
+
 ow_static_inline struct ow_array *ow_array_obj_data(struct ow_array_obj *self) {
-    return (struct ow_array *)((const unsigned char *)self + OW_OBJECT_SIZE);
+    return (struct ow_array *)((const unsigned char *)self + OW_OBJECT_HEAD_SIZE);
 }

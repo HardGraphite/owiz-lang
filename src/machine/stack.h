@@ -41,9 +41,9 @@ struct ow_callstack {
 };
 /// Create a call stack.
 
-void ow_callstack_init(struct ow_callstack *stack, size_t n);
+void ow_callstack_init(struct ow_machine *om, struct ow_callstack *stack, size_t n);
 /// Destroy a call stack.
-void ow_callstack_fini(struct ow_callstack *stack);
+void ow_callstack_fini(struct ow_machine *om, struct ow_callstack *stack);
 /// Clear stack.
 void ow_callstack_clear(struct ow_callstack *stack);
 /// Push object to stack.
@@ -52,5 +52,3 @@ void ow_callstack_clear(struct ow_callstack *stack);
 #define ow_callstack_pop(stack)  ((stack).regs.sp--)
 /// Get top object on stack.
 #define ow_callstack_top(stack)  (*(stack).regs.sp)
-
-void _ow_callstack_gc_marker(struct ow_machine *om, struct ow_callstack *stack);

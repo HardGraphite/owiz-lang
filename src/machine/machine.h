@@ -33,5 +33,3 @@ void ow_machine_del(struct ow_machine *om);
 void ow_machine_setjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb);
 /// Jump back to stored context.
 _Bool ow_machine_longjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb);
-
-void _om_machine_gc_marker(struct ow_machine *om);

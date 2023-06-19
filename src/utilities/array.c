@@ -14,8 +14,7 @@ void ow_array_init(struct ow_array *arr, size_t n) {
 }
 
 void ow_array_fini(struct ow_array *arr) {
-    if (ow_likely(arr->_arr))
-        ow_free(arr->_arr);
+    ow_free(arr->_arr);
 }
 
 void ow_array_reserve(struct ow_array *arr, size_t n) {
@@ -63,8 +62,7 @@ void _ow_xarray_init(struct ow_xarray *arr, size_t sz, size_t n) {
 }
 
 void ow_xarray_fini(struct ow_xarray *arr) {
-    if (ow_likely(arr->_arr))
-        ow_free(arr->_arr);
+    ow_free(arr->_arr);
 }
 
 void _ow_xarray_reserve(struct ow_xarray *arr, size_t sz, size_t n) {

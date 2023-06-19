@@ -19,7 +19,7 @@
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
 #include <objects/mapobj.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/moduleobj.h>
 #include <objects/object.h>
 #include <objects/setobj.h>

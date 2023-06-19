@@ -16,6 +16,7 @@
     long long int: 5, \
     unsigned long long int: 6, \
     owiz_native_func_t: 7, \
+    void (*)(void): 7, \
     const struct ow_native_func_def *: 8, \
     const struct owiz_native_func_def *: 8, \
     const char *: 9 )

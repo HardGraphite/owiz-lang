@@ -9,7 +9,7 @@
 #include <machine/globals.h>
 #include <machine/machine.h>
 #include <machine/symbols.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/moduleobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/array.h>
@@ -297,11 +297,10 @@ ow_noinline ow_noreturn static void ow_codegen_error_throw_not_implemented(
     ow_codegen_error_throw(codegen, location, "not implemented");
 }
 
-static void _codegen_gc_marker(struct ow_machine *om, void *_codegen) {
-    struct ow_codegen *const codegen = _codegen;
-    assert(om == codegen->machine);
+static void codegen_gc_visitor(void *_ptr, int op) {
+    struct ow_codegen *const codegen = _ptr;
     if (codegen->module)
-        ow_objmem_object_gc_marker(om, ow_object_from(codegen->module));
+        ow_objmem_visit_object(codegen->module, op);
 }
 
 ow_nodiscard struct ow_codegen *ow_codegen_new(struct ow_machine *om) {
@@ -316,7 +315,7 @@ ow_nodiscard struct ow_codegen *ow_codegen_new(struct ow_machine *om) {
     codegen->verbose = false;
 #endif // OW_DEBUG_CODEGEN
 
-    ow_objmem_add_gc_root(om, codegen, _codegen_gc_marker);
+    ow_objmem_add_gc_root(om, codegen, codegen_gc_visitor);
     return codegen;
 }
 

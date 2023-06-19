@@ -2,7 +2,7 @@
 
 #include "classes.h"
 #include "classes_util.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object_util.h"
 #include "symbolobj.h"
@@ -23,10 +23,9 @@ static void sos_fini(struct stream_obj_stream *stream) {
     ow_objmem_remove_gc_root(stream->machine, stream);
 }
 
-static void sos_gc_marker(struct ow_machine *om, void *_sos) {
+static void sos_gc_visitor(void *_sos, int op) {
     struct stream_obj_stream *const stream = _sos;
-    assert(stream->machine == om);
-    ow_objmem_object_gc_marker(om, ow_object_from(stream));
+    ow_objmem_visit_object(stream, op);
 }
 
 static bool sos_eof(const struct stream_obj_stream *stream) {
@@ -108,7 +107,7 @@ static struct stream_obj_stream *sos_init(
     stream->_open_flags = OW_STREAM_OPEN_READ | OW_STREAM_OPEN_WRITE;
     stream->machine = om;
     stream->object = obj;
-    ow_objmem_add_gc_root(om, stream, sos_gc_marker);
+    ow_objmem_add_gc_root(om, stream, sos_gc_visitor);
     return stream;
 }
 
@@ -135,60 +134,46 @@ int ow_stream_obj_use_stream(
     return ret;
 }
 
-static const struct ow_native_func_def stream_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(stream) = {
-    .name      = "Stream",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_stream_obj),
-    .methods   = stream_methods,
-    .finalizer = NULL,
-    .gc_marker = NULL,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    stream,
+    "Stream",
+    false,
+    NULL,
+    NULL,
+)
 
 struct ow_file_obj *ow_file_obj_new(
     struct ow_machine *om, const ow_path_char_t *path, int flags
 ) {
     struct ow_file_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->file, 0),
-        struct ow_file_obj);
+        ow_objmem_allocate(om, om->builtin_classes->file),
+        struct ow_file_obj
+    );
     if (ow_file_stream_open(&obj->file_stream, path, flags))
         return obj;
     return NULL;
 }
 
-static const struct ow_native_func_def file_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(file) = {
-    .name      = "File",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_file_obj),
-    .methods   = file_methods,
-    .finalizer = NULL,
-    .gc_marker = NULL,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    file,
+    "File",
+    false,
+    NULL,
+    NULL,
+)
 
 struct ow_string_stream_obj *ow_string_stream_obj_new(struct ow_machine *om) {
     struct ow_string_stream_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->string_stream, 0),
+        ow_objmem_allocate(om, om->builtin_classes->string_stream),
         struct ow_string_stream_obj);
     ow_string_stream_open(&obj->string_stream);
     return obj;
 }
 
-static const struct ow_native_func_def string_stream_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(string_stream) = {
-    .name      = "StringStream",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_string_stream_obj),
-    .methods   = string_stream_methods,
-    .finalizer = NULL,
-    .gc_marker = NULL,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    string_stream,
+    "StringStream",
+    false,
+    NULL,
+    NULL,
+)

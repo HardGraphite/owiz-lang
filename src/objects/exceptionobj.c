@@ -7,7 +7,7 @@
 #include "classes.h"
 #include "classes_util.h"
 #include "classobj.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object_util.h"
 #include "stringobj.h"
@@ -22,30 +22,19 @@ struct ow_exception_obj {
     struct ow_object *data;
 };
 
-static void ow_exception_obj_finalizer(
-    struct ow_machine *om, struct ow_object *obj
-) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(
-        om->builtin_classes->exception, ow_object_class(obj)));
+static void ow_exception_obj_finalizer(struct ow_object *obj) {
     struct ow_exception_obj *const self =
         ow_object_cast(obj, struct ow_exception_obj);
     ow_xarray_fini(&self->backtrace);
 }
 
-static void ow_exception_obj_gc_marker(
-    struct ow_machine *om, struct ow_object *obj
-) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(
-        om->builtin_classes->exception, ow_object_class(obj)));
-    struct ow_exception_obj *const self =
-        ow_object_cast(obj, struct ow_exception_obj);
+static void ow_exception_obj_gc_visitor(void *_obj, int op) {
+    struct ow_exception_obj *const self = _obj;
     for (size_t i = 0, n = ow_xarray_size(&self->backtrace); i < n; i++) {
-        ow_objmem_object_gc_marker(om, ow_xarray_at(
-            &self->backtrace, struct ow_exception_obj_frame_info, i).function);
+        ow_objmem_visit_object(
+            ow_xarray_at(&self->backtrace, struct ow_exception_obj_frame_info, i).function, op);
     }
-    ow_objmem_object_gc_marker(om, self->data);
+    ow_objmem_visit_object(self->data, op);
 }
 
 struct ow_exception_obj *ow_exception_new(
@@ -58,7 +47,7 @@ struct ow_exception_obj *ow_exception_new(
         == ow_class_obj_attribute_count(exc_type));
 
     struct ow_exception_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, exc_type, 0),
+        ow_objmem_allocate(om, exc_type),
         struct ow_exception_obj);
     ow_xarray_init(&obj->backtrace, struct ow_exception_obj_frame_info, 4);
     obj->data = data;
@@ -162,15 +151,10 @@ void ow_exception_obj_print(
     }
 }
 
-static const struct ow_native_func_def exception_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(exception) = {
-    .name      = "Exception",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_exception_obj),
-    .methods   = exception_methods,
-    .finalizer = ow_exception_obj_finalizer,
-    .gc_marker = ow_exception_obj_gc_marker,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    exception,
+    "Exception",
+    false,
+    ow_exception_obj_finalizer,
+    ow_exception_obj_gc_visitor,
+)

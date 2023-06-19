@@ -2,7 +2,7 @@
 
 #include "classes.h"
 #include "classes_util.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object.h"
 #include "object_util.h"
@@ -15,22 +15,19 @@ struct ow_bool_obj {
 
 struct ow_bool_obj *_ow_bool_obj_new(struct ow_machine *om, bool x) {
     struct ow_bool_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->bool_, 0),
-        struct ow_bool_obj);
+        ow_objmem_allocate_ex(om, OW_OBJMEM_ALLOC_SURV, om->builtin_classes->bool_, 0),
+        struct ow_bool_obj
+    );
     obj->value = x;
     assert(ow_bool_obj_value(obj) == x);
     return obj;
 }
 
-static const struct ow_native_func_def bool_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(bool_) = {
-    .name      = "Bool",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_bool_obj),
-    .methods   = bool_methods,
-    .finalizer = NULL,
-    .gc_marker = NULL,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX_1(
+    bool_,
+    bool,
+    "Bool",
+    false,
+    NULL,
+    NULL,
+)

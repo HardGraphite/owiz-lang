@@ -37,6 +37,4 @@ struct ow_common_symbols {
 /// Create symbols.
 struct ow_common_symbols *ow_common_symbols_new(struct ow_machine *om);
 /// Destroy symbols.
-void ow_common_symbols_del(struct ow_common_symbols *cs);
-
-void _ow_common_symbols_gc_marker(struct ow_machine *om, struct ow_common_symbols *cs);
+void ow_common_symbols_del(struct ow_machine *om, struct ow_common_symbols *cs);

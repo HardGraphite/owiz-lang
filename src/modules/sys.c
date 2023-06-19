@@ -4,6 +4,7 @@
 #include <machine/machine.h>
 #include <machine/modmgr.h>
 #include <objects/object.h>
+#include <objects/objmem.h>
 
 //# path() :: Array[String]
 //# Get the module path array.
@@ -27,9 +28,17 @@ static int func_add_path(struct ow_machine *om) {
     return 1;
 }
 
+//# gc()
+//# Run garbage collection.
+static int func_gc(struct ow_machine *om) {
+    ow_objmem_gc(om, OW_OBJMEM_GC_AUTO);
+    return 0;
+}
+
 static const struct ow_native_func_def functions[] = {
     {"path", func_path, 0, 0},
     {"add_path", func_add_path, 1, 0},
+    {"gc", func_gc, 0, 0},
     {NULL, NULL, 0, 0},
 };
 

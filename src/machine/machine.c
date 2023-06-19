@@ -12,7 +12,7 @@
 #include "symbols.h"
 #include "sysparam.h"
 #include <objects/classes.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/symbolobj.h>
 #include <utilities/memalloc.h>
 
@@ -31,13 +31,13 @@ struct ow_machine *ow_machine_new(void) {
 
     om->objmem_context = ow_objmem_context_new();
     om->builtin_classes = _ow_builtin_classes_new(om);
-    om->symbol_pool = ow_symbol_pool_new();
+    om->symbol_pool = ow_symbol_pool_new(om);
     _ow_builtin_classes_setup(om, om->builtin_classes);
 
     om->module_manager = ow_module_manager_new(om);
     om->common_symbols = ow_common_symbols_new(om);
     om->globals = ow_machine_globals_new(om);
-    ow_callstack_init(&om->callstack, stack_size());
+    ow_callstack_init(om, &om->callstack, stack_size());
 
     if (ow_unlikely(ow_sysparam.verbose_memory))
         ow_objmem_context_verbose(om->objmem_context, true);
@@ -56,25 +56,13 @@ struct ow_machine *ow_machine_new(void) {
 void ow_machine_del(struct ow_machine *om) {
     assert(!ow_objmem_test_ngc(om));
 
-    // The following lines are trying to delete all objects to avoid memory leaks.
-    // But the operations are quite dangerous and are not allowed anywhere else.
-
-    ow_callstack_clear(&om->callstack);
+    ow_callstack_fini(om, &om->callstack);
+    ow_machine_globals_del(om, om->globals);
+    ow_common_symbols_del(om, om->common_symbols);
     ow_module_manager_del(om->module_manager);
-    om->module_manager = NULL;
-    ow_objmem_gc(om, 0);
-
-    _ow_builtin_classes_cleanup(om, om->builtin_classes);
-    ow_common_symbols_del(om->common_symbols);
-    ow_machine_globals_del(om->globals);
-    om->common_symbols = NULL;
-    om->globals = NULL;
-    ow_objmem_gc(om, 0);
-
-    ow_symbol_pool_del(om->symbol_pool);
-    _ow_builtin_classes_del(om, om->builtin_classes, true);
+    ow_symbol_pool_del(om, om->symbol_pool);
+    _ow_builtin_classes_del(om, om->builtin_classes);
     ow_objmem_context_del(om->objmem_context);
-    ow_callstack_fini(&om->callstack);
 
     ow_free(om);
 }
@@ -111,16 +99,4 @@ bool ow_machine_longjmp(struct ow_machine *om, struct ow_machine_jmpbuf *jb) {
     }
 
     return true;
-}
-
-void _om_machine_gc_marker(struct ow_machine *om) {
-    _ow_builtin_classes_gc_marker(om, om->builtin_classes);
-    if (ow_likely(om->module_manager))
-        _ow_module_manager_gc_marker(om, om->module_manager);
-    if (ow_likely(om->common_symbols))
-        _ow_common_symbols_gc_marker(om, om->common_symbols);
-    if (ow_likely(om->globals))
-        _ow_machine_globals_gc_marker(om, om->globals);
-    _ow_callstack_gc_marker(om, &om->callstack);
-    _ow_symbol_pool_gc_handler(om, om->symbol_pool); // Must be called at last.
 }

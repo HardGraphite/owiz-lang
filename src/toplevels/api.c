@@ -29,7 +29,7 @@
 #include <objects/funcobj.h>
 #include <objects/intobj.h>
 #include <objects/mapobj.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/moduleobj.h>
 #include <objects/setobj.h>
 #include <objects/stringobj.h>
@@ -141,8 +141,7 @@ OWIZ_API int owiz_sysctl(int name, const void *val, size_t val_sz) {
 
     case OWIZ_CTL_STACKSIZE: {
         const int64_t v = _owiz_sysctl_read_int(val, val_sz);
-        if (v == INT64_MIN)
-            return OWIZ_ERR_FAIL;
+        ow_sysparam.stack_size = (size_t)v;
         return 0;
     }
 
@@ -648,7 +647,8 @@ size_t owiz_read_tuple(owiz_machine_t *om, int index, size_t elem_idx) {
     if (elem_idx == (size_t)-1) {
         struct ow_object **const start = om->callstack.regs.sp + 1;
         om->callstack.regs.sp += len;
-        const size_t copied_cnt = ow_tuple_obj_copy(tuple_obj, 0, len, start, len);
+        const size_t copied_cnt =
+            ow_tuple_obj_copy(tuple_obj, 0, len, NULL, start, len);
         ow_unused_var(copied_cnt);
         assert(copied_cnt == len);
         return len;
@@ -894,8 +894,41 @@ OWIZ_API int owiz_store_global(owiz_machine_t *om, const char *name) {
     else
         return OWIZ_ERR_INDEX;
     struct ow_symbol_obj *const name_o = ow_symbol_obj_new(om, name, (size_t)-1);
-    ow_module_obj_set_global_y(module, name_o, *om->callstack.regs.sp--);
+    struct ow_object *const var_o = *om->callstack.regs.sp;
+    *++om->callstack.regs.sp = ow_object_from(name_o);
+    ow_module_obj_set_global_y(module, name_o, var_o);
+    om->callstack.regs.sp -= 2; // name_o, var_o
     return 0;
+}
+
+OWIZ_API int owiz_store_attribute(owiz_machine_t *om, int index, const char *name) {
+    assert(name);
+    struct ow_object *const obj = _get_local(om, index);
+    if (ow_unlikely(!obj))
+        return OWIZ_ERR_INDEX;
+    struct ow_class_obj *obj_class;
+    if (ow_unlikely(ow_smallint_check(obj)))
+        obj_class = om->builtin_classes->int_;
+    else
+        obj_class = ow_object_class(obj);
+    struct ow_symbol_obj *const name_o = ow_symbol_obj_new(om, name, (size_t)-1);
+    struct ow_object *const attr_o = *om->callstack.regs.sp;
+    *++om->callstack.regs.sp = ow_object_from(name_o);
+    int status = 0;
+    if (obj_class == om->builtin_classes->module) {
+        ow_module_obj_set_global_y(
+            ow_object_cast(obj, struct ow_module_obj), name_o, attr_o);
+    } else {
+        const size_t attr_index = ow_class_obj_find_attribute(obj_class, name_o);
+        if (ow_likely(attr_index != (size_t)-1)) {
+            ow_object_set_field(obj, attr_index, attr_o);
+        } else {
+            // TODO: Call __find_attr__() to find attribute.
+            status = OWIZ_ERR_INDEX;
+        }
+    }
+    om->callstack.regs.sp -= 2; // name_o, attr_o
+    return status;
 }
 
 OWIZ_API int owiz_drop(owiz_machine_t *om, int count) {

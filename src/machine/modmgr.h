@@ -45,5 +45,3 @@ struct ow_module_manager_locator ow_module_manager_search(
 struct ow_module_obj *ow_module_manager_load(
     struct ow_module_manager *mm, const char *name, int flags,
     struct ow_exception_obj **exc);
-
-void _ow_module_manager_gc_marker(struct ow_machine *om, struct ow_module_manager *mm);

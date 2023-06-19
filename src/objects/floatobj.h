@@ -14,5 +14,5 @@ struct ow_float_obj *ow_float_obj_new(struct ow_machine *om, double val);
 ow_static_forceinline double ow_float_obj_value(const struct ow_float_obj *self);
 
 ow_static_forceinline double ow_float_obj_value(const struct ow_float_obj *self) {
-    return *(const double *)((const unsigned char *)self + OW_OBJECT_SIZE);
+    return *(const double *)((const unsigned char *)self + OW_OBJECT_HEAD_SIZE);
 }

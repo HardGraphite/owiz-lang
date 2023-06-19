@@ -67,6 +67,7 @@ else() # GCC, Clang, ...
     add_compile_options(
         -Wall -Wextra -Wpedantic -pipe -pthread
         $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>
+        $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
         $<$<COMPILE_LANGUAGE:C>:-Werror=return-type>
     )
     add_link_options(

@@ -29,5 +29,5 @@ ow_static_forceinline struct ow_object *ow_int_obj_or_smallint(
 }
 
 ow_static_forceinline int64_t ow_int_obj_value(struct ow_int_obj *self) {
-    return *(const int64_t *)((const unsigned char *)self + OW_OBJECT_SIZE);
+    return *(const int64_t *)((const unsigned char *)self + OW_OBJECT_HEAD_SIZE);
 }

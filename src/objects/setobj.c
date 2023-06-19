@@ -3,7 +3,7 @@
 #include "classes.h"
 #include "classobj.h"
 #include "classes_util.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object.h"
 #include "object_util.h"
@@ -15,31 +15,23 @@ struct ow_set_obj {
     struct ow_hashmap data; // {object, NULL}
 };
 
-static void ow_set_obj_finalizer(struct ow_machine *om, struct ow_object *obj) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(om->builtin_classes->set, ow_object_class(obj)));
+static void ow_set_obj_finalizer(struct ow_object *obj) {
     struct ow_set_obj *const self = ow_object_cast(obj, struct ow_set_obj);
     ow_hashmap_fini(&self->data);
 }
 
-static int _ow_set_obj_gc_marker_walker(void *arg, const void *key, void *val) {
-    struct ow_machine *const om = arg;
-    ow_objmem_object_gc_marker(om, (struct ow_object *)key);
-    ow_unused_var(val);
-    assert(val == NULL);
-    return 0;
-}
-
-static void ow_set_obj_gc_marker(struct ow_machine *om, struct ow_object *obj) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(om->builtin_classes->set, ow_object_class(obj)));
-    struct ow_set_obj *const self = ow_object_cast(obj, struct ow_set_obj);
-    ow_hashmap_foreach(&self->data, _ow_set_obj_gc_marker_walker, om);
+static void ow_set_obj_gc_visitor(void *_obj, int op) {
+    struct ow_set_obj *const self = _obj;
+    ow_hashmap_foreach_1(&self->data, void *, key, void *, null, {
+        (ow_unused_var(key), ow_unused_var(null));
+        ow_objmem_visit_object(__node_p->key, op);
+        assert(null == NULL);
+    });
 }
 
 struct ow_set_obj *ow_set_obj_new(struct ow_machine *om) {
     struct ow_set_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->set, 0),
+        ow_objmem_allocate(om, om->builtin_classes->set),
         struct ow_set_obj);
     ow_hashmap_init(&obj->data, 0);
     return obj;
@@ -50,6 +42,7 @@ void ow_set_obj_insert(
 ) {
     struct ow_hashmap_funcs mf = OW_OBJECT_HASHMAP_FUNCS_INIT(om);
     ow_hashmap_set(&self->data, &mf, val, NULL);
+    ow_object_write_barrier(self, val);
 }
 
 size_t ow_set_obj_length(const struct ow_set_obj *self) {
@@ -79,15 +72,10 @@ int ow_set_obj_foreach(
         &(struct _ow_set_obj_foreach_walker_wrapper_arg){walker, arg});
 }
 
-static const struct ow_native_func_def set_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(set) = {
-    .name      = "Set",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_set_obj),
-    .methods   = set_methods,
-    .finalizer = ow_set_obj_finalizer,
-    .gc_marker = ow_set_obj_gc_marker,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    set,
+    "Set",
+    false,
+    ow_set_obj_finalizer,
+    ow_set_obj_gc_visitor,
+)

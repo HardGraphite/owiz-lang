@@ -15,12 +15,19 @@
 #include <utilities/hashmap.h>
 
 static_assert(
-    sizeof(struct ow_object) ==
-        (sizeof(struct ow_object_meta) + sizeof(struct ow_class_obj *)),
-    "bad size of struct ow_object"
+    sizeof(struct ow_object) == sizeof(struct ow_object_meta),
+    "struct ow_object"
 );
 
-static_assert(OW_OBJECT_SIZE == sizeof(struct ow_object), "OW_OBJECT_SIZE is incorrect");
+static_assert(
+    OW_OBJECT_HEAD_SIZE == sizeof(struct ow_object),
+    "OW_OBJECT_HEAD_SIZE"
+);
+
+static_assert(
+    OW_OBJECT_FIELD_SIZE == sizeof(struct ow_object *),
+    "OW_OBJECT_FIELD_SIZE"
+);
 
 static bool _ow_object_hashmap_funcs_key_equal(
     void *ctx, const void *key_new, const void *key_stored
@@ -74,15 +81,20 @@ const struct ow_hashmap_funcs _ow_object_hashmap_funcs_tmpl = {
     NULL,
 };
 
+/*
+ * Cannot use `OW_BICLS_DEF_CLASS_EX()` because the naming of `struct ow_object`
+ * is different from other object structs.
+ */
+
 static const struct ow_native_func_def object_methods[] = {
     {NULL, NULL, 0, 0},
 };
 
 OW_BICLS_CLASS_DEF_EX(object) = {
-    .name      = "Object",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_object),
-    .methods   = object_methods,
-    .finalizer = NULL,
-    .gc_marker = NULL,
-    .extended  = false,
+    .name       = "Object",
+    .data_size  = OW_OBJ_STRUCT_DATA_SIZE(struct ow_object),
+    .methods    = object_methods,
+    .finalizer  = NULL,
+    .gc_visitor = NULL,
+    .extended   = false,
 };

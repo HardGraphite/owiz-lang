@@ -9,11 +9,9 @@ struct ow_machine;
 struct ow_symbol_pool;
 
 /// Create a symbol pool.
-struct ow_symbol_pool *ow_symbol_pool_new(void);
+struct ow_symbol_pool *ow_symbol_pool_new(struct ow_machine *om);
 /// Destroy a symbol pool.
-void ow_symbol_pool_del(struct ow_symbol_pool *sp);
-/// GC handler. Must be called after other GC markers.
-void _ow_symbol_pool_gc_handler(struct ow_machine *om, struct ow_symbol_pool *sp);
+void ow_symbol_pool_del(struct ow_machine *om, struct ow_symbol_pool *sp);
 
 /// Symbol object.
 struct ow_symbol_obj;

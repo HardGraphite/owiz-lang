@@ -13,18 +13,19 @@ struct ow_tuple_obj;
 struct ow_tuple_obj *ow_tuple_obj_new(
     struct ow_machine *om, struct ow_object *elems[], size_t elem_count);
 /// Copy elements to a buffer. Return number of copied elements.
+/// `buf_obj` is the object that provides the buffer. It can be `NULL`, but
+/// the caller must place write barriers correctly.
 size_t ow_tuple_obj_copy(
     struct ow_tuple_obj *self, size_t pos, size_t len,
-    struct ow_object *buf[], size_t buf_sz);
+    struct ow_object *buf_obj, struct ow_object *buf[], size_t buf_sz);
 /// Create a sub-tuple. Param `pos` and `len` can be out of range.
 struct ow_tuple_obj *ow_tuple_obj_slice(
     struct ow_machine *om, struct ow_tuple_obj *tuple, size_t pos, size_t len);
 /// Concatenate two tuples.
 struct ow_tuple_obj *ow_tuple_obj_concat(
     struct ow_machine *om, struct ow_tuple_obj *tuple1, struct ow_tuple_obj *tuple2);
-/// Flatten a string object and get its elements. Param `size` can be NULL.
-struct ow_object **ow_tuple_obj_flatten(
-    struct ow_machine *om, struct ow_tuple_obj *self, size_t *size);
+/// Flatten a tuple. Param `size` can be NULL.
+void ow_tuple_obj_flatten(struct ow_machine *om, struct ow_tuple_obj *self, size_t *size);
 /// Get number of elements.
 size_t ow_tuple_obj_length(const struct ow_tuple_obj *self);
 /// Get element by 0-based index. Return NULL if the index is out of range.

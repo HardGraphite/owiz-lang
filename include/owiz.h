@@ -97,7 +97,7 @@ typedef struct owiz_native_class_def {
     const char                   *name;      ///< Class name. Optional.
     size_t                        data_size; ///< Object data area size (number of bytes).
     const owiz_native_func_def_t *methods;   ///< Object methods. A NULL-terminated array.
-    void (*finalizer)(owiz_machine_t *, void *); ///< Object finalizer. Optional.
+    void (*finalizer)(void *);               ///< Object finalizer. Optional.
 } owiz_native_class_def_t;
 
 /**
@@ -106,7 +106,7 @@ typedef struct owiz_native_class_def {
 typedef struct owiz_native_module_def {
     const char                   *name;      ///< Module name. Optional.
     const owiz_native_func_def_t *functions; ///< Functions in module. A NULL-terminated array.
-    owiz_native_func_t            finalizer; ///< Module finalizer. Optional.
+    void (*finalizer)(void);                 ///< Module finalizer. Optional.
 } owiz_native_module_def_t;
 
 /**
@@ -576,6 +576,17 @@ OWIZ_API int owiz_store_local(owiz_machine_t *om, int index) OWIZ_NOEXCEPT;
  * @return Returns `0`.
  */
 OWIZ_API int owiz_store_global(owiz_machine_t *om, const char *name) OWIZ_NOEXCEPT;
+
+/**
+ * @brief Pop object and assign as an attribute or a module variable.
+ *
+ * @param om the instance
+ * @param index index of local variable to store to, like param `index` in
+ * `owiz_load_local()`, or `0` to represent the top object on stack
+ * @param name name of the attribute to store to
+ * @return On success, returns `0`. If `index` is out of range, return `OWIZ_ERR_INDEX`.
+ */
+OWIZ_API int owiz_store_attribute(owiz_machine_t *om, int index, const char *name) OWIZ_NOEXCEPT;
 
 /**
  * @brief Pop objects on stack.

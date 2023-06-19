@@ -16,6 +16,4 @@ struct ow_machine_globals {
 /// Create globals. The modules shall be initialized by the caller.
 struct ow_machine_globals *ow_machine_globals_new(struct ow_machine *om);
 /// Destroy globals.
-void ow_machine_globals_del(struct ow_machine_globals *mg);
-
-void _ow_machine_globals_gc_marker(struct ow_machine *om, struct ow_machine_globals *mg);
+void ow_machine_globals_del(struct ow_machine *om, struct ow_machine_globals *mg);

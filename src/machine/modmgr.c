@@ -11,7 +11,7 @@
 #include <objects/arrayobj.h>
 #include <objects/classes.h>
 #include <objects/exceptionobj.h>
-#include <objects/memory.h>
+#include <objects/objmem.h>
 #include <objects/moduleobj.h>
 #include <objects/stringobj.h>
 #include <utilities/array.h>
@@ -33,6 +33,18 @@ struct ow_module_manager {
     struct ow_module_obj *temp_module; // Nullable.
     struct ow_machine *machine;
 };
+
+static void ow_module_manager_gc_visitor(void *_ptr, int op) {
+    struct ow_module_manager *const mm = _ptr;
+    ow_hashmap_foreach_1(&mm->modules, void *, name_str, void *, mod, {
+        (ow_unused_var(name_str), ow_unused_var(mod));
+        ow_objmem_visit_object(__node_p->value, op);
+    });
+    if (mm->path_array)
+        ow_objmem_visit_object(mm->path_array, op);
+    if (mm->temp_module)
+        ow_objmem_visit_object(mm->temp_module, op);
+}
 
 static void _add_default_paths(struct ow_module_manager *mm) {
     if (ow_sysparam.default_paths) {
@@ -73,6 +85,7 @@ struct ow_module_manager *ow_module_manager_new(struct ow_machine *om) {
     mm->temp_module = NULL;
     mm->path_array = ow_array_obj_new(om, NULL, 0);
     mm->machine = om;
+    ow_objmem_add_gc_root(om, mm, ow_module_manager_gc_visitor);
     _add_default_paths(mm);
     return mm;
 }
@@ -85,6 +98,7 @@ static int mm_del_walker(void *ctx, const void *key, void *val) {
 }
 
 void ow_module_manager_del(struct ow_module_manager *mm) {
+    ow_objmem_remove_gc_root(mm->machine, mm);
     ow_hashmap_foreach(&mm->modules, mm_del_walker, NULL);
     ow_hashmap_fini(&mm->modules);
     ow_free(mm);
@@ -389,23 +403,4 @@ struct ow_module_obj *ow_module_manager_load(
     struct ow_module_obj *const module = mm->temp_module;
     mm->temp_module = NULL;
     return module;
-}
-
-static int mm_gc_marker_walker(void *ctx, const void *key, void *val) {
-    ow_unused_var(key);
-    struct ow_machine *const machine = ctx;
-    struct ow_module_obj *const module = val;
-    ow_objmem_object_gc_marker(machine, ow_object_from(module));
-    return 0;
-}
-
-void _ow_module_manager_gc_marker(
-    struct ow_machine *om, struct ow_module_manager *mm
-) {
-    assert(om == mm->machine);
-    ow_hashmap_foreach(&mm->modules, mm_gc_marker_walker, mm->machine);
-    if (mm->path_array)
-        ow_objmem_object_gc_marker(om, ow_object_from(mm->path_array));
-    if (mm->temp_module)
-        ow_objmem_object_gc_marker(om, ow_object_from(mm->temp_module));
 }

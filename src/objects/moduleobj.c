@@ -4,7 +4,7 @@
 #include "classes.h"
 #include "classobj.h"
 #include "classes_util.h"
-#include "memory.h"
+#include "objmem.h"
 #include "natives.h"
 #include "object_util.h"
 #include "symbolobj.h"
@@ -53,7 +53,7 @@ struct ow_module_obj {
     struct ow_hashmap globals_map; // { name, index + 1 }
     struct ow_array globals;
     struct ow_symbol_obj *name; // Optional.
-    int (*finalizer)(struct ow_machine *);
+    void (*finalizer)(void); // Optional.
     struct module_dynlib_list dynlib_list;
 };
 
@@ -71,41 +71,33 @@ static void ow_module_obj_fini(struct ow_module_obj *self) {
     module_dynlib_list_fini(&self->dynlib_list);
 }
 
-static void ow_module_obj_finalizer(struct ow_machine *om, struct ow_object *obj) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(om->builtin_classes->module, ow_object_class(obj)));
+static void ow_module_obj_finalizer(struct ow_object *obj) {
     struct ow_module_obj *const self = ow_object_cast(obj, struct ow_module_obj);
-    if (self->finalizer) {
-        ow_machine_call_native(
-            om, self, self->finalizer, 0, NULL, &(struct ow_object *){NULL});
-    }
+    if (self->finalizer)
+        self->finalizer();
     ow_module_obj_fini(self);
 }
 
-static int _globals_map_gc_walker(void *ctx, const void *key, void *val) {
-    struct ow_machine *const om = ctx;
-    struct ow_object *const key_obj = (struct ow_object *)key;
-    ow_unused_var(val);
-    ow_objmem_object_gc_marker(om, key_obj);
-    return 0;
-}
-
-static void ow_module_obj_gc_marker(struct ow_machine *om, struct ow_object *obj) {
-    ow_unused_var(om);
-    assert(ow_class_obj_is_base(om->builtin_classes->module, ow_object_class(obj)));
-    struct ow_module_obj *const self = ow_object_cast(obj, struct ow_module_obj);
-
-    ow_hashmap_foreach(&self->globals_map, _globals_map_gc_walker, om);
+static void ow_module_obj_gc_visitor(void *_obj, int op) {
+    struct ow_module_obj *const self = _obj;
+    ow_hashmap_foreach_1(&self->globals_map, void *, name, void *, index, {
+        (ow_unused_var(name), ow_unused_var(index));
+        ow_objmem_visit_object(__node_p->key, op);
+    });
     for (size_t i = 0, n = ow_array_size(&self->globals); i < n; i++)
-        ow_objmem_object_gc_marker(om, ow_array_at(&self->globals, i));
+        ow_objmem_visit_object(ow_array_at(&self->globals, i), op);
     if (ow_likely(self->name))
-        ow_objmem_object_gc_marker(om, ow_object_from(self->name));
+        ow_objmem_visit_object(self->name, op);
 }
 
 struct ow_module_obj *ow_module_obj_new(struct ow_machine *om) {
     struct ow_module_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->module, 0),
-        struct ow_module_obj);
+        ow_objmem_allocate_ex(
+            om, OW_OBJMEM_ALLOC_SURV,
+            om->builtin_classes->module, 0
+        ),
+        struct ow_module_obj
+    );
     ow_module_obj_init(obj);
     return obj;
 }
@@ -132,6 +124,8 @@ void ow_module_obj_load_native_def(
         struct ow_symbol_obj *const name_obj =
             ow_symbol_obj_new(om, func_def.name, (size_t)-1);
         ow_module_obj_set_global_y(self, name_obj, ow_object_from(func_obj));
+        ow_object_assert_no_write_barrier_2(self, ow_object_from(name_obj));
+        ow_object_assert_no_write_barrier_2(self, ow_object_from(func_obj));
     }
 
     ow_objmem_pop_ngc(om);
@@ -174,6 +168,7 @@ bool ow_module_obj_set_global(
     if (ow_unlikely(index >= ow_array_size(&self->globals)))
         return false;
     ow_array_at(&self->globals, index) = value;
+    ow_object_write_barrier(self, value);
     return true;
 }
 
@@ -187,10 +182,13 @@ size_t ow_module_obj_set_global_y(
         ow_array_append(&self->globals, value);
         ow_hashmap_set(
             &self->globals_map, &ow_symbol_obj_hashmap_funcs,
-            name, (void *)(index + 1));
+            name, (void *)(index + 1)
+        );
+        ow_object_assert_no_write_barrier_2(self, ow_object_from(name));
     } else {
         ow_array_at(&self->globals, index) = value;
     }
+    ow_object_write_barrier(self, value);
     return index;
 }
 
@@ -231,15 +229,10 @@ void ow_module_obj_keep_dynlib(struct ow_module_obj *self, void *lib_handle) {
     module_dynlib_list_add(&self->dynlib_list, lib_handle);
 }
 
-static const struct ow_native_func_def module_methods[] = {
-    {NULL, NULL, 0, 0},
-};
-
-OW_BICLS_CLASS_DEF_EX(module) = {
-    .name      = "Module",
-    .data_size = OW_OBJ_STRUCT_DATA_SIZE(struct ow_module_obj),
-    .methods   = module_methods,
-    .finalizer = ow_module_obj_finalizer,
-    .gc_marker = ow_module_obj_gc_marker,
-    .extended  = false,
-};
+OW_BICLS_DEF_CLASS_EX(
+    module,
+    "Module",
+    false,
+    ow_module_obj_finalizer,
+    ow_module_obj_gc_visitor,
+)

@@ -22,8 +22,11 @@ foreach(file IN LISTS ow_test_c_files)
     set(tgt_name "ow_test_${out_name}")
     add_executable(${tgt_name} ${file})
     set_target_properties(${tgt_name} PROPERTIES OUTPUT_NAME ${out_name})
-    target_include_directories(${tgt_name} PRIVATE "${CMAKE_SOURCE_DIR}/include")
     target_link_libraries(${tgt_name} PRIVATE ${ow_test_lib})
+    target_include_directories(
+        ${tgt_name} PRIVATE
+        "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include"
+    )
     add_test(
         NAME ${out_name}
         COMMAND ${out_name}

@@ -5,17 +5,6 @@
 #include <utilities/attributes.h>
 #include <utilities/memalloc.h>
 
-struct _ow_hashmap_node {
-    struct _ow_hashmap_node *next_node; // nullable
-    ow_hash_t key_hash;
-    void  *key;
-    void  *value;
-};
-
-struct _ow_hashmap_bucket {
-    struct _ow_hashmap_node *nodes; // nullable
-};
-
 static_assert(offsetof(struct _ow_hashmap_node, next_node)
     == offsetof(struct _ow_hashmap_bucket, nodes), "");
 
@@ -107,9 +96,11 @@ bool ow_hashmap_remove(
         if (next_node_p == NULL)
             return false;
         if (next_node_p->key_hash == hash &&
-                mf->key_equal(mf->context, key, next_node_p->key)) {
+            mf->key_equal(mf->context, key, next_node_p->key)
+        ) {
             node_p->next_node = next_node_p->next_node;
             ow_free(next_node_p);
+            map->_size--;
             return true;
         }
         node_p = next_node_p;
