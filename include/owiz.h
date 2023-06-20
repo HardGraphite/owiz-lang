@@ -13,8 +13,10 @@
 #if defined(_WIN32) || defined(__CYGWIN__)
 #    if OWIZ_EXPORT_API
 #        define OWIZ_API __declspec(dllexport)
-#    else
+#    elif OWIZ_IMPORT_API
 #        define OWIZ_API __declspec(dllimport)
+#    else
+#        define OWIZ_API
 #    endif
 #elif (__GNUC__ + 0 >= 4) || defined(__clang__)
 #    if OWIZ_EXPORT_API

@@ -59,6 +59,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC") # MSVC
         /W4 /utf-8 /Zc:__cplusplus,inline,preprocessor
         $<$<COMPILE_LANGUAGE:C>:/wd4200> # warning C4200: nonstandard extension used : zero-sized array in struct/union
         /wd4706 # warning C4706: assignment within conditional expression
+        /wd4146 # warning C4146: unary minus operator applied to unsigned type, result still unsigned
         /FI sal.h
         #/analyze
     )

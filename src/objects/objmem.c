@@ -747,11 +747,12 @@ ow_forceinline static void old_space_chunk_remembered_set_record(
             const size_t offset_base =                                    \
                 i * OLD_SPACE_CHUNK_REMEMBERED_SET_BUCKET_BITS * sizeof(void *); \
             ow_bitset_foreach_set(                                        \
-                bucket, OLD_SPACE_CHUNK_REMEMBERED_SET_BUCKET_SIZE, bit_index, { \
-                    const size_t OFFSET_VAR =                             \
-                        offset_base | bit_index * sizeof(void *);         \
-                    { STMT }                                              \
-                });                                                       \
+                bucket, OLD_SPACE_CHUNK_REMEMBERED_SET_BUCKET_SIZE, bit_index,   \
+            {                                                             \
+                const size_t OFFSET_VAR =                                 \
+                    offset_base | bit_index * sizeof(void *);             \
+                { STMT }                                                  \
+            });                                                           \
         }                                                                 \
     } while (0)                                                           \
 // ^^^ old_space_chunk_remembered_set_foreach() ^^^

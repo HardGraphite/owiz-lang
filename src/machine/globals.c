@@ -12,8 +12,8 @@
 
 static void ow_machine_globals_gc_visitor(void *_ptr, int op) {
     struct ow_machine_globals *const mg = _ptr;
-    for (size_t i = 0; i < sizeof *mg / sizeof(struct ow_symbol_obj *); i++)
-        ow_objmem_visit_object(((struct ow_symbol_obj **)mg)[i], op);
+    for (size_t i = 0; i < sizeof *mg / sizeof(struct ow_object*); i++)
+        ow_objmem_visit_object(((struct ow_object**)mg)[i], op);
 }
 
 struct ow_machine_globals *ow_machine_globals_new(struct ow_machine *om) {
