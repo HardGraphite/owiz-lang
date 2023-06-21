@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #ifndef _MSC_VER
@@ -17,10 +18,66 @@
 #    include <compat/msvc_stdatomic.h>
 #endif
 
+#include <utilities/pragmas.h>
+#include <utilities/strings.h>
+
 #include <config/definitions.h>
 
 FILE *_ow_debuglog_stream = NULL;
 volatile int _ow_debuglog_level = INT_MAX;
+
+static const char *const debuglog_level_name[(size_t)_OW_DEBUGLOG_COUNT] = {
+    [(size_t)OW_DEBUGLOG_CRIT] = "CRITICAL",
+    [(size_t)OW_DEBUGLOG_ERR ] = "ERROR",
+    [(size_t)OW_DEBUGLOG_WARN] = "WARNING",
+    [(size_t)OW_DEBUGLOG_INFO] = "INFO",
+    [(size_t)OW_DEBUGLOG_DBG ] = "DEBUG",
+};
+
+static void debuglog_load_config(int *level, const char **file) {
+#if 1
+    ow_pragma_message(
+        "Debug logging is enabled. "
+        "Set environment variable `" OW_DEBUG_LOGGING_ENVNAME "=[LEVEL][:FILE]' "
+        "to control the logging level and output file. "
+        "`LEVEL' is a number or a prefix of level name; leave it empty to disable. "
+        "`FILE' is the path to a writable file; leave it empty for stderr. "
+        "The default value is `" OW_DEBUG_LOGGING_DEFAULT "'."
+    )
+#endif
+
+    *level = -1;
+    *file = NULL;
+
+    const char *conf_str = getenv(OW_DEBUG_LOGGING_ENVNAME);
+    if (!conf_str)
+        conf_str = OW_DEBUG_LOGGING_DEFAULT;
+
+    const char *colon_pos = strchr(conf_str, ':');
+    if (colon_pos && colon_pos[1])
+        *file = colon_pos + 1;
+    else
+        colon_pos = conf_str + strlen(conf_str);
+
+    const long level_num = strtol(conf_str, NULL, 10);
+    if (level_num || conf_str[0] == '0') {
+        *level = (int)level_num;
+    } else {
+        char level_str[16];
+        size_t level_str_len = (size_t)(colon_pos - conf_str);
+        if (level_str_len >= sizeof level_str)
+            level_str_len = sizeof level_str - 1;
+        memcpy(level_str, conf_str, level_str_len);
+        level_str[level_str_len] = 0;
+        ow_str_to_upper(level_str, level_str_len);
+        for (int i = 0; i < (int)_OW_DEBUGLOG_COUNT; i++) {
+            if (ow_str_starts_with(debuglog_level_name[i], level_str)) {
+                *level = i;
+                break;
+            }
+        }
+    }
+}
 
 static void _debuglog_fini(void) {
     if (!_ow_debuglog_stream)
@@ -38,22 +95,20 @@ static void _debuglog_init(void) {
     while (!atomic_compare_exchange_strong(&debuglog_initializing, &lock_state, 1))
         lock_state = 0;
 
-    assert(!_ow_debuglog_stream);
-#ifdef OW_DEBUG_LOGGING_FILE
-    _ow_debuglog_stream = fopen(OW_DEBUG_LOGGING_FILE, "w");
-    if (!_ow_debuglog_stream)
-        _ow_debuglog_stream = stderr;
-#else // !OW_DEBUG_LOGGING_FILE
-    _ow_debuglog_stream = stderr;
-#endif // OW_DEBUG_LOGGING_FILE
+    int conf_level;
+    const char *conf_file;
+    debuglog_load_config(&conf_level, &conf_file);
 
-#ifdef OW_DEBUG_LOGGING_ENVNAME
-    const char *const default_level = getenv(OW_DEBUG_LOGGING_ENVNAME);
-    if (default_level)
-        _ow_debuglog_level = atoi(default_level);
-    else
-#endif // OW_DEBUG_LOGGING_ENVNAME
-    _ow_debuglog_level = 0;
+    _ow_debuglog_level = conf_level;
+
+    assert(!_ow_debuglog_stream);
+    if (conf_file) {
+        _ow_debuglog_stream = fopen(conf_file, "w");
+        if (!_ow_debuglog_stream)
+            _ow_debuglog_stream = stderr;
+    } else {
+        _ow_debuglog_stream = stderr;
+    }
 
     at_quick_exit(_debuglog_fini);
 
@@ -62,14 +117,6 @@ static void _debuglog_init(void) {
 
 #define debuglog_try_init() \
     (!_ow_debuglog_stream ? _debuglog_init() : (void)0)
-
-static const char *const debuglog_level_name[(size_t)_OW_DEBUGLOG_COUNT] = {
-    [(size_t)OW_DEBUGLOG_CRIT] = "CRITICAL",
-    [(size_t)OW_DEBUGLOG_ERR ] = "ERROR",
-    [(size_t)OW_DEBUGLOG_WARN] = "WARNING",
-    [(size_t)OW_DEBUGLOG_INFO] = "INFO",
-    [(size_t)OW_DEBUGLOG_DBG ] = "DEBUG",
-};
 
 ow_printf_fn_attrs(3, 4) void _ow_debuglog_print(
     const char *where, int level, ow_printf_fn_arg_fmtstr const char *fmt, ...

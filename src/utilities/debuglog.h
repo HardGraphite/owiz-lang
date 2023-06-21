@@ -48,5 +48,6 @@ _ow_debuglog_print(const char *, int, ow_printf_fn_arg_fmtstr const char *, ...)
 
 #define ow_debuglog_print(...)  ((void)0)
 #define ow_debuglog_stream()    ((void *)0)
+#define ow_debuglog_when(...)   ((void)0)
 
 #endif // OW_DEBUG_LOGGING

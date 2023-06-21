@@ -1,6 +1,7 @@
 #include "strings.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <string.h>
 
 #ifdef _MSC_VER
@@ -16,6 +17,41 @@ ow_nodiscard char *ow_strdup(const char *s) {
     const size_t n = strlen(s) + 1;
     char *const new_s = ow_malloc(n);
     return memcpy(new_s, s, n);
+}
+
+size_t ow_str_to_upper(char str[], size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        const char c = str[i];
+        if (!c)
+            return i;
+        str[i] = (char)toupper(c);
+    }
+    return n;
+}
+
+size_t ow_str_to_lower(char str[], size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        const char c = str[i];
+        if (!c)
+            return i;
+        str[i] = (char)tolower(c);
+    }
+    return n;
+}
+
+bool ow_str_starts_with(const char *str, const char *prefix) {
+    if (str[0] != prefix[0])
+        return false;
+    const size_t prefix_len = strlen(prefix);
+    return strncmp(str, prefix, prefix_len) == 0;
+}
+
+bool ow_str_ends_with(const char *str, const char *suffix) {
+    const size_t str_len = strlen(str);
+    const size_t suffix_len = strlen(suffix);
+    if (str_len < suffix_len)
+        return false;
+    return memcmp(str + (suffix_len - str_len), suffix, suffix_len) == 0;
 }
 
 struct ow_sharedstr {

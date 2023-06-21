@@ -31,18 +31,16 @@ set(OW_BUILD_COMPILER_VERSION      "${CMAKE_C_COMPILER_VERSION}")
 ##### Debug logging. #####
 
 if(OW_DEBUG_LOGGING)
-    if(NOT DEFINED OW_DEBUG_LOGGING_FILE)
-        set(OW_DEBUG_LOGGING_FILE "")
-    endif()
-
     if(NOT DEFINED OW_DEBUG_LOGGING_ENVNAME)
         string(TOUPPER "${OW_BUILD_OUTPUT_NAME}_DEBUGLOG" OW_DEBUG_LOGGING_ENVNAME)
+        set(OW_DEBUG_LOGGING_ENVNAME "${OW_DEBUG_LOGGING_ENVNAME}" CACHE
+            STRING "Environment variable name for controlling debug logging.")
     endif()
 
-    set(OW_DEBUG_LOGGING_FILE "${OW_DEBUG_LOGGING_FILE}" CACHE
-        STRING "Output file for debug logging. Leave it empty to used stderr.")
-    set(OW_DEBUG_LOGGING_ENVNAME "${OW_DEBUG_LOGGING_ENVNAME}" CACHE
-        STRING "Environment variable name for controlling debug logging level.")
+    if(NOT DEFINED OW_DEBUG_LOGGING_DEFAULT)
+        set(OW_DEBUG_LOGGING_DEFAULT "" CACHE
+            STRING "The default value for debug logging controlling. Leave it empty to disable.")
+    endif()
 endif()
 
 ##### Module lists. #####
@@ -50,26 +48,24 @@ endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_conf.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_util.cmake")
 
-if(NOT DEFINED OW_EMBEDDED_MODULES)
+if(NOT DEFINED OW_EMBEDDED_MODULES OR NOT DEFINED OW_DYNAMIC_MODULES)
     set(OW_EMBEDDED_MODULES "*;-%")
-endif()
-if(NOT DEFINED OW_DYNAMIC_MODULES)
     set(OW_DYNAMIC_MODULES "%")
-endif()
 
-set(mod_list_common_suffix)
-if(NOT LibReadline_FOUND)
-    list(APPEND mod_list_common_suffix "-readline")
-endif()
-foreach(mod_list IN ITEMS OW_EMBEDDED_MODULES OW_DYNAMIC_MODULES)
-    list(APPEND ${mod_list} ${mod_list_common_suffix})
-endforeach()
-unset(mod_list_common_suffix)
+    set(mod_list_common_suffix)
+    if(NOT LibReadline_FOUND)
+        list(APPEND mod_list_common_suffix "-readline")
+    endif()
+    foreach(mod_list IN ITEMS OW_EMBEDDED_MODULES OW_DYNAMIC_MODULES)
+        list(APPEND ${mod_list} ${mod_list_common_suffix})
+    endforeach()
+    unset(mod_list_common_suffix)
 
-set(OW_EMBEDDED_MODULES ${OW_EMBEDDED_MODULES} CACHE
-    STRING "List of embedded modules. ${ow_mod_util_conf_list_doc}")
-set(OW_DYNAMIC_MODULES ${OW_DYNAMIC_MODULES} CACHE
-    STRING "List of dynamic modules. ${ow_mod_util_conf_list_doc}")
+    set(OW_EMBEDDED_MODULES ${OW_EMBEDDED_MODULES} CACHE
+        STRING "List of embedded modules. ${ow_mod_util_conf_list_doc}")
+    set(OW_DYNAMIC_MODULES ${OW_DYNAMIC_MODULES} CACHE
+        STRING "List of dynamic modules. ${ow_mod_util_conf_list_doc}")
+endif()
 
 ###################################
 ##### Source code generations #####
@@ -84,8 +80,8 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
 #define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
 #define  OW_BUILD_COMPILER_NAME     "@OW_BUILD_COMPILER_NAME@"
 #define  OW_BUILD_COMPILER_VERSION  "@OW_BUILD_COMPILER_VERSION@"
-#cmakedefine  OW_DEBUG_LOGGING_FILE      "@OW_DEBUG_LOGGING_FILE@"
-#cmakedefine  OW_DEBUG_LOGGING_ENVNAME   "@OW_DEBUG_LOGGING_ENVNAME@"
+#define  OW_DEBUG_LOGGING_ENVNAME   "@OW_DEBUG_LOGGING_ENVNAME@"
+#define  OW_DEBUG_LOGGING_DEFAULT   "@OW_DEBUG_LOGGING_DEFAULT@"
 ]==])
 
 ##### Generate config header: "options.h". #####

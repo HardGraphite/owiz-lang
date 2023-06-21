@@ -19,6 +19,7 @@
 #include <config/options.h>
 
 #if OW_DEBUG_MEMORY
+#    include <stdio.h>
 #    include <time.h>
 #endif // OW_DEBUG_MEMORY
 
@@ -1888,6 +1889,7 @@ int ow_objmem_gc(struct ow_machine *om, enum ow_objmem_gc_type type) {
     double dt_ms =
         (double)(ts1.tv_sec - ts0.tv_sec) * 1e3 +
         (double)(ts1.tv_nsec - ts0.tv_nsec) / 1e6;
+    ow_unused_var(dt_ms);
 
     ow_debuglog_print("ObjMem", INFO, "GC ends, %.1lf ms", dt_ms);
 
