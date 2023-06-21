@@ -9,16 +9,13 @@
 #include "token.h"
 #include <utilities/array.h>
 #include <utilities/attributes.h>
+#include <utilities/debuglog.h>
 #include <utilities/memalloc.h>
 #include <utilities/stream.h>
 #include <utilities/strings.h>
 #include <utilities/unreachable.h>
 
 #include <config/options.h>
-
-#if OW_DEBUG_PARSER
-#    include <stdio.h>
-#endif // OW_DEBUG_PARSER
 
 /// Max number of tokens in `struct token_queue`.
 #define TOKEN_QUEUE_CAP 2
@@ -325,9 +322,6 @@ struct ow_parser {
     struct expr_parser_list free_expr_parsers, inuse_expr_parsers;
     jmp_buf error_jmpbuf;
     struct ow_syntax_error error_info;
-#if OW_DEBUG_PARSER
-    bool verbose;
-#endif // OW_DEBUG_PARSER
 };
 
 /// A wrapper of `setjmp()`.
@@ -421,9 +415,6 @@ ow_nodiscard struct ow_parser *ow_parser_new(void) {
     expr_parser_list_init(&parser->free_expr_parsers);
     expr_parser_list_init(&parser->inuse_expr_parsers);
     ow_syntax_error_init(&parser->error_info);
-#if OW_DEBUG_PARSER
-    parser->verbose = false;
-#endif // OW_DEBUG_PARSER
     return parser;
 }
 
@@ -440,14 +431,6 @@ void ow_parser_del(struct ow_parser *parser) {
 
 struct ow_lexer *ow_parser_lexer(struct ow_parser *parser) {
     return parser->lexer;
-}
-
-void ow_parser_verbose(struct ow_parser *parser, bool status) {
-    ow_unused_var(parser);
-    ow_unused_var(status);
-#if OW_DEBUG_PARSER
-    parser->verbose = status;
-#endif // OW_DEBUG_PARSER
 }
 
 void ow_parser_clear(struct ow_parser *parser) {
@@ -1570,16 +1553,6 @@ static struct ow_ast_Module *ow_parser_parse_impl(struct ow_parser *parser) {
     return module;
 }
 
-#if OW_DEBUG_PARSER
-
-ow_noinline static void ow_parser_dump_ast(const struct ow_ast *ast) {
-    fputs("[AST] vvv\n", stderr);
-    ow_ast_dump(ast, ow_stream_stderr());
-    fputs("[AST] ^^^\n", stderr);
-}
-
-#endif // OW_DEBUG_PARSER
-
 bool ow_parser_parse(struct ow_parser *parser,
     struct ow_stream *stream, struct ow_sharedstr *file_name, int flags,
     struct ow_ast *ast
@@ -1596,8 +1569,11 @@ bool ow_parser_parse(struct ow_parser *parser,
         ow_ast_set_module(ast, mod);
         ow_ast_set_filename(ast, file_name);
 #if OW_DEBUG_PARSER
-        if (ow_unlikely(parser->verbose))
-            ow_parser_dump_ast(ast);
+        ow_debuglog_when(DBG, {
+            ow_debuglog_print("Parser", DBG, "AST vvv");
+            ow_ast_dump(ast, ow_stream_stderr()); // FIXME: cannot print to `ow_debuglog_stream()`.
+            ow_debuglog_print("Parser", DBG, "AST ^^^");
+        });
 #endif // OW_DEBUG_PARSER
         return true;
     } else {

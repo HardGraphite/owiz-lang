@@ -135,7 +135,6 @@ typedef union owiz_sysconf_result {
  */
 OWIZ_API union owiz_sysconf_result owiz_sysconf(int name) OWIZ_NOEXCEPT;
 
-#define OWIZ_CTL_VERBOSE        0 ///< Enable verbose output. Value: `"[!]NAME"`.
 #define OWIZ_CTL_STACKSIZE      1 ///< Set stack size (number of objects). Value: pointer to integer.
 #define OWIZ_CTL_DEFAULTPATH    2 ///< Default module paths. Value: `"path_1\0path_2\0...path_n\0"`.
 

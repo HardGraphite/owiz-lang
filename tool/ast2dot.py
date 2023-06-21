@@ -59,16 +59,17 @@ class AstDataStreamFilter:
     def read(self, length: int = -1) -> str:
         if self.state == 0:
             while True:
-                if self.input_stream.readline().startswith('[AST] vvv'):
+                if self.input_stream.readline().endswith('AST vvv'):
                     self.state = 1
                     return self.read(length)
         elif self.state == 1:
             res = self.input_stream.read(length)
-            pos = res.find('[AST] ^^^')
+            pos = res.find('AST ^^^')
             if pos == -1:
                 return res
             self.state = 2
-            return res[:pos]
+            pos1 = res.find('\n', max(pos - 80, 0), pos)
+            return res[:pos if pos1 == -1 else pos1]
         else:
             return ''
 

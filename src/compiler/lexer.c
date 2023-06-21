@@ -12,6 +12,7 @@
 #include "location.h"
 #include "token.h"
 #include <utilities/attributes.h>
+#include <utilities/debuglog.h>
 #include <utilities/hash.h>
 #include <utilities/hashmap.h>
 #include <utilities/memalloc.h>
@@ -108,9 +109,6 @@ struct ow_lexer {
     jmp_buf error_jmpbuf;
     struct ow_syntax_error error_info;
     bool stream_end;
-#if OW_DEBUG_LEXER
-    bool verbose;
-#endif // OW_DEBUG_LEXER
 };
 
 /// A wrapper of `setjmp()`.
@@ -198,9 +196,6 @@ ow_nodiscard struct ow_lexer *ow_lexer_new(void) {
     ow_syntax_error_init(&lexer->error_info);
     lexer->stream_end = true;
     ow_dynamicstr_init(&lexer->string_buffer, 63);
-#if OW_DEBUG_LEXER
-    lexer->verbose = false;
-#endif // OW_DEBUG_LEXER
 
     ow_lexer_keywords_map_prepare();
 
@@ -212,14 +207,6 @@ void ow_lexer_del(struct ow_lexer *lexer) {
     ow_syntax_error_fini(&lexer->error_info);
     ow_dynamicstr_fini(&lexer->string_buffer);
     ow_free(lexer);
-}
-
-void ow_lexer_verbose(struct ow_lexer *lexer, bool status) {
-    ow_unused_var(lexer);
-    ow_unused_var(status);
-#if OW_DEBUG_LEXER
-    lexer->verbose = status;
-#endif // OW_DEBUG_LEXER
 }
 
 void ow_lexer_source(struct ow_lexer *lexer,
@@ -938,25 +925,20 @@ set_loc_and_return:
     result->location.end.column--;
 }
 
-#if OW_DEBUG_LEXER
-
-ow_noinline static void ow_lexer_dump_tok(const struct ow_token *tok) {
-    char tok_rep_buf[128];
-    const char *const tok_rep =
-        ow_token_represent(tok, tok_rep_buf, sizeof tok_rep_buf);
-    fprintf(stderr, "[Token] (%u:%u-%u:%u) %s\n",
-        tok->location.begin.line, tok->location.begin.column,
-        tok->location.end.line, tok->location.end.column, tok_rep);
-}
-
-#endif // OW_DEBUG_LEXER
-
 bool ow_lexer_next(struct ow_lexer *lexer, struct ow_token *result) {
     if (!ow_lexer_error_setjmp(lexer)) {
         ow_lexer_next_impl(lexer, result);
 #if OW_DEBUG_LEXER
-        if (ow_unlikely(lexer->verbose))
-            ow_lexer_dump_tok(result);
+        ow_debuglog_when(DBG, {
+            char tok_rep_buf[128];
+            const char *const tok_rep =
+                ow_token_represent(result, tok_rep_buf, sizeof tok_rep_buf);
+            ow_debuglog_print(
+                "Lexer", DBG, "Token (%u:%u-%u:%u) %s",
+                result->location.begin.line, result->location.begin.column,
+                result->location.end.line, result->location.end.column, tok_rep
+            );
+        });
 #endif // OW_DEBUG_LEXER
         return true;
     } else {

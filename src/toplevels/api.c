@@ -109,36 +109,6 @@ ow_noinline static int64_t _owiz_sysctl_read_int(const void *val, size_t val_sz)
 
 OWIZ_API int owiz_sysctl(int name, const void *val, size_t val_sz) {
     switch (name) {
-    case OWIZ_CTL_VERBOSE: {
-        if (val_sz == (size_t)-1)
-            val_sz = strlen(val);
-        bool x;
-        char w;
-        if (*(const char *)val == '!') {
-            if (val_sz != 2)
-                return OWIZ_ERR_FAIL;
-            x = false;
-            w = ((const char *)val)[1];
-        } else {
-            if (val_sz != 1)
-                return OWIZ_ERR_FAIL;
-            x = true;
-            w = *(const char *)val;
-        }
-        w = (char)toupper(w);
-        if (w == 'M')
-            ow_sysparam.verbose_memory = x;
-        else if (w == 'L')
-            ow_sysparam.verbose_lexer = x;
-        else if (w == 'P')
-            ow_sysparam.verbose_parser = x;
-        else if (w == 'C')
-            ow_sysparam.verbose_codegen = x;
-        else
-            return OWIZ_ERR_FAIL;
-        return 0;
-    }
-
     case OWIZ_CTL_STACKSIZE: {
         const int64_t v = _owiz_sysctl_read_int(val, val_sz);
         ow_sysparam.stack_size = (size_t)v;

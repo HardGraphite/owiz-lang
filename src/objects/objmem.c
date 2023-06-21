@@ -13,12 +13,12 @@
 #include <compat/kw_static.h>
 #include <machine/machine.h>
 #include <utilities/bitset.h>
+#include <utilities/debuglog.h>
 #include <utilities/memalloc.h>
 
 #include <config/options.h>
 
 #if OW_DEBUG_MEMORY
-#    include <stdio.h>
 #    include <time.h>
 #endif // OW_DEBUG_MEMORY
 
@@ -1513,10 +1513,6 @@ struct ow_objmem_context {
 
     struct mem_span_set gc_roots;
     struct mem_span_set weak_refs;
-
-#if OW_DEBUG_MEMORY
-    bool verbose;
-#endif // OW_DEBUG_MEMORY
 };
 
 static_assert(
@@ -1534,9 +1530,6 @@ struct ow_objmem_context *ow_objmem_context_new(void) {
     big_space_init(&ctx->big_space);
     mem_span_set_init(&ctx->gc_roots);
     mem_span_set_init(&ctx->weak_refs);
-#if OW_DEBUG_MEMORY
-    ctx->verbose = false;
-#endif // OW_DEBUG_MEMORY
     return ctx;
 }
 
@@ -1554,14 +1547,6 @@ void ow_objmem_context_del(struct ow_objmem_context *ctx) {
      */
 
     ow_free(ctx);
-}
-
-void ow_objmem_context_verbose(struct ow_objmem_context *ctx, bool status) {
-    ow_unused_var(ctx);
-    ow_unused_var(status);
-#if OW_DEBUG_PARSER
-    ctx->verbose = status;
-#endif // OW_DEBUG_PARSER
 }
 
 struct ow_object *ow_objmem_allocate(
@@ -1881,10 +1866,10 @@ int ow_objmem_gc(struct ow_machine *om, enum ow_objmem_gc_type type) {
     ctx->current_gc_type = (int8_t)type;
 
 #if OW_DEBUG_MEMORY
-    if (ow_unlikely(ctx->verbose)) {
-        const char *const type_name = type == OW_OBJMEM_GC_FAST ? "fast" : "full";
-        fprintf(stderr, "[GC] %s GC starts\n", type_name);
-    }
+    ow_debuglog_print(
+        "ObjMem", INFO, "%s GC starts",
+        type == OW_OBJMEM_GC_FAST ? "fast" : "full"
+    );
 
     struct timespec ts0;
     timespec_get(&ts0, TIME_UTC);
@@ -1898,19 +1883,19 @@ int ow_objmem_gc(struct ow_machine *om, enum ow_objmem_gc_type type) {
         type = OW_OBJMEM_GC_NONE; // Illegal type.
 
 #if OW_DEBUG_MEMORY
-    if (ow_unlikely(ctx->verbose)) {
-        struct timespec ts1;
-        timespec_get(&ts1, TIME_UTC);
-        double dt_ms =
-            (double)(ts1.tv_sec - ts0.tv_sec) * 1e3 +
-            (double)(ts1.tv_nsec - ts0.tv_nsec) / 1e6;
+    struct timespec ts1;
+    timespec_get(&ts1, TIME_UTC);
+    double dt_ms =
+        (double)(ts1.tv_sec - ts0.tv_sec) * 1e3 +
+        (double)(ts1.tv_nsec - ts0.tv_nsec) / 1e6;
 
-        fprintf(stderr, "[GC] GC ends, %.1lf ms\n", dt_ms);
+    ow_debuglog_print("ObjMem", INFO, "GC ends, %.1lf ms", dt_ms);
 
-        fputs("[GC] ow_objmem_print_usage() vvv\n", stderr);
-        ow_objmem_print_usage(ctx, NULL);
-        fputs("[GC] ow_objmem_print_usage() ^^^\n", stderr);
-    }
+    ow_debuglog_when(DBG, {
+        ow_debuglog_print("ObjMem", DBG, "ow_objmem_print_usage() vvv");
+        ow_objmem_print_usage(ctx, ow_debuglog_stream());
+        ow_debuglog_print("ObjMem", DBG, "ow_objmem_print_usage() ^^^");
+    });
 
     assert(!new_space_post_gc_check(&ctx->new_space));
     assert(!old_space_post_gc_check(&ctx->old_space));

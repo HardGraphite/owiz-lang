@@ -44,6 +44,13 @@ Use `ccmake` or `cmake-gui` to view and adjust more options.
 Set CMake option `OW_DEVELOPING` to `ON` for development.
 Read [coding style](doc/coding_style.md) for style guide.
 
+Set CMake option `OW_DEBUGLOG` to `ON` to enable debug logging.
+By default, the printed log level can be controlled by an environment variable
+called `OWIZ_DEBUGLOG`.
+The initial printed log level is very high and most messages are suppressed.
+See CMake variables `OW_DEBUG_LOGGING_FILE` and `OW_DEBUG_LOGGING_ENVNAME`
+for further customizations about debug logging.
+
 ## Code File Organization
 
 | Directory | Description                                      |

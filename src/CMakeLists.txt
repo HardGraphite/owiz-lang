@@ -28,6 +28,23 @@ set(OW_BUILD_OUTPUT_NAME           "owiz")
 set(OW_BUILD_COMPILER_NAME         "${CMAKE_C_COMPILER_ID}")
 set(OW_BUILD_COMPILER_VERSION      "${CMAKE_C_COMPILER_VERSION}")
 
+##### Debug logging. #####
+
+if(OW_DEBUG_LOGGING)
+    if(NOT DEFINED OW_DEBUG_LOGGING_FILE)
+        set(OW_DEBUG_LOGGING_FILE "")
+    endif()
+
+    if(NOT DEFINED OW_DEBUG_LOGGING_ENVNAME)
+        string(TOUPPER "${OW_BUILD_OUTPUT_NAME}_DEBUGLOG" OW_DEBUG_LOGGING_ENVNAME)
+    endif()
+
+    set(OW_DEBUG_LOGGING_FILE "${OW_DEBUG_LOGGING_FILE}" CACHE
+        STRING "Output file for debug logging. Leave it empty to used stderr.")
+    set(OW_DEBUG_LOGGING_ENVNAME "${OW_DEBUG_LOGGING_ENVNAME}" CACHE
+        STRING "Environment variable name for controlling debug logging level.")
+endif()
+
 ##### Module lists. #####
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/modules/modules_conf.cmake")
@@ -67,12 +84,15 @@ file(CONFIGURE OUTPUT "${ow_conf_header_dir}/definitions.h" @ONLY CONTENT [==[
 #define  OW_FILENAME_EXTENSION_OBJ  "@OW_FILENAME_EXTENSION_OBJ@"
 #define  OW_BUILD_COMPILER_NAME     "@OW_BUILD_COMPILER_NAME@"
 #define  OW_BUILD_COMPILER_VERSION  "@OW_BUILD_COMPILER_VERSION@"
+#cmakedefine  OW_DEBUG_LOGGING_FILE      "@OW_DEBUG_LOGGING_FILE@"
+#cmakedefine  OW_DEBUG_LOGGING_ENVNAME   "@OW_DEBUG_LOGGING_ENVNAME@"
 ]==])
 
 ##### Generate config header: "options.h". #####
 
 file(CONFIGURE OUTPUT "${ow_conf_header_dir}/options.h" @ONLY CONTENT [==[
 #pragma once
+#cmakedefine01  OW_DEBUG_LOGGING
 #cmakedefine01  OW_DEBUG_MEMORY
 #cmakedefine01  OW_DEBUG_LEXER
 #cmakedefine01  OW_DEBUG_PARSER

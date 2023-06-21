@@ -13,6 +13,7 @@
 #include <objects/moduleobj.h>
 #include <objects/symbolobj.h>
 #include <utilities/array.h>
+#include <utilities/debuglog.h>
 #include <utilities/hash.h>
 #include <utilities/hashmap.h>
 #include <utilities/memalloc.h>
@@ -23,19 +24,9 @@
 
 #if OW_DEBUG_CODEGEN
 
-#include <stdio.h>
-
 #include <bytecode/disassemble.h>
 #include <objects/funcobj.h>
 #include <utilities/stream.h>
-
-static void verbose_dump_func(
-    unsigned int line, const char *name, struct ow_func_obj *func
-) {
-    fprintf(stderr, "[CODEGEN] %s (line %u) vvv\n", name, line);
-    ow_bytecode_dump(func->code, 0, func->code_size, func, 0, (size_t)-1, ow_stream_stderr());
-    fputs("[CODEGEN] ^^^\n", stderr);
-}
 
 #endif // OW_DEBUG_CODEGEN
 
@@ -270,9 +261,6 @@ struct ow_codegen {
     struct ow_machine *machine;
     jmp_buf error_jmpbuf;
     struct ow_syntax_error error_info;
-#if OW_DEBUG_CODEGEN
-    bool verbose;
-#endif // OW_DEBUG_CODEGEN
 };
 
 /// A wrapper of `setjmp()`.
@@ -311,9 +299,6 @@ ow_nodiscard struct ow_codegen *ow_codegen_new(struct ow_machine *om) {
     codegen->module = NULL;
     codegen->machine = om;
     ow_syntax_error_init(&codegen->error_info);
-#if OW_DEBUG_CODEGEN
-    codegen->verbose = false;
-#endif // OW_DEBUG_CODEGEN
 
     ow_objmem_add_gc_root(om, codegen, codegen_gc_visitor);
     return codegen;
@@ -328,14 +313,6 @@ void ow_codegen_del(struct ow_codegen *codegen) {
     code_stack_fini(&codegen->code_stack);
 
     ow_free(codegen);
-}
-
-void ow_codegen_verbose(struct ow_codegen *codegen, bool status) {
-    ow_unused_var(codegen);
-    ow_unused_var(status);
-#if OW_DEBUG_CODEGEN
-    codegen->verbose = status;
-#endif // OW_DEBUG_CODEGEN
 }
 
 void ow_codegen_clear(struct ow_codegen *codegen) {
@@ -1406,11 +1383,23 @@ static void ow_codegen_emit_FuncStmt(
     }
 
 #if OW_DEBUG_CODEGEN
-    if (ow_unlikely(codegen->verbose)) {
+    ow_debuglog_when(DBG, {
         const char *const name = node->name ?
             ow_sharedstr_data(node->name->value) : "<lambda>";
-        verbose_dump_func(node->location.begin.line, name, func);
-    }
+        ow_debuglog_print(
+            "CodeGen", DBG, "func `%s' (line %u) vvv",
+            name, node->location.begin.line
+        );
+        ow_bytecode_dump(
+            func->code, 0, func->code_size,
+            func, 0, (size_t)-1,
+            ow_stream_stderr() // FIXME: cannot print to `ow_debuglog_stream()`.
+        );
+        ow_debuglog_print(
+            "CodeGen", DBG, "func `%s' (line %u) ^^^",
+            name, node->location.end.line
+        );
+    });
 #endif // OW_DEBUG_CODEGEN
 }
 
@@ -1515,8 +1504,21 @@ static void ow_codegen_emit_Module(
     ow_objmem_pop_ngc(codegen->machine);
 
 #if OW_DEBUG_CODEGEN
-    if (ow_unlikely(codegen->verbose))
-        verbose_dump_func(node->location.begin.line, "(module)", func);
+    ow_debuglog_when(DBG, {
+        ow_debuglog_print(
+            "CodeGen", DBG, "module (line %u) vvv",
+            node->location.begin.line
+        );
+        ow_bytecode_dump(
+            func->code, 0, func->code_size,
+            func, 0, (size_t)-1,
+            ow_stream_stderr() // FIXME: cannot print to `ow_debuglog_stream()`.
+        );
+        ow_debuglog_print(
+            "CodeGen", DBG, "module (line %u) ^^^",
+            node->location.end.line
+        );
+    });
 #endif // OW_DEBUG_CODEGEN
 }
 

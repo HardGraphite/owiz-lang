@@ -16,8 +16,6 @@ struct ow_codegen;
 ow_nodiscard struct ow_codegen *ow_codegen_new(struct ow_machine *om);
 /// Destroy a code generator.
 void ow_codegen_del(struct ow_codegen *codegen);
-/// Config whether prints details.
-void ow_codegen_verbose(struct ow_codegen *codegen, bool status);
 /// Delete data and reset.
 void ow_codegen_clear(struct ow_codegen *codegen);
 /// Do code generation.

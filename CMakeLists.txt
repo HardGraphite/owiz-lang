@@ -16,6 +16,7 @@ project(
 option(OW_BUILD_IPO        "Enable inter-procedural optimization."                               ON)
 option(OW_BUILD_RUNTIME    "Build the library and the executable command line interface."        ON)
 option(OW_BUILD_STATIC     "Build static library (archive); otherwise shared (dynamic) library" OFF)
+option(OW_DEBUG_LOGGING    "Print logs from debugging code."                                    OFF)
 option(OW_DOC_SOURCE       "Generate documentation for source code."                            OFF)
 option(OW_DOC_HEADER       "Generate documentation for public header files."                    OFF)
 option(OW_DOC_LANGUAGE     "Generate documentation from doc/*.md."                              OFF)

@@ -4,7 +4,6 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
-#include <machine/sysparam.h>
 #include <utilities/memalloc.h>
 #include <utilities/unreachable.h>
 
@@ -25,15 +24,6 @@ ow_nodiscard struct ow_compiler *ow_compiler_new(struct ow_machine *om) {
     compiler->parser = ow_parser_new();
     compiler->codegen = ow_codegen_new(om);
     compiler->last_error_source = ERR_SRC_NONE;
-    if (ow_unlikely(ow_sysparam.verbose_lexer
-            || ow_sysparam.verbose_parser || ow_sysparam.verbose_codegen)) {
-        if (ow_sysparam.verbose_lexer)
-            ow_lexer_verbose(ow_parser_lexer(compiler->parser), true);
-        if (ow_sysparam.verbose_parser)
-            ow_parser_verbose(compiler->parser, true);
-        if (ow_sysparam.verbose_codegen)
-            ow_codegen_verbose(compiler->codegen, true);
-    }
     return compiler;
 }
 

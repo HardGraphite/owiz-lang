@@ -39,9 +39,6 @@ struct ow_machine *ow_machine_new(void) {
     om->globals = ow_machine_globals_new(om);
     ow_callstack_init(om, &om->callstack, stack_size());
 
-    if (ow_unlikely(ow_sysparam.verbose_memory))
-        ow_objmem_context_verbose(om->objmem_context, true);
-
     int status;
     status = ow_machine_run(
         om, om->globals->module_base, false, &(struct ow_object *){NULL});

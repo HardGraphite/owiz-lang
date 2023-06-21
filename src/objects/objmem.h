@@ -30,8 +30,6 @@ typedef void (*ow_objmem_weak_refs_visitor_t)(void *, int);
 struct ow_objmem_context *ow_objmem_context_new(void);
 /// Destroy a memory context. (All objects will be finalized.)
 void ow_objmem_context_del(struct ow_objmem_context *ctx);
-/// Set verbose flag.
-void ow_objmem_context_verbose(struct ow_objmem_context *ctx, bool status);
 
 /// Memory allocation options.
 enum ow_objmem_alloc_type {
