@@ -10,14 +10,24 @@ else()
     set(ow_test_exe ow_exe_static)
 endif()
 
-set(OW_TEST_SCRIPTS_GLOB "*.ow")
+set(OW_TEST_SCRIPT_FILE_EXT "ow")
 
-###############################
-##### Native test sources #####
-###############################
+#####################################
+##### Functions to create tests #####
+#####################################
 
-file(GLOB ow_test_c_files "*.c" "*.cc")
-foreach(file IN LISTS ow_test_c_files)
+# Convert input file name to test nane.
+function(ow_test_make_name var file_name)
+    get_filename_component(name ${file} NAME_WE)
+    if (name MATCHES "([a-z]+)_(.+)")
+        set(name "${CMAKE_MATCH_1}:${CMAKE_MATCH_2}")
+    endif()
+    set(${var} "${name}" PARENT_SCOPE)
+endfunction()
+
+# Add test from native code.
+function(ow_test_add_native file)
+    ow_test_make_name(test_name ${file})
     get_filename_component(out_name ${file} NAME_WE)
     set(tgt_name "ow_test_${out_name}")
     add_executable(${tgt_name} ${file})
@@ -28,23 +38,32 @@ foreach(file IN LISTS ow_test_c_files)
         "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include"
     )
     add_test(
-        NAME ${out_name}
+        NAME ${test_name}
         COMMAND ${out_name}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
-endforeach()
+endfunction()
 
-###################################
-##### Non-native test sources #####
-###################################
-
-file(GLOB ow_test_ow_files "${OW_TEST_SCRIPTS_GLOB}")
-foreach(file IN LISTS ow_test_ow_files)
-    get_filename_component(test_name ${file} NAME_WE)
-    set(tgt_name "ow_test_${test_name}")
+# Add test from non-native code.
+function(ow_test_add_script file)
+    ow_test_make_name(test_name ${file})
     add_test(
         NAME ${test_name}
         COMMAND ${ow_test_exe} ${file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+endfunction()
+
+#########################################
+##### Collect sources and add tests #####
+#########################################
+
+file(GLOB ow_test_sub_paths "${CMAKE_CURRENT_SOURCE_DIR}/*")
+
+foreach(sub_path IN LISTS ow_test_sub_paths)
+    if (sub_path MATCHES ".+\\.cc?$")
+        ow_test_add_native(${sub_path})
+    elseif(sub_path MATCHES ".+\\.${OW_TEST_SCRIPT_FILE_EXT}$")
+        ow_test_add_script(${sub_path})
+    endif()
 endforeach()
