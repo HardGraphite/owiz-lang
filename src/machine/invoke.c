@@ -1067,7 +1067,10 @@ static int invoke_impl(
         default:
             ip--;
             *++stack.sp = ow_object_from(ow_exception_format(
-                machine, NULL, "unrecognized opcode `%#04x' at %p", *ip, ip));
+                machine, NULL,
+                "unrecognized opcode `%#04x' at %p",
+                *ip, (void *)ip
+            ));
             goto raise_exc;
 
         err_not_implemented:
@@ -1075,7 +1078,8 @@ static int invoke_impl(
             *++stack.sp = ow_object_from(ow_exception_format(
                 machine, NULL,
                 "instruction `%s' has not been implemented",
-                ow_opcode_name((enum ow_opcode)*ip)));
+                ow_opcode_name((enum ow_opcode)*ip)
+            ));
             goto raise_exc;
 
         err_bad_operand:
@@ -1083,7 +1087,8 @@ static int invoke_impl(
             *++stack.sp = ow_object_from(ow_exception_format(
                 machine, NULL,
                 "illegal operand for instruction `%s' at %p",
-                ow_opcode_name((enum ow_opcode)*ip), ip));
+                ow_opcode_name((enum ow_opcode)*ip), (void *)ip
+            ));
             goto raise_exc;
 
         err_cond_is_not_bool:
