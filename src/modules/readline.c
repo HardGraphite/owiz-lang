@@ -22,7 +22,7 @@
 #ifndef sigsetjmp
 #    define sigjmp_buf                jmp_buf
 #    define sigsetjmp(env, savemask)  setjmp(env)
-#    define siglongjmp(env, status)   longjmp(env)
+#    define siglongjmp(env, status)   longjmp(env, status)
 #endif
 
 thread_local static struct ow_machine *completion_om;
