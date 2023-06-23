@@ -191,6 +191,14 @@ if(WIN32)
     endforeach()
 endif()
 
+if(UNIX)
+    if(NOT OW_BUILD_STATIC)
+        target_link_libraries(ow_lib_shared PRIVATE m)
+    else()
+        target_link_libraries(ow_lib_static PUBLIC m)
+    endif()
+endif()
+
 ##### Modules (embedded and dynamic). #####
 
 ow_mod_util_collect_embedded_modules("${OW_EMBEDDED_MODULES}" ow_embedded_mods)

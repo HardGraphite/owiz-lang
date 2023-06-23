@@ -1,6 +1,8 @@
 #include "codegen.h"
 
 #include <assert.h>
+#include <limits.h>
+#include <math.h>
 #include <setjmp.h>
 
 #include "assembler.h"
@@ -415,9 +417,10 @@ static void ow_codegen_emit_FloatLiteral(
         return;
     struct ow_assembler *const as = code_stack_top(&codegen->code_stack);
     const double value = node->value;
-    const int8_t value_as_i8 = (int8_t)value;
-    if ((double)value_as_i8 == value) {
-        ow_assembler_append(as, OW_OPC_LdFlt, (union ow_operand){.i8 = value_as_i8});
+    if (value <= (double)INT8_MAX && value >= (double)INT8_MIN &&
+        nearbyint(value) == value /* can be represented as integer */
+    ) {
+        ow_assembler_append(as, OW_OPC_LdFlt, (union ow_operand){.i8 = (int8_t)value});
     } else {
         const size_t index = ow_assembler_constant(
             as, (struct ow_assembler_constant){.type = OW_AS_CONST_FLT, .f = value});
