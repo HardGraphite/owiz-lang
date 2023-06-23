@@ -116,6 +116,7 @@ static void test_massive_garbage(owiz_machine_t *om) {
 
     for (intmax_t i = 0; i < N; i++) {
         make_random_data(om, i);
+        check_random_data(om, i);
         owiz_drop(om, 1);
         assert(owiz_drop(om, 0) == top_base + 1);
     }
@@ -138,8 +139,10 @@ static void test_massive_survivors(owiz_machine_t *om) {
     assert(owiz_drop(om, 0) == top_base + M);
 
     for (intmax_t i = 0; i < N; i++) {
-        for (intmax_t j = 0; j < M; j++)
+        for (intmax_t j = 0; j < M; j++) {
             make_random_data(om, i);
+            check_random_data(om, i);
+        }
         owiz_drop(om, (int)M);
         assert(owiz_drop(om, 0) == top_base + M);
     }
@@ -164,7 +167,9 @@ static void test_large_object(owiz_machine_t *om) {
 
     for (int i = 0; i < N; i++) {
         make_random_data(om, i);
+        check_random_data(om, i);
         make_random_large_object(om, i);
+        check_random_large_object(om, i);
         owiz_drop(om, 2);
         assert(owiz_drop(om, 0) == top_base + 2);
     }
@@ -196,7 +201,6 @@ static void test_complex_references(owiz_machine_t *om) {
 }
 
 int main(void) {
-    // owiz_sysctl(OWIZ_CTL_VERBOSE, "M", 1);
     owiz_sysctl(OWIZ_CTL_STACKSIZE, &(size_t){64 * 1024}, sizeof(size_t));
     owiz_machine_t *om = owiz_create();
     test_all_garbage(om);

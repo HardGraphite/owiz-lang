@@ -56,7 +56,7 @@ static void ow_callstack_gc_visitor(void *_ptr, int op) {
     struct ow_callstack *const stack = _ptr;
     assert(stack->regs.sp < stack->data_end);
     for (struct ow_object **p = stack->_data, **const p_end = stack->regs.sp;
-        p < p_end; p++
+        p <= p_end; p++
     ) {
         ow_objmem_visit_object(*p, op);
     }
