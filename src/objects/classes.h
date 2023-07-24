@@ -20,6 +20,8 @@ struct ow_machine;
     ELEM(module)      \
     ELEM(nil)         \
     ELEM(set)         \
+    ELEM(objslots)    \
+    ELEM(objslotz)    \
     ELEM(stream)      \
     ELEM(string)      \
     ELEM(symbol)      \
