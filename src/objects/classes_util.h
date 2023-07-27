@@ -6,11 +6,11 @@
 
 /// Definition variable name.
 #define OW_BICLS_CLASS_DEF_NAME(CLASS) \
-    __wo_bic_##CLASS##_class_def
+    __ow_bic_##CLASS##_class_def
 
 /// Definition variable name.
 #define OW_BICLS_CLASS_DEF_EX_NAME(CLASS) \
-    __wo_bic_##CLASS##_class_def_ex
+    __ow_bic_##CLASS##_class_def_ex
 
 /// Define a definition variable.
 #define OW_BICLS_CLASS_DEF(CLASS) \

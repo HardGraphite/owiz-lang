@@ -12,11 +12,11 @@
 #    define OW_BIMOD_MODULE_ATTR
 #endif
 
-#define OW_BIMOD_MODULE_DEF_NAME_PREFIX_STR "__wo_mod_"
+#define OW_BIMOD_MODULE_DEF_NAME_PREFIX_STR "__ow_mod_"
 #define OW_BIMOD_MODULE_DEF_NAME_SUFFIX_STR "_def"
 
 #define OW_BIMOD_MODULE_DEF_NAME(MODULE) \
-    __wo_mod_##MODULE##_def
+    __ow_mod_##MODULE##_def
 
 #define OW_BIMOD_MODULE_DEF(MODULE) \
     OW_BIMOD_MODULE_ATTR \
