@@ -6,10 +6,13 @@
 #include "object_util.h"
 #include <utilities/attributes.h>
 
+struct ow_exception_obj;
 struct ow_machine;
 struct ow_module_obj;
 struct ow_native_class_def;
 struct ow_native_class_def_ex;
+struct ow_native_class_def_nn;
+struct ow_native_class_def_nn_ex;
 struct ow_object;
 struct ow_symbol_obj;
 
@@ -48,19 +51,21 @@ struct ow_class_obj;
 
 /// Create an empty class.
 struct ow_class_obj *ow_class_obj_new(struct ow_machine *om);
-/// Initialize class object from a native definition. The class must be empty.
-/// Parameter `super` is optional. If `finalizer` in parameter `def` is provided,
-/// `super` must be object class.
+/// Initialize class object from a native definition. The class obj must be empty.
 void ow_class_obj_load_native_def(
     struct ow_machine *om, struct ow_class_obj *self,
-    struct ow_class_obj *super, const struct ow_native_class_def *def,
-    struct ow_module_obj *func_mod);
-/// Initialize class object from a native definition. The class must be empty.
-/// Parameter `super` is optional. If `finalizer` or `gc_visitor` in parameter
-/// `def` is provided, `super` must be object class.
+    const struct ow_native_class_def *def, struct ow_module_obj *func_mod);
+/// Initialize class object from a native definition. The class obj must be empty.
 void ow_class_obj_load_native_def_ex(
     struct ow_machine *om, struct ow_class_obj *self,
-    struct ow_class_obj *super, const struct ow_native_class_def_ex *def,
+    const struct ow_native_class_def_ex *def, struct ow_module_obj *func_mod);
+/// Initialize class object from a native definition for a non-native class.
+/// The class object object must be empty. Parameter `super` is the super class.
+/// `super` being NULL means inherit from the Object class. When an error occurs,
+/// return an exception; otherwise return NULL.
+struct ow_exception_obj *ow_class_obj_load_native_def_nn(
+    struct ow_machine *om, struct ow_class_obj *self,
+    struct ow_class_obj *super, const struct ow_native_class_def_nn *def,
     struct ow_module_obj *func_mod);
 /// Get class name.
 ow_static_forceinline struct ow_symbol_obj *ow_class_obj_name(const struct ow_class_obj *self);
@@ -83,12 +88,6 @@ size_t ow_class_obj_find_method(
 /// Get method by index. If not exists, return NULL.
 struct ow_object *ow_class_obj_get_method(
     const struct ow_class_obj *self, size_t index);
-/// Set method by index. If not exists, return false.
-bool ow_class_obj_set_method(
-    struct ow_class_obj *self, size_t index, struct ow_object *method);
-/// Set or add method by name. Return its index.
-size_t ow_class_obj_set_method_y(
-    struct ow_class_obj *self, const struct ow_symbol_obj *name, struct ow_object *method);
 /// Get static attribute by name. If not exists, return NULL.
 struct ow_object *ow_class_obj_get_static(
     const struct ow_class_obj *self, const struct ow_symbol_obj *name);
@@ -102,6 +101,7 @@ ow_static_inline bool ow_class_obj_is_base(
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ow_class_obj_pub_info {
+    size_t super_field_count; // super class field count
     size_t basic_field_count;
     size_t native_field_count;
     bool has_extra_fields;

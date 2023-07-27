@@ -118,13 +118,7 @@ int ow_stream_obj_use_stream(
     struct ow_stream *stream;
     struct stream_obj_stream sos;
 
-    struct ow_class_obj *const self_class = ow_object_class(ow_object_from(self));
-    if (self_class == om->builtin_classes->file)
-        stream = (struct ow_stream *)&((struct ow_file_obj *)self)->file_stream;
-    else if (self_class == om->builtin_classes->string_stream)
-        stream = (struct ow_stream *)&((struct ow_string_stream_obj *)self)->string_stream;
-    else
-        stream = (struct ow_stream *)sos_init(&sos, om, self);
+    stream = (struct ow_stream *)sos_init(&sos, om, self);
 
     const int ret = func(func_arg, stream);
 
@@ -137,42 +131,6 @@ int ow_stream_obj_use_stream(
 OW_BICLS_DEF_CLASS_EX(
     stream,
     "Stream",
-    false,
-    NULL,
-    NULL,
-)
-
-struct ow_file_obj *ow_file_obj_new(
-    struct ow_machine *om, const ow_path_char_t *path, int flags
-) {
-    struct ow_file_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->file),
-        struct ow_file_obj
-    );
-    if (ow_file_stream_open(&obj->file_stream, path, flags))
-        return obj;
-    return NULL;
-}
-
-OW_BICLS_DEF_CLASS_EX(
-    file,
-    "File",
-    false,
-    NULL,
-    NULL,
-)
-
-struct ow_string_stream_obj *ow_string_stream_obj_new(struct ow_machine *om) {
-    struct ow_string_stream_obj *const obj = ow_object_cast(
-        ow_objmem_allocate(om, om->builtin_classes->string_stream),
-        struct ow_string_stream_obj);
-    ow_string_stream_open(&obj->string_stream);
-    return obj;
-}
-
-OW_BICLS_DEF_CLASS_EX(
-    string_stream,
-    "StringStream",
     false,
     NULL,
     NULL,

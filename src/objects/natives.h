@@ -41,6 +41,13 @@ struct ow_native_class_def_ex {
     bool extended;
 };
 
+/// A native class def for a non-native class.
+struct ow_native_class_def_nn {
+    const char *name;
+    const char *const *attributes;
+    const struct ow_native_func_def *methods;
+};
+
 /// Same with `struct owiz_native_module_def`.
 struct ow_native_module_def {
     const char                      *name;

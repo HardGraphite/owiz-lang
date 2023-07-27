@@ -13,7 +13,6 @@
     extern OW_BICLS_CLASS_DEF_EX(NAME) ;
 OW_BICLS_LIST0
 OW_BICLS_LIST
-OW_BICLS_STREAM_LIST
 #undef ELEM
 
 static void ow_builtin_classes_gc_visitor(void *_ptr, int op) {
@@ -45,6 +44,7 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
         ->basic_field_count = fake_class_class.pub_info.basic_field_count;
 
     bic->object = ow_class_obj_new(om);
+
 #define ELEM(NAME) { \
         struct ow_class_obj *const cls = ow_class_obj_new(om); \
         struct ow_class_obj_pub_info *const cls_pub_info = \
@@ -55,14 +55,18 @@ struct ow_builtin_classes *_ow_builtin_classes_new(struct ow_machine *om) {
             cls_def->data_size / OW_OBJECT_FIELD_SIZE; \
         bic-> NAME = cls; \
     }
+
     OW_BICLS_LIST
-    OW_BICLS_STREAM_LIST
+
 #undef ELEM
 
-#define ELEM(NAME) assert(ow_object_class(ow_object_from(bic-> NAME )) == bic->class_);
+#define ELEM(NAME) { \
+        assert(ow_object_class(ow_object_from(bic-> NAME )) == bic->class_); \
+    }
+
     OW_BICLS_LIST0
     OW_BICLS_LIST
-    OW_BICLS_STREAM_LIST
+
 #undef ELEM
 
     assert(om->builtin_classes == bic);
@@ -78,32 +82,27 @@ void _ow_builtin_classes_setup(
 ) {
     ow_objmem_push_ngc(om);
 
-#define MARK_EXTENDED(NAME) \
-    do { \
-        assert(OW_BICLS_CLASS_DEF_EX_NAME(NAME).extended); \
-        ((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic-> NAME)) \
-            ->has_extra_fields = true; \
-    } while (false) \
-// ^^^ MARK_EXTENDED() ^^^
-    MARK_EXTENDED(string);
-    MARK_EXTENDED(symbol);
-    MARK_EXTENDED(tuple);
-#undef MARK_EXTENDED // MARK_EXTENDED
-
 #define ELEM(NAME) \
-    ow_class_obj_load_native_def_ex( \
-        om, bic-> NAME, bic->object, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
+    if (OW_BICLS_CLASS_DEF_EX_NAME(NAME).extended) \
+        ((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic-> NAME)) \
+            ->has_extra_fields = true;
+
     OW_BICLS_LIST0
     OW_BICLS_LIST
+
 #undef ELEM
-    ((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->object))
-        ->super_class = NULL;
 
 #define ELEM(NAME) \
     ow_class_obj_load_native_def_ex( \
-        om, bic-> NAME, bic->stream, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
-    OW_BICLS_STREAM_LIST
+        om, bic-> NAME, &OW_BICLS_CLASS_DEF_EX_NAME(NAME), NULL);
+
+    OW_BICLS_LIST0
+    OW_BICLS_LIST
+
 #undef ELEM
+
+    ((struct ow_class_obj_pub_info *)ow_class_obj_pub_info(bic->object))
+        ->super_class = NULL;
 
     ow_objmem_pop_ngc(om);
 }
