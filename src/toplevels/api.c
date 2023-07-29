@@ -903,8 +903,9 @@ OWIZ_API int owiz_store_attribute(owiz_machine_t *om, int index, const char *nam
 
 OWIZ_API int owiz_drop(owiz_machine_t *om, int count) {
     struct ow_object **const fp_m1 = om->callstack.regs.fp - 1;
-    struct ow_object **new_sp = om->callstack.regs.sp - (size_t)(unsigned)count;
-    if (new_sp < fp_m1)
+    struct ow_object **const old_sp = om->callstack.regs.sp;
+    struct ow_object **new_sp = old_sp - (size_t)(unsigned)count;
+    if (new_sp < fp_m1 || new_sp > old_sp /* underflow */)
         new_sp = fp_m1;
     om->callstack.regs.sp = new_sp;
     return (int)(new_sp - fp_m1);
