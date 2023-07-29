@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include <utilities/attributes.h>
@@ -8,6 +9,15 @@ struct ow_hashmap_funcs;
 
 /// Duplicate a NUL-terminated string.
 ow_nodiscard char *ow_strdup(const char *s);
+/// Convert the string to uppercase. Return number of converted bytes.
+size_t ow_str_to_upper(char str[], size_t n);
+/// Convert the string to lowercase. Return number of converted bytes.
+size_t ow_str_to_lower(char str[], size_t n);
+
+/// Checks whether the string begins with the given prefix.
+bool ow_str_starts_with(const char *str, const char *prefix);
+/// Checks whether the string ends with the given suffix.
+bool ow_str_ends_with(const char *str, const char *suffix);
 
 /// Shared immutable string.
 struct ow_sharedstr;
@@ -28,9 +38,9 @@ extern const struct ow_hashmap_funcs ow_sharedstr_hashmap_funcs;
 
 /// String with dynamic length.
 struct ow_dynamicstr {
-	char  *_str;
-	size_t _cap;
-	size_t _len;
+    char  *_str;
+    size_t _cap;
+    size_t _len;
 };
 
 /// Initialize a string.

@@ -16,11 +16,9 @@ struct ow_lexer;
 ow_nodiscard struct ow_lexer *ow_lexer_new(void);
 /// Delete a lexer created by `ow_lexer_new()`.
 void ow_lexer_del(struct ow_lexer *lexer);
-/// Config print lexer details or not.
-void ow_lexer_verbose(struct ow_lexer *lexer, bool status);
 /// Reset and use the given source to start new scanning.
 void ow_lexer_source(struct ow_lexer *lexer,
-	struct ow_stream *stream, struct ow_sharedstr *file_name);
+    struct ow_stream *stream, struct ow_sharedstr *file_name);
 /// Delete data.
 void ow_lexer_clear(struct ow_lexer *lexer);
 /// Scan for next token. On error, return false, and `result` will not be modified.

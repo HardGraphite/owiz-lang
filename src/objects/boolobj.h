@@ -16,5 +16,5 @@ struct ow_bool_obj *_ow_bool_obj_new(struct ow_machine *om, bool x);
 ow_static_forceinline bool ow_bool_obj_value(const struct ow_bool_obj *self);
 
 ow_static_forceinline bool ow_bool_obj_value(const struct ow_bool_obj *self) {
-	return *(const bool *)((const unsigned char *)self + OW_OBJECT_SIZE);
+    return *(const bool *)((const unsigned char *)self + OW_OBJECT_HEAD_SIZE);
 }

@@ -48,13 +48,13 @@ const ow_path_char_t *ow_path_extension(const ow_path_char_t *path);
 const ow_path_char_t *ow_path_parent(const ow_path_char_t *path);
 /// Concatenates two path strings. Thread-local buffer is used.
 const ow_path_char_t *ow_path_concat(
-	const ow_path_char_t *path1, const ow_path_char_t *path2);
+    const ow_path_char_t *path1, const ow_path_char_t *path2);
 /// Join two paths. Thread-local buffer is used.
 const ow_path_char_t *ow_path_join(
-	const ow_path_char_t *path1, const ow_path_char_t *path2);
+    const ow_path_char_t *path1, const ow_path_char_t *path2);
 /// Replace or add file name extension. Param `new_ext` is optional. Thread-local buffer is used.
 const ow_path_char_t *ow_path_replace_extension(
-	const ow_path_char_t *path, const ow_path_char_t *new_ext);
+    const ow_path_char_t *path, const ow_path_char_t *new_ext);
 
 #if _IS_WINDOWS_
 
@@ -73,9 +73,9 @@ const ow_path_char_t *ow_winpath_from_str(const char *path_str);
 
 /// File types.
 enum ow_fs_filetype {
-	OW_FS_FT_REG = 0x01, ///< Is a regular file.
-	OW_FS_FT_DIR = 0x02, ///< Is a directory.
-	OW_FS_FT_LNK = 0x04, ///< Is a symbolic link.
+    OW_FS_FT_REG = 0x01, ///< Is a regular file.
+    OW_FS_FT_DIR = 0x02, ///< Is a directory.
+    OW_FS_FT_LNK = 0x04, ///< Is a symbolic link.
 };
 
 /// Callback function for `ow_fs_iter_dir()`. Param `file` is a pointer to a local buffer.

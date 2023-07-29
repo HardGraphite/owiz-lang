@@ -12,6 +12,9 @@ import re
 from typing import Generator, Iterable
 
 
+C_CODE_INDENT = ' ' * 4
+
+
 @dataclasses.dataclass
 class ModuleConfig:
     required: bool = False
@@ -91,21 +94,21 @@ def write_cmake_conf(
 
         puts('set(OW_AVAILABLE_MODULES')
         for mod_name in names:
-            puts('\t' + mod_name)
+            puts(C_CODE_INDENT + mod_name)
         puts(')')
         puts()
 
         puts('set(OW_REQUIRED_MODULES')
         for mod_name, mod_conf in conf.items():
             if mod_conf.required:
-                puts('\t' + mod_name)
+                puts(C_CODE_INDENT + mod_name)
         puts(')')
         puts()
 
         puts('set(OW_PRFDYN_MODULES')
         for mod_name, mod_conf in conf.items():
             if mod_conf.prefer_dyn:
-                puts('\t' + mod_name)
+                puts(C_CODE_INDENT + mod_name)
         puts(')')
         puts()
 

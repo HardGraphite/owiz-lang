@@ -16,20 +16,20 @@ struct ow_stream;
 
 /// Common head of a stream struct.
 #define OW_STREAM_HEAD \
-	const struct ow_stream_operations *_ops; \
-	int _open_flags; \
+    const struct ow_stream_operations *_ops; \
+    int _open_flags; \
 // ^^^ OW_STREAM_HEAD ^^^
 
 /// Functions to perform operations on a stream.
 struct ow_stream_operations {
-	void (*close)(struct ow_stream *stream);
-	bool (*eof)(const struct ow_stream *stream);
-	size_t (*read)(struct ow_stream *stream, void *buf, size_t buf_sz);
-	size_t (*write)(struct ow_stream *stream, const void *data, size_t size);
-	int (*getc)(struct ow_stream *stream);
-	bool (*gets)(struct ow_stream *stream, char *buf, size_t buf_sz);
-	int (*putc)(struct ow_stream *stream, int ch);
-	bool (*puts)(struct ow_stream *stream, const char *str);
+    void (*close)(struct ow_stream *stream);
+    bool (*eof)(const struct ow_stream *stream);
+    size_t (*read)(struct ow_stream *stream, void *buf, size_t buf_sz);
+    size_t (*write)(struct ow_stream *stream, const void *data, size_t size);
+    int (*getc)(struct ow_stream *stream);
+    bool (*gets)(struct ow_stream *stream, char *buf, size_t buf_sz);
+    int (*putc)(struct ow_stream *stream, int ch);
+    bool (*puts)(struct ow_stream *stream, const char *str);
 };
 
 /// Destroy the stream.
@@ -62,8 +62,8 @@ struct ow_stream *ow_stream_stderr(void);
 
 /// File stream.
 struct ow_file_stream {
-	OW_STREAM_HEAD
-	void *_file;
+    OW_STREAM_HEAD
+    void *_file;
 };
 
 extern const struct ow_stream_operations ow_file_stream_operations;
@@ -79,10 +79,10 @@ bool ow_file_stream_puts(struct ow_file_stream *stream, const char *str);
 
 /// String view stream, read-only.
 struct ow_strview_stream {
-	OW_STREAM_HEAD
-	const char *begin;
-	const char *end;
-	const char *current;
+    OW_STREAM_HEAD
+    const char *begin;
+    const char *end;
+    const char *current;
 };
 
 extern const struct ow_stream_operations ow_strview_stream_operations;
@@ -98,10 +98,10 @@ bool ow_strview_stream_puts(struct ow_strview_stream *stream, const char *str);
 
 /// String stream.
 struct ow_string_stream {
-	OW_STREAM_HEAD
-	char *begin;
-	char *end;
-	char *current;
+    OW_STREAM_HEAD
+    char *begin;
+    char *end;
+    char *current;
 };
 
 extern const struct ow_stream_operations ow_string_stream_operations;

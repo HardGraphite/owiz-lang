@@ -19,13 +19,13 @@ ow_hash_t ow_hash_double(double val);
 ow_hash_t ow_hash_bytes(const void *data, size_t size);
 
 ow_static_inline ow_hash_t ow_hash_int(int32_t val) {
-	return (ow_hash_t)val;
+    return (ow_hash_t)val;
 }
 
 ow_static_inline ow_hash_t ow_hash_int64(int64_t val) {
-	return (ow_hash_t)val;
+    return (ow_hash_t)val;
 }
 
 ow_static_inline ow_hash_t ow_hash_pointer(const void *ptr) {
-	return (ow_hash_t)(uintptr_t)ptr;
+    return (ow_hash_t)(uintptr_t)ptr;
 }

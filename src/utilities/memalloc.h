@@ -12,10 +12,10 @@
 /// Allocate memory like `malloc()`.
 ow_malloc_fn_attrs(1, size)
 void *ow_mem_allocate(size_t size);
-/// Re-allocate memory like `realloc()`.
+/// Re-allocate memory like `realloc()`. `ptr` can be `NULL`.
 ow_realloc_fn_attrs(2, size)
 void *ow_mem_reallocate(void *ptr, size_t size);
-/// Deallocate memory like `free()`.
+/// Deallocate memory like `free()`. `ptr` can be `NULL`.
 void ow_mem_deallocate(void *ptr);
 /// Allocate virtual memory like `mmap()` or `VirtualAlloc()`.
 ow_malloc_fn_attrs(1, size)

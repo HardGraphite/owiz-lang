@@ -14,12 +14,12 @@ struct ow_map_obj *ow_map_obj_new(struct ow_machine *om);
 size_t ow_map_obj_length(const struct ow_map_obj *self);
 /// Insert or assign.
 void ow_map_obj_set(
-	struct ow_machine *om, struct ow_map_obj *self,
-	struct ow_object *key, struct ow_object *val);
+    struct ow_machine *om, struct ow_map_obj *self,
+    struct ow_object *key, struct ow_object *val);
 /// Get value by key. Return `NULL` if the key does not exist.
 struct ow_object *ow_map_obj_get(
-	struct ow_machine *om, struct ow_map_obj *self, struct ow_object *key);
+    struct ow_machine *om, struct ow_map_obj *self, struct ow_object *key);
 /// Visit each key-value pair.
 int ow_map_obj_foreach(
-	const struct ow_map_obj *self,
-	int (*walker)(void *arg, struct ow_object *key, struct ow_object *val), void *arg);
+    const struct ow_map_obj *self,
+    int (*walker)(void *arg, struct ow_object *key, struct ow_object *val), void *arg);
